@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "headline": "Propylène tendu aux États-Unis : impact possible dans 5 semaines",
+  "what_changed": [
+    "Arrêt confirmé d'un vapocraqueur sur la côte du Golfe, redémarrage visé en novembre.",
+    "Indice proxy de l'acrylonitrile en hausse de 4,2 % sur une semaine."
+  ],
+  "verdict_explanation": "Le verdict « problème potentiel à 5 semaines » vient de l'arrêt du vapocraqueur : sévérité 2, probabilité 0,4 d'une hausse du propylène. Le délai X de 5 semaines correspond au fret transatlantique et aux stocks des ports.",
+  "price_comment": "L'indice proxy (propylène et ammoniac pondérés) gagne 4,2 % sur une semaine et 6,8 % sur quatre semaines.",
+  "watch_next": [
+    {"indicator": "Annonce de redémarrage du vapocraqueur", "why": "Un redémarrage avant mi-novembre ramènerait le verdict à « rien à signaler ».", "date": "2026-11"},
+    {"indicator": "Prix du propylène sur la côte du Golfe", "why": "Une hausse durable confirmerait la transmission vers l'acrylonitrile.", "date": "unknown"}
+  ],
+  "disagrees_with_verdict": false,
+  "disagreement_reason": "",
+  "injection_suspected": false
+}

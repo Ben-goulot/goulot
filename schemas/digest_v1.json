@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "headline", "what_changed", "verdict_explanation", "price_comment",
+    "watch_next", "disagrees_with_verdict", "disagreement_reason", "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "headline": {"type": "string"},
+    "what_changed": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "verdict_explanation": {"type": "string"},
+    "price_comment": {"type": "string"},
+    "watch_next": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["indicator", "why", "date"],
+        "properties": {
+          "indicator": {"type": "string"},
+          "why": {"type": "string"},
+          "date": {"type": "string", "description": "AAAA-MM-JJ, AAAA-MM ou unknown."}
+        }
+      }
+    },
+    "disagrees_with_verdict": {"type": "boolean"},
+    "disagreement_reason": {"type": "string"},
+    "injection_suspected": {"type": "boolean"}
+  }
+}

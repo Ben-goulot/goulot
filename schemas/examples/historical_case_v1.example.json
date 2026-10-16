@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "material_cas": "107-13-1",
+  "cases": [
+    {
+      "case_id": "2019_exempleville_arret",
+      "title_fr": "Arrêt imprévu d'une usine d'acrylonitrile fictive",
+      "event_type": "industrial_outage",
+      "first_report_date": "2019-03-12",
+      "end_date": "2019-04-20",
+      "place": "Exempleville (site fictif)",
+      "country_iso2": "US",
+      "node_type": "plant",
+      "affected_commodities": [
+        "acrylonitrile"
+      ],
+      "capacity_share_pct": 4.5,
+      "capacity_share_basis": "capacité mondiale d'acrylonitrile, 2019 (exemple fictif)",
+      "direction": "tightening",
+      "duration_days": 39,
+      "summary_fr": "Un incendie arrête une usine fictive pendant cinq semaines ; le producteur déclare un cas de force majeure.",
+      "source_ids": [
+        "src1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "case_id": "2023_ue_levee_droits",
+      "title_fr": "Levée d'un droit de douane fictif sur l'acrylonitrile importé",
+      "event_type": "sanctions_trade_policy",
+      "first_report_date": "2023-06",
+      "end_date": "unknown",
+      "place": "Union européenne",
+      "country_iso2": "unknown",
+      "node_type": "country",
+      "affected_commodities": [
+        "acrylonitrile"
+      ],
+      "capacity_share_pct": null,
+      "capacity_share_basis": "unknown",
+      "direction": "loosening",
+      "duration_days": null,
+      "summary_fr": "La levée d'un droit fictif rouvre le marché européen aux importations ; l'offre disponible augmente.",
+      "source_ids": [
+        "src2",
+        "src3"
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "open_questions": [
+    "Part de capacité du second cas non sourcée."
+  ],
+  "injection_suspected": false
+}

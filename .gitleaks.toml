@@ -1,0 +1,7 @@
+# gitleaks: default rules, plus the test fixtures' fake values (clearly fake, never real secrets).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake values used by the security tests"
+paths = ['''tests/security/test_secrets_logs_files\.py''', '''tests/security/test_outbound\.py''']

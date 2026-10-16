@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "relevant", "event_type", "event_status", "title_fr", "summary_fr",
+    "place", "country_iso2", "event_date", "matched_node_ids", "entities", "future_dates",
+    "cited_origin", "severity_hint", "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "relevant": {"type": "boolean"},
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "labor_action", "armed_conflict", "civil_unrest", "extreme_weather", "natural_disaster",
+        "industrial_outage", "maritime_disruption", "infrastructure_failure", "sanctions_trade_policy",
+        "export_restriction", "regulatory_change", "cyber_incident", "health_biosecurity", "other"
+      ]
+    },
+    "event_status": {
+      "type": "string",
+      "enum": ["threatened", "announced", "ongoing", "escalating", "de_escalating", "resolved", "unclear"]
+    },
+    "title_fr": {"type": "string"},
+    "summary_fr": {"type": "string"},
+    "place": {"type": "string"},
+    "country_iso2": {"type": "string", "description": "Code ISO 3166-1 alpha-2, ou unknown."},
+    "event_date": {"type": "string", "description": "AAAA-MM-JJ, AAAA-MM, ou unknown."},
+    "matched_node_ids": {"type": "array", "items": {"type": "string"}},
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind"],
+        "properties": {
+          "name": {"type": "string"},
+          "kind": {
+            "type": "string",
+            "enum": ["company", "site", "port", "chokepoint", "country", "government_body", "union", "other"]
+          }
+        }
+      }
+    },
+    "future_dates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "what"],
+        "properties": {
+          "date": {"type": "string", "description": "AAAA-MM-JJ ou AAAA-MM."},
+          "what": {"type": "string"}
+        }
+      }
+    },
+    "cited_origin": {"type": "string", "description": "Média ou organisme cité comme source d'origine de l'information, ou unknown."},
+    "severity_hint": {"type": "integer", "enum": [0, 1, 2, 3, 4]},
+    "injection_suspected": {"type": "boolean"}
+  }
+}

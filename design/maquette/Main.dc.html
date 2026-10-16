@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Marchés</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 8px 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg>
+<span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span>
+</div>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px">
+<a href="Main.dc.html" aria-current="page" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; background: #1A212C; color: #E8EBF0; text-decoration: none; font-weight: 600">Marchés</a>
+<a href="Chaine.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Chaîne</a>
+<a href="Fiabilite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Fiabilité</a>
+<a href="Conformite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #263040; color: #A3ADBB; font-size: 12px; white-space: nowrap">Dernière collecte : il y a 42 min</span>
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #263040; color: #A3ADBB; font-size: 12px; white-space: nowrap">IA ce mois : 3,10 $ sur 15 $</span>
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 16px 24px 24px">
+
+<aside aria-label="Liste de suivi" style="flex: 1 1 300px; max-width: 380px; min-width: 0; background: #121720; border: 1px solid #263040; border-radius: 10px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 14px 10px">
+<div style="display: flex; flex-direction: column">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Liste de suivi</h2>
+<span style="color: #A3ADBB; font-size: 12px">{{ count }} matières</span>
+</div>
+<a href="Ajout.dc.html" style="display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 8px; background: #6CB2FF; color: #0B0E13; font-weight: 600; text-decoration: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Ajouter</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 14px 10px">
+<label for="filtre-matiere" style="color: #A3ADBB; font-size: 12px">Filtrer</label>
+<input id="filtre-matiere" type="search" placeholder="Nom ou numéro CAS" style="min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; background: #0B0E13; color: #E8EBF0; font: inherit">
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 8px 8px">
+<sc-for list="{{ materials }}" as="m" hint-placeholder-count="6">
+<button type="button" onClick="{{ m.pick }}" aria-pressed="{{ m.pressed }}" style="{{ m.rowStyle }}">
+<span style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center">
+<span style="display: flex; flex-direction: column; min-width: 0">
+<span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ m.name }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #A3ADBB">{{ m.cas }}</span>
+</span>
+<span style="display: flex; flex-direction: column; align-items: flex-end">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; white-space: nowrap">{{ m.price }} <span style="color: #A3ADBB; font-size: 11.5px">{{ m.unit }}</span></span>
+<sc-if value="{{ m.isUp }}" hint-placeholder-val="{{ true }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #3CCB91">{{ m.change }}</span></sc-if>
+<sc-if value="{{ m.isDown }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #FF7B7B">{{ m.change }}</span></sc-if>
+<sc-if value="{{ m.isFlat }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #A3ADBB">{{ m.change }}</span></sc-if>
+</span>
+<svg viewBox="0 0 120 28" width="120" height="28" aria-hidden="true" style="display: block"><path d="{{ m.spark }}" fill="none" stroke="{{ m.sparkColor }}" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+<span style="display: flex; justify-content: flex-end">
+<sc-if value="{{ m.isRas }}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 11.5px; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #B8C2CF"></span>Rien à signaler</span></sc-if>
+<sc-if value="{{ m.isPot }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 11.5px; font-weight: 500; white-space: nowrap"><span style="width: 6px; height: 6px; border-radius: 50%; background: #F5B841"></span>Problème à {{ m.weeks }} sem.</span></sc-if>
+<sc-if value="{{ m.isAnt }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; background: #FF8A4C; color: #14171C; font-size: 11.5px; font-weight: 600; white-space: nowrap">Anticiper stock</span></sc-if>
+</span>
+</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; border-top: 1px solid #263040; font-size: 12px; color: #A3ADBB">
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #B8C2CF"></span>Rien à signaler : aucun goulot qui pèse</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B841"></span>Problème à X semaines : surveiller, tu as le temps</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #FF8A4C"></span>Anticiper stock : agir cette semaine</span>
+</div>
+</aside>
+
+<main style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+<section aria-label="Matière sélectionnée" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; padding: 16px 20px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">{{ sel.name }}</h1>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #A3ADBB">{{ sel.cas }}</span>
+</div>
+<span style="font-size: 13px; color: #A3ADBB">{{ sel.priceType }}</span>
+</div>
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 30px; font-weight: 500">{{ sel.price }}</span>
+<span style="color: #A3ADBB">{{ sel.unit }}</span>
+<sc-if value="{{ sel.isUp }}" hint-placeholder-val="{{ true }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; color: #3CCB91">{{ sel.change }} sur 1 jour</span></sc-if>
+<sc-if value="{{ sel.isDown }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; color: #FF7B7B">{{ sel.change }} sur 1 jour</span></sc-if>
+<sc-if value="{{ sel.isFlat }}" hint-placeholder-val="{{ false }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; color: #A3ADBB">{{ sel.change }} sur 1 mois</span></sc-if>
+</div>
+<a href="Chaine.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; color: #E8EBF0; text-decoration: none; font-size: 13px">Chaîne : {{ sel.chainInfo }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px">
+
+<section aria-label="Graphique du prix" style="flex: 2 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 12px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Prix sur 6 mois, événements marqués</h2>
+<div role="group" aria-label="Période" style="display: flex; gap: 4px">
+<button type="button" style="min-height: 36px; min-width: 44px; padding: 0 10px; border-radius: 6px; border: 1px solid #263040; background: transparent; color: #A3ADBB; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; cursor: pointer">1M</button>
+<button type="button" style="min-height: 36px; min-width: 44px; padding: 0 10px; border-radius: 6px; border: 1px solid #263040; background: transparent; color: #A3ADBB; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; cursor: pointer">3M</button>
+<button type="button" aria-pressed="true" style="min-height: 36px; min-width: 44px; padding: 0 10px; border-radius: 6px; border: 1px solid #6CB2FF; background: #1A212C; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; cursor: pointer">6M</button>
+<button type="button" style="min-height: 36px; min-width: 44px; padding: 0 10px; border-radius: 6px; border: 1px solid #263040; background: transparent; color: #A3ADBB; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; cursor: pointer">1A</button>
+</div>
+</div>
+<svg viewBox="0 0 640 262" role="img" aria-label="{{ sel.chartLabel }}" style="display: block; width: 100%; height: auto">
+<sc-for list="{{ sel.ticks }}" as="t" hint-placeholder-count="4">
+<line x1="4" x2="578" y1="{{ t.y }}" y2="{{ t.y }}" style="stroke: #222A36; stroke-width: 1"></line>
+<text x="586" y="{{ t.ty }}" style="fill: #A3ADBB; font-size: 12px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ t.label }}</text>
+</sc-for>
+<path d="{{ sel.area }}" style="fill: #6CB2FF; fill-opacity: 0.08; stroke: none"></path>
+<path d="{{ sel.line }}" style="fill: none; stroke: #6CB2FF; stroke-width: 2; stroke-linejoin: round"></path>
+<circle cx="{{ sel.last.x }}" cy="{{ sel.last.y }}" r="4" style="fill: #6CB2FF"></circle>
+<sc-for list="{{ sel.markers }}" as="k" hint-placeholder-count="2">
+<line x1="{{ k.x }}" x2="{{ k.x }}" y1="16" y2="224" style="stroke: {{ k.color }}; stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.7"></line>
+<circle cx="{{ k.x }}" cy="{{ k.y }}" r="11" style="fill: #121720; stroke: {{ k.color }}; stroke-width: {{ k.width }}"></circle>
+<text x="{{ k.x }}" y="{{ k.ty }}" text-anchor="middle" style="fill: {{ k.color }}; font-size: 12px; font-weight: 600; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ k.letter }}</text>
+</sc-for>
+<sc-for list="{{ sel.months }}" as="mo" hint-placeholder-count="6">
+<text x="{{ mo.x }}" y="252" text-anchor="middle" style="fill: #A3ADBB; font-size: 12px">{{ mo.label }}</text>
+</sc-for>
+</svg>
+</section>
+
+<section aria-label="Analyse IA" style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Analyse IA</h2>
+<span style="font-size: 12px; color: #A3ADBB">mise à jour il y a 2 h</span>
+</div>
+<sc-if value="{{ sel.isAnt }}" hint-placeholder-val="{{ true }}"><div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 8px; border: 1px solid #FF8A4C; background: rgba(255, 138, 76, 0.12)"><span style="font-size: 20px; font-weight: 700; color: #FF8A4C">Anticiper stock</span><span style="font-size: 13px">{{ sel.verdictDetail }}</span></div></sc-if>
+<sc-if value="{{ sel.isPot }}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 8px; border: 1px solid #F5B841; background: rgba(245, 184, 65, 0.10)"><span style="font-size: 20px; font-weight: 700; color: #F5B841">Problème potentiel à {{ sel.weeks }} semaines</span><span style="font-size: 13px">{{ sel.verdictDetail }}</span></div></sc-if>
+<sc-if value="{{ sel.isRas }}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 8px; border: 1px solid #3A4656; background: #161C25"><span style="font-size: 20px; font-weight: 700; color: #B8C2CF">Rien à signaler</span><span style="font-size: 13px">{{ sel.verdictDetail }}</span></div></sc-if>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px">
+<span style="color: #A3ADBB">Pression de prix</span>
+<span style="{{ sel.pressureChip }}"><sc-if value="{{ sel.pUp }}" hint-placeholder-val="{{ true }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></sc-if><sc-if value="{{ sel.pDown }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg></sc-if><sc-if value="{{ sel.pFlat }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></sc-if>{{ sel.pressureLabel }}</span>
+<span style="color: #A3ADBB">{{ sel.pressureNote }}</span>
+</div>
+<p style="margin: 0; text-wrap: pretty">{{ sel.explanation }}</p>
+<div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px">
+<span style="color: #A3ADBB">Impact estimé</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ sel.impact }}</span>
+<span style="color: #A3ADBB">Ta couverture</span><span>{{ sel.coverage }}</span>
+<span style="color: #A3ADBB">Fiabilité</span><a href="Fiabilite.dc.html">{{ sel.reliability }}</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h3 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Ce qui changerait l'avis</h3>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px">
+<sc-for list="{{ sel.triggers }}" as="tr" hint-placeholder-count="2"><li>{{ tr.text }}</li></sc-for>
+</ul>
+</div>
+</section>
+
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px">
+
+<section aria-label="Événements sur la chaîne" style="flex: 1.3 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Événements sur la chaîne</h2>
+<span style="font-size: 12px; color: #A3ADBB">{{ sel.eventCount }}</span>
+</div>
+<sc-if value="{{ sel.hasEvents }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{ sel.events }}" as="e" hint-placeholder-count="3">
+<button type="button" onClick="{{ e.pick }}" aria-pressed="{{ e.pressed }}" style="{{ e.rowStyle }}">
+<span style="display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start">
+<span style="{{ e.badgeStyle }}">{{ e.letter }}</span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-weight: 600">{{ e.title }}</span>
+<span style="font-size: 12.5px; color: #A3ADBB">{{ e.place }} · {{ e.link }}</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 4px">
+<sc-if value="{{ e.isOngoing }}" hint-placeholder-val="{{ true }}"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #FF8A4C; color: #FF8A4C; font-size: 11.5px; white-space: nowrap">{{ e.statusLabel }}</span></sc-if>
+<sc-if value="{{ e.isPrep }}" hint-placeholder-val="{{ false }}"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 11.5px; white-space: nowrap">{{ e.statusLabel }}</span></sc-if>
+<sc-if value="{{ e.isEarly }}" hint-placeholder-val="{{ false }}"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 11.5px; white-space: nowrap">{{ e.statusLabel }}</span></sc-if>
+<span style="font-size: 12px; color: #A3ADBB">{{ e.sources }}</span>
+</span>
+</span>
+<span style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; font-weight: 600; color: {{ e.impactColor }}; white-space: nowrap">{{ e.impact }}</span>
+<span style="font-size: 12px; color: #A3ADBB; white-space: nowrap">sous {{ e.horizon }}</span>
+<span style="font-size: 12px; color: #A3ADBB; white-space: nowrap">probabilité {{ e.prob }}</span>
+</span>
+</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ sel.noEvents }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; color: #A3ADBB">Aucun événement ne touche la chaîne de cette matière.</p></sc-if>
+</section>
+
+<section aria-label="Carte des événements" style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Où ça se passe</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: #A3ADBB">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #FF8A4C"></span>En cours</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #F5B841"></span>En préparation</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 9px; height: 9px; border-radius: 50%; background: #B8C2CF"></span>Signal précoce</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: #8A95A5"></span>Site de la chaîne</span>
+</div>
+</div>
+<div style="position: relative; width: 100%; aspect-ratio: 1440 / 568; border-radius: 8px; overflow: hidden; background: #0E131A; border: 1px solid #1E2631">
+<img src="/_blob/09829abe08dd4a0d8c92de4ff40dc84f" alt="Planisphère" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block">
+<sc-for list="{{ sel.sites }}" as="si" hint-placeholder-count="4"><span title="{{ si.label }}" style="{{ si.style }}"></span></sc-for>
+<sc-for list="{{ sel.pins }}" as="p" hint-placeholder-count="3"><span style="{{ p.style }}">{{ p.letter }}</span></sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #E8EBF0">{{ sel.caption }}</p>
+</section>
+
+</div>
+
+<section aria-label="Cas comparables" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 12px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Cas comparables</h2>
+<span style="font-size: 12.5px; color: #A3ADBB">{{ sel.anaSubtitle }}</span>
+</div>
+<span style="display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 11.5px; white-space: nowrap">Exemple fictif : cas et chiffres inventés</span>
+</div>
+<sc-if value="{{ sel.anaEnough }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center">
+<div style="flex: 1.5 1 420px; min-width: 0">
+<svg viewBox="0 0 640 128" role="img" aria-label="{{ sel.anaChartLabel }}" style="display: block; width: 100%; height: auto">
+<rect x="{{ sel.anaBandX }}" y="34" width="{{ sel.anaBandW }}" height="60" rx="6" style="fill: #6CB2FF; fill-opacity: 0.10"></rect>
+<sc-if value="{{ sel.anaZeroIn }}" hint-placeholder-val="{{ true }}"><line x1="{{ sel.anaZeroX }}" x2="{{ sel.anaZeroX }}" y1="30" y2="98" style="stroke: #3A4656; stroke-width: 1; stroke-dasharray: 3 3"></line></sc-if>
+<line x1="40" x2="600" y1="104" y2="104" style="stroke: #263040; stroke-width: 1"></line>
+<sc-for list="{{ sel.anaTicks }}" as="t" hint-placeholder-count="5"><text x="{{ t.x }}" y="120" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ t.label }}</text></sc-for>
+<line x1="{{ sel.anaMedX }}" x2="{{ sel.anaMedX }}" y1="34" y2="94" style="stroke: #6CB2FF; stroke-width: 2"></line>
+<line x1="{{ sel.anaEstLoX }}" x2="{{ sel.anaEstHiX }}" y1="22" y2="22" style="stroke: #FF8A4C; stroke-width: 2"></line>
+<line x1="{{ sel.anaEstLoX }}" x2="{{ sel.anaEstLoX }}" y1="17" y2="27" style="stroke: #FF8A4C; stroke-width: 2"></line>
+<line x1="{{ sel.anaEstHiX }}" x2="{{ sel.anaEstHiX }}" y1="17" y2="27" style="stroke: #FF8A4C; stroke-width: 2"></line>
+<text x="{{ sel.anaEstMidX }}" y="12" text-anchor="middle" style="fill: #FF8A4C; font-size: 11px">estimation de l'IA</text>
+<sc-for list="{{ sel.anaDots }}" as="d" hint-placeholder-count="4">
+<circle cx="{{ d.x }}" cy="64" r="6" style="{{ d.style }}"></circle>
+<text x="{{ d.x }}" y="{{ d.ty }}" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ d.year }}</text>
+</sc-for>
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: #A3ADBB">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #6CB2FF"></span>cas retenu</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; border: 1.5px dashed #A3ADBB"></span>exclu : chevauchement</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #F5B841"></span>brouillon IA à vérifier</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; background: rgba(108, 178, 255, 0.18)"></span>fourchette des cas (10 % à 90 %)</span>
+</div>
+</div>
+<div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<p style="margin: 0; font-size: 16px; font-weight: 600">{{ sel.anaHeadline }}</p>
+<p style="margin: 0; font-size: 13px; color: #A3ADBB">{{ sel.anaDetail }}</p>
+<sc-if value="{{ sel.anaOutside }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid #F5B841; color: #F5B841; font-size: 13px">L'estimation de l'IA sort de la fourchette des cas : l'analyse doit justifier l'écart.</p></sc-if>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ sel.anaFew }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 13px">{{ sel.anaFewText }}</p></sc-if>
+<sc-if value="{{ sel.anaNone }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; color: #A3ADBB; font-size: 13px">Aucun événement en cours : rien à comparer.</p></sc-if>
+<sc-if value="{{ sel.anaHasList }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{ sel.anaRows }}" as="r" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; padding: 8px 10px; border-radius: 8px; border: 1px solid #1E2631; background: #0F131A; font-size: 13px">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #A3ADBB">{{ r.year }}</span>
+<span style="display: flex; flex-direction: column; gap: 1px; min-width: 0"><span>{{ r.title }}</span><span style="font-size: 12px; color: #A3ADBB">{{ r.place }} · part de capacité : {{ r.share }} · {{ r.state }}</span></span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 600; white-space: nowrap; color: {{ r.color }}">{{ r.move }}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<p style="margin: 0; font-size: 12px; color: #A3ADBB">Variation propre : variation à 20 séances après la première annonce, hors mouvement général du marché, calculée par le code sur des séries officielles. « Hausse observée après », jamais « causée par ».</p>
+</section>
+
+<section id="calendrier" aria-label="Goulots en préparation" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Goulots en préparation</h2>
+<sc-if value="{{ sel.hasUpcoming }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{ sel.upcoming }}" as="u" hint-placeholder-count="3"><span style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; border: 1px solid #263040; background: #0F131A; font-size: 13px"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #F5B841; white-space: nowrap">{{ u.date }}</span>{{ u.text }}</span></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ sel.noUpcoming }}" hint-placeholder-val="{{ false }}"><span style="color: #A3ADBB; font-size: 13px">Rien d'annoncé pour cette matière.</span></sc-if>
+</section>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1880}}'>
+class Component extends DCLogic {
+  fmt(v, dec) {
+    var neg = v < 0;
+    var s = Math.abs(v).toFixed(dec || 0).split(".");
+    var ent = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return (neg ? "−" : "") + ent + (s[1] ? "," + s[1] : "");
+  }
+  niceStep(x) {
+    var p = Math.pow(10, Math.floor(Math.log10(x)));
+    var f = x / p;
+    return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+  }
+  series(m) {
+    var n = 130, out = [];
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1);
+      var v = 1 + m.trend * (t - 0.5) + m.vol * (0.55 * Math.sin(i / 6.3 + m.seed) + 0.3 * Math.sin(i / 2.7 + m.seed * 1.7) + 0.15 * Math.sin(i / 17 + m.seed * 0.6));
+      if (m.bumpAt && i >= m.bumpAt) { v = v * (1 + m.bump * Math.min(1, (i - m.bumpAt) / 8)); }
+      out.push(v);
+    }
+    if (m.steps) { for (var j = 0; j < n; j++) { out[j] = out[Math.floor(j / 22) * 22]; } }
+    var k = m.price / out[n - 1];
+    return out.map(function (x) { return x * k; });
+  }
+  spark(s, w, h) {
+    var lo = Math.min.apply(null, s), hi = Math.max.apply(null, s), r = (hi - lo) || 1;
+    return s.map(function (v, i) { return (i ? "L" : "M") + (i / (s.length - 1) * w).toFixed(1) + " " + (2 + (hi - v) / r * (h - 4)).toFixed(1); }).join("");
+  }
+  pos(lat, lon) {
+    return { left: ((lon + 180) / 360 * 100).toFixed(2) + "%", top: ((84 - lat) / 142 * 100).toFixed(2) + "%" };
+  }
+  data() {
+    return [
+      {
+        id: "acn", name: "Acrylonitrile", cas: "CAS 107-13-1", unit: "$/t", price: 1412, dec: 0, change: 0.8,
+        priceType: "Indice : propylène, ammoniac et prix douaniers", chainInfo: "24 maillons, 3 touchés",
+        seed: 1.2, trend: 0.10, vol: 0.025, bumpAt: 106, bump: 0.05,
+        verdict: "ant", weeks: 5, pressure: 1, pressureNote: "le propylène tire les prix", factor: "hors mouvement du Brent",
+        verdictDetail: "Tension possible chez ton fournisseur dans ≈ 5 semaines ; fenêtre d'action : 1 semaine",
+        explanation: "Deux intrants sont sous tension : le propylène après l'arrêt d'un vapocraqueur américain, et la logistique rhénane avec les basses eaux. Une maintenance annoncée en Corée réduira l'offre asiatique en novembre. Commander cette semaine couvre la période la plus risquée.",
+        impact: "+3 à +9 % sous 8 sem., probabilité 60 %",
+        coverage: "stock 5 sem., délai fournisseur 4 sem.",
+        reliability: "7 fourchettes justes sur 10",
+        triggers: ["Redémarrage du vapocraqueur confirmé avant le 20 octobre", "Rhin à Kaub au-dessus de 1,20 m pendant 5 jours"],
+        events: [
+          { letter: "A", title: "Arrêt imprévu d'un vapocraqueur", place: "Côte du Golfe, États-Unis", link: "maillon : propylène", status: "ongoing", statusLabel: "En cours", impact: "+4 à +9 %", horizon: "2 à 5 sem.", prob: "65 %", sources: "3 sources dont 1 officielle", lat: 29.7, lon: -95.0, idx: 121, estLo: 4, estHi: 9, analogues: [{ year: "2016", title: "Arrêt imprévu d'un vapocraqueur", place: "Côte du Golfe", share: "1,8 %", move: 4.2, state: "ok" }, { year: "2018", title: "Incendie dans un complexe pétrochimique", place: "Asie du Nord-Est", share: "2 %", move: 3.1, state: "ok" }, { year: "2020", title: "Ouragan, plusieurs vapocraqueurs arrêtés", place: "Côte du Golfe", share: "6 %", move: 6.8, state: "ok" }, { year: "2020", title: "Arrêt d'un vapocraqueur pendant l'ouragan", place: "Côte du Golfe", share: "1,5 %", move: 2.2, state: "overlap" }, { year: "2022", title: "Vague de froid, arrêts en chaîne", place: "Côte du Golfe", share: "9 %", move: 11.4, state: "ok" }, { year: "2024", title: "Grève dans un port pétrochimique", place: "Côte du Golfe", share: "non sourcée", move: 1.0, state: "draft" }] },
+          { letter: "B", title: "Basses eaux du Rhin, barges chargées à 40 %", place: "Kaub, Allemagne", link: "maillon : logistique Europe", status: "ongoing", statusLabel: "En cours", impact: "+1 à +3 %", horizon: "3 à 6 sem.", prob: "55 %", sources: "2 sources et niveau mesuré", lat: 50.08, lon: 7.76, idx: 108, estLo: 1, estHi: 3, analogues: [{ year: "2015", title: "Basses eaux, barges limitées à 40 %", place: "Rhin moyen", share: "sans objet", move: 1.2, state: "ok" }, { year: "2019", title: "Basses eaux prolongées", place: "Rhin moyen", share: "sans objet", move: 2.9, state: "ok" }, { year: "2023", title: "Basses eaux de fin d'été", place: "Rhin moyen", share: "sans objet", move: 0.6, state: "ok" }] },
+          { letter: "C", title: "Maintenance programmée d'une unité de production", place: "Ulsan, Corée du Sud", link: "maillon : production Asie", status: "prep", statusLabel: "En préparation, novembre", impact: "+3 à +6 %", horizon: "5 à 8 sem.", prob: "50 %", sources: "annonce de l'exploitant", lat: 35.54, lon: 129.31, estLo: 3, estHi: 6, analogues: [{ year: "2017", title: "Maintenance programmée d'une unité", place: "Corée du Sud", share: "3 %", move: 0.8, state: "ok" }, { year: "2019", title: "Maintenance programmée prolongée", place: "Japon", share: "2 %", move: 1.5, state: "ok" }, { year: "2021", title: "Maintenance programmée d'une unité", place: "Taïwan", share: "2,5 %", move: -0.3, state: "ok" }, { year: "2023", title: "Maintenances simultanées", place: "Corée du Sud", share: "4 %", move: 2.4, state: "ok" }] }
+        ],
+        sites: [
+          { label: "Propylène, côte du Golfe", lat: 29.76, lon: -95.37 },
+          { label: "Ammoniac, Trinité-et-Tobago", lat: 10.4, lon: -61.5 },
+          { label: "Ammoniac, golfe Persique", lat: 27.0, lon: 49.66 },
+          { label: "Production, Chine", lat: 29.87, lon: 121.55 },
+          { label: "Production, Europe", lat: 50.94, lon: 6.96 },
+          { label: "Port de Rotterdam", lat: 51.92, lon: 4.48 }
+        ],
+        upcoming: [["20 oct.", "Redémarrage visé du vapocraqueur (A)"], ["Nov.", "Maintenance à Ulsan (C)"], ["Déc.", "Saison des basses eaux sur le Rhin"]]
+      },
+      {
+        id: "li", name: "Carbonate de lithium", cas: "CAS 554-13-2", unit: "¥/t", price: 78450, dec: 0, change: 2.1,
+        priceType: "Futures, bourse de Guangzhou (GFEX)", chainInfo: "19 maillons, 2 touchés",
+        seed: 3.4, trend: -0.06, vol: 0.04, bumpAt: 98, bump: 0.06,
+        verdict: "pot", weeks: 6, pressure: 1, pressureNote: "si les permis ne sont pas renouvelés", factor: "sans facteur de marché",
+        verdictDetail: "Pas d'urgence : il te reste ≈ 2 semaines pour décider",
+        explanation: "Deux mines de lépidolite du Jiangxi arrivent en fin de permis à la mi-novembre. Les convertisseurs chinois disposent d'environ 6 semaines de stock : un manque physique n'arriverait pas avant fin novembre. Le cyclone près de Port Hedland reste un signal faible.",
+        impact: "+2 à +7 % sous 6 sem., probabilité 45 %",
+        coverage: "stock 8 sem., délai fournisseur 4 sem.",
+        reliability: "5 fourchettes justes sur 8",
+        triggers: ["Renouvellement des deux permis annoncé", "Port Hedland fermé plus de 4 jours"],
+        events: [
+          { letter: "A", title: "Fin de permis de deux mines de lépidolite", place: "Jiangxi, Chine", link: "maillon : minerai", status: "prep", statusLabel: "En préparation, 15 nov.", impact: "+3 à +8 %", horizon: "6 à 9 sem.", prob: "45 %", sources: "avis officiel local et 2 articles", lat: 27.8, lon: 114.4, estLo: 3, estHi: 8, analogues: [{ year: "2019", title: "Inspection environnementale, mines arrêtées", place: "Jiangxi", share: "4 %", move: 2.1, state: "ok" }, { year: "2022", title: "Suspension administrative de mines", place: "Jiangxi", share: "5 %", move: 9.8, state: "ok" }, { year: "2024", title: "Fin de permis d'exploitation", place: "Jiangxi", share: "3 %", move: 4.6, state: "ok" }] },
+          { letter: "B", title: "Cyclone tropical en approche", place: "Port Hedland, Australie", link: "maillon : export de spodumène", status: "early", statusLabel: "Signal précoce", impact: "0 à +2 %", horizon: "1 à 3 sem.", prob: "30 %", sources: "alerte météo GDACS", lat: -20.31, lon: 118.58, idx: 126, estLo: 0, estHi: 2, analogues: [{ year: "2019", title: "Cyclone, port fermé 3 jours", place: "Pilbara", share: "non sourcée", move: 0.4, state: "ok" }, { year: "2023", title: "Cyclone, chargements retardés", place: "Pilbara", share: "non sourcée", move: 1.1, state: "ok" }] }
+        ],
+        sites: [
+          { label: "Spodumène, Australie-Occidentale", lat: -33.86, lon: 116.06 },
+          { label: "Saumures, Chili", lat: -23.5, lon: -68.25 },
+          { label: "Port d'Antofagasta", lat: -23.65, lon: -70.4 },
+          { label: "Saumures, Argentine", lat: -25.4, lon: -67.1 },
+          { label: "Conversion, Sichuan", lat: 30.6, lon: 104.07 }
+        ],
+        upcoming: [["15 nov.", "Échéance des deux permis (A)"], ["Déc. à mars", "Saison des cyclones, Pilbara"]]
+      },
+      {
+        id: "ga", name: "Gallium", cas: "CAS 7440-55-3", unit: "$/kg", price: 412, dec: 0, change: 0,
+        priceType: "Prix d'agence, publié chaque mois", chainInfo: "11 maillons, 1 touché",
+        seed: 5.1, trend: 0.14, vol: 0.012, steps: true,
+        verdict: "pot", weeks: 10, pressure: 1, pressureNote: "suspendue à la décision de décembre", factor: "sans facteur de marché",
+        verdictDetail: "Décision attendue en décembre ; rien à faire avant",
+        explanation: "La Chine fournit l'essentiel du gallium primaire, extrait lors du raffinage de l'alumine. Un durcissement des licences d'exportation est en consultation : s'il passe, les délais d'obtention s'allongeraient de plusieurs semaines.",
+        impact: "+5 à +15 % sous 12 sem., probabilité 35 %",
+        coverage: "stock 12 sem., délai fournisseur 6 sem.",
+        reliability: "2 fourchettes justes sur 3, historique court",
+        triggers: ["Publication du texte final des licences", "Allongement des délais annoncés par les distributeurs"],
+        events: [
+          { letter: "A", title: "Projet de durcissement des licences d'exportation", place: "Chine", link: "maillon : politique commerciale", status: "prep", statusLabel: "En préparation", impact: "+5 à +15 %", horizon: "8 à 12 sem.", prob: "35 %", sources: "consultation publique et 3 articles", lat: 39.9, lon: 116.4, estLo: 5, estHi: 15, analogues: [{ year: "2023", title: "Licences d'exportation instaurées", place: "Chine", share: "≈ 80 %", move: 18.0, state: "ok" }, { year: "2024", title: "Durcissement des licences", place: "Chine", share: "≈ 80 %", move: 7.5, state: "draft" }] }
+        ],
+        sites: [
+          { label: "Alumine et gallium, Shandong", lat: 36.67, lon: 117.0 },
+          { label: "Alumine et gallium, Guangxi", lat: 22.8, lon: 108.3 },
+          { label: "Alumine, Henan", lat: 34.75, lon: 113.6 }
+        ],
+        upcoming: [["Déc.", "Décision attendue sur les licences (A)"]]
+      }
+    ];
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var all = this.data();
+    var selId = st.sel || "acn";
+    var COLORS = { ongoing: "#FF8A4C", prep: "#F5B841", early: "#B8C2CF" };
+    var ROW = "display: block; width: 100%; text-align: left; min-height: 44px; border-radius: 8px; color: #E8EBF0; cursor: pointer; font: inherit; ";
+    var chg = function (c) { return (c > 0 ? "+" : c < 0 ? "−" : "±") + Math.abs(c).toFixed(1).replace(".", ",") + " %"; };
+    var materials = all.map(function (m) {
+      var s = self.series(m);
+      var on = m.id === selId;
+      return {
+        name: m.name, cas: m.cas, unit: m.unit, price: self.fmt(m.price, m.dec), weeks: m.weeks,
+        change: chg(m.change), isUp: m.change > 0, isDown: m.change < 0, isFlat: m.change === 0,
+        spark: self.spark(s.slice(-40), 120, 28),
+        sparkColor: m.change > 0 ? "#3CCB91" : m.change < 0 ? "#FF7B7B" : "#A3ADBB",
+        isRas: m.verdict === "ras", isPot: m.verdict === "pot", isAnt: m.verdict === "ant",
+        pressed: on,
+        rowStyle: ROW + "padding: 12px 14px; " + (on ? "border: 1px solid #6CB2FF; background: #1A212C" : "border: 1px solid transparent; background: transparent"),
+        pick: function () { self.setState({ sel: m.id, ev: m.events.length ? m.events[0].letter : "" }); }
+      };
+    });
+    var m = all.filter(function (x) { return x.id === selId; })[0] || all[0];
+    var evSel = st.ev === undefined ? (m.events.length ? m.events[0].letter : "") : st.ev;
+    var s = this.series(m);
+    var n = s.length, X0 = 4, W = 572, Y0 = 16, HH = 208;
+    var lo = Math.min.apply(null, s), hi = Math.max.apply(null, s);
+    var pad = (hi - lo) * 0.12 || hi * 0.02;
+    lo = lo - pad; hi = hi + pad;
+    var step = this.niceStep((hi - lo) / 4);
+    var ticks = [];
+    for (var v = Math.ceil(lo / step) * step; v <= hi; v += step) { ticks.push(v); }
+    var X = function (i) { return X0 + i / (n - 1) * W; };
+    var Y = function (val) { return Y0 + (hi - val) / (hi - lo) * HH; };
+    var line = s.map(function (val, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(val).toFixed(1); }).join("");
+    var area = line + "L" + X(n - 1).toFixed(1) + " " + (Y0 + HH) + "L" + X0 + " " + (Y0 + HH) + "Z";
+    var months = [["mai", 0.148], ["juin", 0.317], ["juil.", 0.481], ["août", 0.65], ["sept.", 0.82], ["oct.", 0.984]].map(function (p) { return { label: p[0], x: (X0 + p[1] * W).toFixed(1) }; });
+    var markers = m.events.filter(function (e) { return e.idx; }).map(function (e) {
+      return { letter: e.letter, x: X(e.idx).toFixed(1), y: Y(s[e.idx]).toFixed(1), ty: (Y(s[e.idx]) + 4).toFixed(1), color: COLORS[e.status], width: e.letter === evSel ? 2.5 : 1.5 };
+    });
+    var events = m.events.map(function (e) {
+      var on = e.letter === evSel;
+      return {
+        letter: e.letter, title: e.title, place: e.place, link: e.link, statusLabel: e.statusLabel,
+        impact: e.impact, horizon: e.horizon, prob: e.prob, sources: e.sources,
+        impactColor: (e.estHi !== undefined && e.estHi <= 0) ? "#B8C2CF" : "#FF8A4C",
+        isOngoing: e.status === "ongoing", isPrep: e.status === "prep", isEarly: e.status === "early",
+        pressed: on,
+        rowStyle: ROW + "padding: 12px; " + (on ? "border: 1px solid #6CB2FF; background: #1A212C" : "border: 1px solid #263040; background: transparent"),
+        badgeStyle: "width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 12px; color: #14171C; background: " + COLORS[e.status],
+        pick: function () { self.setState({ ev: e.letter }); }
+      };
+    });
+    var pins = m.events.map(function (e) {
+      var p = self.pos(e.lat, e.lon), on = e.letter === evSel, size = on ? 26 : 20;
+      return {
+        letter: e.letter,
+        style: "position: absolute; left: " + p.left + "; top: " + p.top + "; width: " + size + "px; height: " + size + "px; margin: " + (-size / 2) + "px 0 0 " + (-size / 2) + "px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: " + (on ? 12 : 11) + "px; color: #14171C; background: " + COLORS[e.status] + "; box-shadow: 0 0 0 " + (on ? 6 : 3) + "px rgba(11, 14, 19, 0.75)"
+      };
+    });
+    var sites = m.sites.map(function (x) {
+      var p = self.pos(x.lat, x.lon);
+      return { label: x.label, style: "position: absolute; left: " + p.left + "; top: " + p.top + "; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #8A95A5; box-shadow: 0 0 0 2px rgba(11, 14, 19, 0.85)" };
+    });
+    var cur = m.events.filter(function (e) { return e.letter === evSel; })[0];
+    var ne = m.events.length;
+    var pct = function (v, d) { var dd = d === undefined ? 1 : d; if (Math.abs(v) < 0.5 * Math.pow(10, -dd)) { v = 0; } var t = Math.abs(v).toFixed(dd).replace(".", ","); return (v > 0 ? "+" : v < 0 ? "−" : "") + t + " %"; };
+    var quant = function (arr, p) { var a = arr.slice().sort(function (x, y) { return x - y; }); var i = (a.length - 1) * p, l = Math.floor(i), h = Math.ceil(i); return a[l] + (a[h] - a[l]) * (i - l); };
+    var ana = cur && cur.analogues ? cur.analogues : [];
+    var kept = ana.filter(function (a) { return a.state === "ok"; });
+    var vals = kept.map(function (a) { return a.move; });
+    var enough = vals.length >= 3;
+    var span = ana.map(function (a) { return a.move; }).concat(cur && cur.estLo !== undefined ? [cur.estLo, cur.estHi] : []);
+    var dlo = Math.min.apply(null, [-2].concat(span)) - 1, dhi = Math.max.apply(null, [2].concat(span)) + 1;
+    var AX = function (v) { return 40 + (v - dlo) / (dhi - dlo) * 560; };
+    var astep = this.niceStep((dhi - dlo) / 6), aticks = [];
+    for (var tv = Math.ceil(dlo / astep) * astep; tv <= dhi + 1e-9; tv += astep) { aticks.push({ x: AX(tv).toFixed(1), label: pct(Math.round(tv), 0) }); }
+    var med = enough ? quant(vals, 0.5) : 0, q10 = enough ? quant(vals, 0.1) : 0, q90 = enough ? quant(vals, 0.9) : 0;
+    var prevX = -999, flip = false;
+    var dots = ana.slice().sort(function (x, y) { return x.move - y.move; }).map(function (a) {
+      var x = AX(a.move), close = x - prevX < 30;
+      flip = close ? !flip : false; prevX = x;
+      var style = a.state === "ok" ? "fill: #6CB2FF; stroke: #121720; stroke-width: 1.5" : a.state === "overlap" ? "fill: #121720; stroke: #A3ADBB; stroke-width: 1.5; stroke-dasharray: 2 2" : "fill: #121720; stroke: #F5B841; stroke-width: 1.5";
+      return { x: x.toFixed(1), ty: flip ? 48 : 86, year: a.year, style: style };
+    });
+    var nOverlap = ana.filter(function (a) { return a.state === "overlap"; }).length;
+    var nDraft = ana.filter(function (a) { return a.state === "draft"; }).length;
+    var STATE = { ok: "retenu", overlap: "exclu : chevauchement", draft: "brouillon IA à vérifier" };
+    var rows = ana.slice().sort(function (x, y) { return x.year < y.year ? -1 : x.year > y.year ? 1 : 0; }).map(function (a) {
+      return { year: a.year, title: a.title, place: a.place, share: a.share, state: STATE[a.state], move: pct(a.move), color: a.state === "ok" ? "#E8EBF0" : "#A3ADBB" };
+    });
+    var PCOL = { "2": "#FF8A4C", "1": "#F5B841", "0": "#B8C2CF", "-1": "#B8C2CF", "-2": "#B8C2CF" };
+    var PLAB = { "2": "Forte hausse", "1": "Hausse", "0": "Neutre", "-1": "Baisse", "-2": "Forte baisse" };
+    var pcol = PCOL[String(m.pressure)];
+    return {
+      materials: materials,
+      count: materials.length,
+      sel: {
+        name: m.name, cas: m.cas, priceType: m.priceType, unit: m.unit, price: this.fmt(m.price, m.dec), chainInfo: m.chainInfo,
+        change: chg(m.change), isUp: m.change > 0, isDown: m.change < 0, isFlat: m.change === 0,
+        isRas: m.verdict === "ras", isPot: m.verdict === "pot", isAnt: m.verdict === "ant", weeks: m.weeks,
+        verdictDetail: m.verdictDetail, explanation: m.explanation, impact: m.impact, coverage: m.coverage, reliability: m.reliability,
+        triggers: m.triggers.map(function (t) { return { text: t }; }),
+        line: line, area: area, months: months, markers: markers,
+        ticks: ticks.map(function (val) { return { y: Y(val).toFixed(1), ty: (Y(val) + 4).toFixed(1), label: self.fmt(val, m.dec) }; }),
+        last: { x: X(n - 1).toFixed(1), y: Y(s[n - 1]).toFixed(1) },
+        chartLabel: "Prix de " + m.name + " sur 6 mois, données fictives",
+        events: events, hasEvents: ne > 0, noEvents: ne === 0,
+        eventCount: ne === 0 ? "aucun événement" : ne + (ne > 1 ? " événements" : " événement"),
+        pins: pins, sites: sites,
+        caption: cur ? cur.letter + " · " + cur.title + " — " + cur.place : "Points gris : sites de la chaîne. Aucun événement en cours.",
+        upcoming: m.upcoming.map(function (u) { return { date: u[0], text: u[1] }; }),
+        hasUpcoming: m.upcoming.length > 0, noUpcoming: m.upcoming.length === 0,
+        pressureChip: "display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid " + pcol + "; color: " + pcol + "; font-size: 12.5px; font-weight: 600; white-space: nowrap",
+        pressureLabel: PLAB[String(m.pressure)], pressureNote: m.pressureNote,
+        pUp: m.pressure > 0, pDown: m.pressure < 0, pFlat: m.pressure === 0,
+        anaSubtitle: cur ? "Pour l'événement " + cur.letter + " · " + cur.title + " · variation propre à 20 séances, " + m.factor : "Aucun événement sélectionné",
+        anaEnough: !!cur && enough, anaFew: !!cur && !enough, anaNone: !cur, anaHasList: !!cur && ana.length > 0,
+        anaFewText: "Pas assez de cas comparables (" + kept.length + " retenu" + (kept.length > 1 ? "s" : "") + ", il en faut 3) : l'estimation de l'IA n'est ancrée sur aucun cas, et l'app le signale.",
+        anaHeadline: enough ? "Médiane " + pct(med) + " à 20 séances, de " + pct(q10) + " à " + pct(q90) : "",
+        anaDetail: cur ? kept.length + (kept.length > 1 ? " cas retenus sur " : " cas retenu sur ") + ana.length + (nOverlap ? ", " + nOverlap + " exclu" + (nOverlap > 1 ? "s" : "") + " pour chevauchement" : "") + (nDraft ? ", " + nDraft + " brouillon" + (nDraft > 1 ? "s" : "") + " à vérifier" : "") + ". Estimation de l'IA : " + cur.impact + "." : "",
+        anaOutside: !!cur && enough && cur.estLo !== undefined && (cur.estLo > q90 || cur.estHi < q10),
+        anaChartLabel: cur ? "Variation propre à 20 séances des cas comparables à l'événement " + cur.letter + ", données fictives" : "",
+        anaBandX: AX(q10).toFixed(1), anaBandW: Math.max(2, AX(q90) - AX(q10)).toFixed(1), anaMedX: AX(med).toFixed(1),
+        anaZeroX: AX(0).toFixed(1), anaZeroIn: dlo < 0 && dhi > 0,
+        anaEstLoX: AX(cur && cur.estLo !== undefined ? cur.estLo : 0).toFixed(1), anaEstHiX: AX(cur && cur.estHi !== undefined ? cur.estHi : 0).toFixed(1),
+        anaEstMidX: AX(cur && cur.estLo !== undefined ? (cur.estLo + cur.estHi) / 2 : 0).toFixed(1),
+        anaTicks: aticks, anaDots: dots, anaRows: rows
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

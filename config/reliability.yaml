@@ -1,0 +1,48 @@
+# Fiabilité des sources pour la corroboration (docs/SPEC.md, section 4, étape 5).
+# Listes de départ, livrées avec l'app. Les domaines que l'utilisateur ajoute ou reclasse (Réglages > Sources)
+# restent dans la base locale, en couche au-dessus de ce fichier, et ne vont jamais dans le dépôt.
+# Un domaine correspond aussi à ses sous-domaines (reuters.com couvre www.reuters.com).
+
+classes:
+  official: 0.9            # administrations, statistiques publiques, bourses, producteurs de la chaîne
+  agency_specialized: 0.7  # agences de presse, presse financière et spécialisée matières premières
+  general_press: 0.5
+  unknown: 0.3             # tout domaine absent des listes, réseaux sociaux compris
+
+official:
+  suffixes: [".gov", ".gouv.fr", ".gov.cn", ".gov.uk", ".europa.eu", ".gob.cl", ".gob.mx", ".go.jp", ".go.kr", ".gc.ca"]
+  domains: [imf.org, worldbank.org, iea.org, gdacs.org, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn]
+  # Les domaines des producteurs d'une chaîne validée s'ajoutent dans la base locale, après accord de l'utilisateur.
+
+agency_specialized:
+  domains: [reuters.com, apnews.com, afp.com, bloomberg.com, ft.com, wsj.com, asia.nikkei.com, caixinglobal.com,
+            argusmedia.com, icis.com, spglobal.com, fastmarkets.com, metal.com, mysteel.net, mining.com,
+            lloydslist.com, tradewindsnews.com, chemweek.com, cen.acs.org]
+
+general_press:
+  domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,
+            scmp.com, dw.com, aljazeera.com, economictimes.indiatimes.com]
+
+# Sites qui republient le contenu d'autres médias : l'article prend la fiabilité du fournisseur indiqué par
+# la donnée structurée de la plateforme (champ fournisseur de Yahoo, attribut <source url> de Google News, champ source de l'API ReliefWeb),
+# jamais par la signature ou le texte de l'article. Sans donnée structurée : classe unknown.
+syndication_hosts: [msn.com, finance.yahoo.com, news.yahoo.com, marketscreener.com, investing.com, tradingview.com, news.google.com, reliefweb.int]
+
+# Communiqués de presse payants, quel que soit le site qui les publie : classe unknown.
+press_release_wires: [prnewswire.com, businesswire.com, globenewswire.com, accesswire.com, einpresswire.com, newsfilecorp.com]
+press_release_paths: ["/press-release", "/press-releases", "/pr-newswire", "/sponsored", "/partner-content", "/brandvoice"]
+
+# Groupes de presse : deux titres d'un même groupe forment une seule lignée.
+groups:
+  - [lemonde.fr, telerama.fr, courrierinternational.com]
+
+lineage:
+  # Deux articles appartiennent à la même lignée si l'une de ces conditions est vraie :
+  same_canonical_url: true
+  text_similarity: {method: jaccard_word_5grams, fields: [title, excerpt], threshold: 0.6}
+  same_cited_origin: true   # même source d'origine citée (cited_origin du tri) : sert à regrouper, jamais à relever la fiabilité
+  same_group: true
+
+confirmation:
+  c_fait_min: 0.75
+  min_lineage_reliability: 0.7   # au moins une lignée de cette fiabilité, sinon « signal précoce »

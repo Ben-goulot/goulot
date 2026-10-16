@@ -1,0 +1,44 @@
+# Modèle d'export « Article 24 » (docs/SPEC.md, section 10).
+# Structure du rapport et contrôles de complétude. Textes affichés en français.
+# Toute modification crée article24_v2.yaml ; un rapport garde la version de modèle qui l'a produit.
+
+id: article24
+version: 1
+title: Évaluation des risques d'approvisionnement en matières premières
+reference: Règlement (UE) 2024/1252, article 24 (à vérifier dans le texte en vigueur avant usage)
+disclaimer: >-
+  Document préparé avec Goulot à partir de sources publiques. Aide à la préparation de
+  l'évaluation des risques : ne vaut ni avis juridique ni attestation de conformité.
+benchmarks:
+  single_country_share_max_pct: 65   # repère européen : part maximale d'un seul pays tiers
+  hhi_bands: {low: 1500, high: 2500} # lecture de l'indice de Herfindahl-Hirschman (0 à 10 000)
+chain_max_age_months: 12
+
+sections:
+  - id: mapping
+    title: Cartographie
+    question: Où la matière est-elle extraite, transformée et recyclée ?
+    stages: [extraction, transformation, recyclage]
+    required: [stage_countries, sources]
+  - id: factors
+    title: Facteurs pouvant affecter l'approvisionnement
+    items: [concentration_top_country, hhi, benchmark_65, export_controls, trade_measures,
+            chokepoints, coproduct_dependencies, events_12_months, upcoming_bottlenecks]
+    required: [concentration_top_country, hhi, benchmark_65]
+  - id: vulnerability
+    title: Vulnérabilité aux ruptures
+    items: [time_to_impact_weeks, buffers, substitutes, alternative_sources, company_coverage]
+    required: [time_to_impact_weeks, substitutes]
+    optional: [company_coverage]   # saisie locale facultative
+  - id: mitigation
+    title: Mesures d'atténuation
+    choices: [stock_de_securite, second_fournisseur, contrat_cadre, substitution, autre]
+    required: [at_least_one_choice]
+    written_by: user               # jamais rédigées par l'IA ni par le code
+  - id: method
+    title: Sources et méthode
+    items: [sources, method, chain_date, reliability_summary, signatory]
+    required: [sources, method, chain_date, signatory]
+
+outputs: [pdf, json, csv]
+draft_label: "Brouillon : rapport incomplet"

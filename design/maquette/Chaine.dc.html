@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Chaîne d'approvisionnement</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.45; overflow: hidden">
+
+<div style="position: absolute; left: 0px; top: 0px; width: 1600px; height: 64px; box-sizing: border-box; display: flex; align-items: center; gap: 28px; padding: 0 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<span style="display: flex; align-items: center; gap: 10px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg><span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span></span>
+<nav aria-label="Navigation principale" style="display: flex; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Marchés</a>
+<a href="Chaine.dc.html" aria-current="page" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; background: #1A212C; color: #E8EBF0; text-decoration: none; font-weight: 600">Chaîne</a>
+<a href="Fiabilite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Fiabilité</a>
+<a href="Conformite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<span style="margin-left: auto; display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</div>
+
+<div style="position: absolute; left: 52px; top: 168px; width: 216px; height: 600px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 292px; top: 168px; width: 216px; height: 600px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 532px; top: 168px; width: 216px; height: 600px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 772px; top: 168px; width: 216px; height: 600px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 1012px; top: 168px; width: 216px; height: 600px; border-radius: 12px; background: #0E1218"></div>
+
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 256px; top: 260px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 256px; top: 404px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="24" height="8" viewBox="0 0 24 8" preserveAspectRatio="none" style="position: absolute; left: 496px; top: 260px; width: 24px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 24 4"></path></svg>
+<svg width="24" height="8" viewBox="0 0 24 8" preserveAspectRatio="none" style="position: absolute; left: 496px; top: 404px; width: 24px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 24 4"></path></svg>
+<svg width="8" height="288" viewBox="0 0 8 288" preserveAspectRatio="none" style="position: absolute; left: 516px; top: 264px; width: 8px; height: 288px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 288"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" preserveAspectRatio="none" style="position: absolute; left: 520px; top: 260px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" preserveAspectRatio="none" style="position: absolute; left: 520px; top: 404px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" preserveAspectRatio="none" style="position: absolute; left: 520px; top: 548px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 736px; top: 260px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="8" height="46" viewBox="0 0 8 46" preserveAspectRatio="none" style="position: absolute; left: 876px; top: 312px; width: 8px; height: 46px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 46" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 736px; top: 404px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="8" height="46" viewBox="0 0 8 46" preserveAspectRatio="none" style="position: absolute; left: 876px; top: 456px; width: 8px; height: 46px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 46" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 736px; top: 548px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" preserveAspectRatio="none" style="position: absolute; left: 976px; top: 548px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+<svg width="8" height="46" viewBox="0 0 8 46" preserveAspectRatio="none" style="position: absolute; left: 1116px; top: 600px; width: 8px; height: 46px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none" style="fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 46" marker-end="url(#dc-arrow-head-filled)"></path></svg>
+
+<div style="position: absolute; left: 64px; top: 216px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Gaz naturel</b><br>États-Unis, Moyen-Orient, Russie</span></div>
+<div style="position: absolute; left: 64px; top: 360px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Naphta et propane</b><br>raffineries, gaz de schiste</span></div>
+<div style="position: absolute; left: 304px; top: 216px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Ammoniac</b><br>Chine, Russie, États-Unis</span></div>
+<div style="position: absolute; left: 304px; top: 360px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 138, 76, 0.10); border: 2px solid #FF8A4C; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Propylène</b> <b style="color: #FF8A4C">· A</b><br>arrêt d'un vapocraqueur, côte du Golfe</span></div>
+<div style="position: absolute; left: 544px; top: 216px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(245, 184, 65, 0.08); border: 2px solid #F5B841; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Production, Asie</b> <b style="color: #F5B841">· C</b><br>Chine, Corée, Japon</span></div>
+<div style="position: absolute; left: 544px; top: 360px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Production, États-Unis</b><br>export vers l'Europe</span></div>
+<div style="position: absolute; left: 544px; top: 504px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px dashed #6B7686; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Production, Europe</b><br>Allemagne, Royaume-Uni<br><span style="color: #A3ADBB">confiance faible</span></span></div>
+<div style="position: absolute; left: 784px; top: 216px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Fret maritime</b><br>Asie vers Europe, ≈ 5 sem. via Suez</span></div>
+<div style="position: absolute; left: 784px; top: 360px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Ports d'Anvers et Rotterdam</b><br>stock tampon ≈ 3 sem.</span></div>
+<div style="position: absolute; left: 784px; top: 504px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 138, 76, 0.10); border: 2px solid #FF8A4C; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Barges sur le Rhin</b> <b style="color: #FF8A4C">· B</b><br>chargées à 40 %</span></div>
+<div style="position: absolute; left: 1024px; top: 504px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Ton fournisseur</b><br>distributeur en Europe</span></div>
+<div style="position: absolute; left: 1024px; top: 648px; width: 192px; height: 96px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(108, 178, 255, 0.10); border: 2px solid #6CB2FF; border-radius: 10px; color: #E8EBF0; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Toi</b><br>stock 5 sem.</span></div>
+
+<h1 style="position: absolute; left: 64px; top: 84px; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Chaîne d'approvisionnement : acrylonitrile</h1>
+<div role="group" aria-label="Vue de la chaîne" style="position: absolute; left: 880px; top: 78px; display: flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid #263040; background: #0E1218">
+<span aria-current="true" style="display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 7px; background: #1A212C; color: #E8EBF0; font-size: 13.5px; font-weight: 600">Chaîne type</span>
+<a href="MaChaine.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 7px; color: #A3ADBB; text-decoration: none; font-size: 13.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Ma chaîne</a>
+</div>
+<div style="position: absolute; left: 64px; top: 124px; color: #A3ADBB; font-size: 14px"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">CAS 107-13-1</span> · reconstruite le 2 oct. 2026 · 12 maillons affichés sur 24 · exemple illustratif</div>
+<div style="position: absolute; left: 64px; top: 182px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">MATIÈRES DE BASE</div>
+<div style="position: absolute; left: 304px; top: 182px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">INTRANTS</div>
+<div style="position: absolute; left: 544px; top: 182px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">PRODUCTION</div>
+<div style="position: absolute; left: 784px; top: 182px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">LOGISTIQUE</div>
+<div style="position: absolute; left: 1024px; top: 182px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">TON APPROVISIONNEMENT</div>
+<div style="position: absolute; left: 1132px; top: 615px; width: 120px; font-size: 13px; line-height: 16px; color: #A3ADBB">livraison 4 sem.</div>
+
+<div style="position: absolute; left: 1264px; top: 92px; width: 272px; display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: #A3ADBB">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 2px solid #FF8A4C"></span>En cours</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 2px solid #F5B841"></span>En préparation</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 1px dashed #6B7686"></span>Confiance faible</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 2px solid #6CB2FF"></span>Toi</span>
+</div>
+
+<aside aria-label="Maillon sélectionné" style="position: absolute; left: 1264px; top: 168px; width: 272px; box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 14px; background: #121720; border: 1px solid #263040; border-radius: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">MAILLON SÉLECTIONNÉ</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Propylène</h2>
+<span style="align-self: flex-start; padding: 2px 8px; border-radius: 999px; border: 1px solid #FF8A4C; color: #FF8A4C; font-size: 12px">En cours · événement A</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Rôle</span><span>Intrant de l'acrylonitrile, avec l'ammoniac</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Événement</span><span>Arrêt imprévu d'un vapocraqueur, côte du Golfe</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Délai jusqu'à toi</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">≈ 5 semaines</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Alternatives</span><span>Propylène asiatique, unités de déshydrogénation du propane</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Sources</span><span>EIA, presse spécialisée</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Confiance</span><span>Moyenne · vérifiée le 2 oct. 2026</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Corriger ce maillon</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Voir les sources</button>
+</div>
+</aside>
+
+<div style="position: absolute; left: 64px; top: 796px; width: 1152px; font-size: 13px; color: #A3ADBB">Délais et répartitions illustratifs. Dans l'app, chaque maillon garde sa source, sa date et son niveau de confiance ; un clic l'ouvre dans le panneau de droite.</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

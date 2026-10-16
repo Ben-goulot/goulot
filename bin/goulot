@@ -1,0 +1,6 @@
+#!/bin/sh
+# Lanceur de la copie de travail (phases 1 à 4) : ./bin/goulot <commande>
+set -eu
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+exec uv run --locked --project "$ROOT" python -m goulot "$@"

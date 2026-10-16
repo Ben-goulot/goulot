@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Conformité</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 8px 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg>
+<span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span>
+</div>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Marchés</a>
+<a href="Chaine.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Chaîne</a>
+<a href="Fiabilite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Fiabilité</a>
+<a href="Conformite.dc.html" aria-current="page" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; background: #1A212C; color: #E8EBF0; text-decoration: none; font-weight: 600">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<span style="margin-left: auto; display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</header>
+
+<main style="width: 100%; box-sizing: border-box; padding: 16px 24px 32px; display: flex; flex-direction: column; gap: 16px">
+
+<section aria-label="Présentation" style="display: flex; flex-direction: column; gap: 6px; max-width: 820px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">Évaluation des risques d'approvisionnement</h1>
+<p style="margin: 0; color: #A3ADBB; text-wrap: pretty">Goulot assemble la cartographie, les facteurs de risque et ta vulnérabilité à partir des chaînes que tu as validées. Tu choisis les mesures, tu signes, tu exportes. Rien ne quitte ton Mac et aucune IA ne rédige ce rapport.</p>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+
+<section aria-label="Paramètres du rapport" style="flex: 1 1 280px; max-width: 360px; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 8px">
+<legend style="padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Modèle</legend>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid #263040; cursor: pointer">
+<input type="radio" name="modele" checked="{{ tpl.artChecked }}" onChange="{{ tpl.pickArt }}" style="margin: 3px 0 0; accent-color: #6CB2FF">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Article 24</span><span style="font-size: 12.5px; color: #A3ADBB">Règlement (UE) 2024/1252 sur les matières premières critiques</span></span>
+</label>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px solid #263040; cursor: pointer">
+<input type="radio" name="modele" checked="{{ tpl.clientChecked }}" onChange="{{ tpl.pickClient }}" style="margin: 3px 0 0; accent-color: #6CB2FF">
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Questionnaire client</span><span style="font-size: 12.5px; color: #A3ADBB">Réponse type aux demandes de tes clients</span></span>
+</label>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 1px dashed #3A4656; color: #A3ADBB">
+<span style="font-size: 13px">Devoir de vigilance</span><span style="margin-left: auto; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid #3A4656">plus tard</span>
+</div>
+</fieldset>
+
+<fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+<legend style="padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Matières</legend>
+<sc-for list="{{ matChoices }}" as="mc" hint-placeholder-count="3">
+<label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; cursor: pointer">
+<input type="checkbox" checked="{{ mc.checked }}" onChange="{{ mc.toggle }}" style="margin: 0; width: 16px; height: 16px; accent-color: #6CB2FF">
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">{{ mc.name }}</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #A3ADBB">{{ mc.cas }} · chaîne validée le {{ mc.validated }}</span></span>
+</label>
+</sc-for>
+</fieldset>
+
+<fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+<legend style="padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Mesures d'atténuation retenues</legend>
+<sc-for list="{{ measures }}" as="me" hint-placeholder-count="4">
+<label style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; cursor: pointer">
+<input type="checkbox" checked="{{ me.checked }}" onChange="{{ me.toggle }}" style="margin: 0; width: 16px; height: 16px; accent-color: #6CB2FF">
+<span style="font-size: 13px">{{ me.label }}</span>
+</label>
+</sc-for>
+<span style="font-size: 12px; color: #A3ADBB">Tu choisis : Goulot ne rédige jamais les mesures à ta place.</span>
+</fieldset>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="signataire" style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Signataire</label>
+<input id="signataire" type="text" placeholder="[NOM, FONCTION]" style="min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; background: #0B0E13; color: #E8EBF0; font: inherit">
+<label style="display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-size: 13px">
+<input type="checkbox" checked="{{ signed }}" onChange="{{ toggleSigned }}" style="margin: 0; width: 16px; height: 16px; accent-color: #6CB2FF">
+J'ai relu le rapport et je le valide
+</label>
+</div>
+</section>
+
+<section aria-label="Aperçu du rapport" style="flex: 2.2 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Aperçu</h2>
+<span style="font-size: 12px; color: #A3ADBB">page 1 sur 4 · format A4</span>
+</div>
+<article style="background: #FBFAF7; color: #16191F; border-radius: 6px; padding: 36px 40px 28px; display: flex; flex-direction: column; gap: 18px; font-size: 12.5px; line-height: 1.5; border: 1px solid #D9DDE3">
+<sc-if value="{{ draft }}" hint-placeholder-val="{{ true }}"><div style="align-self: flex-start; padding: 4px 10px; border-radius: 4px; border: 1.5px solid #B4321F; color: #B4321F; font-weight: 600; font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase">Brouillon : rapport incomplet</div></sc-if>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; border-bottom: 2px solid #16191F">
+<span style="font-size: 20px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance">{{ tpl.title }}</span>
+<span style="color: #4A5361">[NOM DE TON ENTREPRISE] · octobre 2026 · {{ matCount }}</span>
+<span style="color: #4A5361">{{ tpl.subtitle }}</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; font-weight: 700">1. {{ tpl.s1 }}</span>
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(0, 1fr); border-top: 1px solid #C9CED6">
+<span style="padding: 6px 8px 6px 0; font-weight: 600; border-bottom: 1px solid #C9CED6">Matière</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Extraction</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Transformation</span><span style="padding: 6px 0 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Recyclage</span>
+</div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(0, 1fr); border-bottom: 1px solid #E3E6EA">
+<span style="padding: 6px 8px 6px 0; font-weight: 600">{{ row.name }}</span><span style="padding: 6px 8px">{{ row.extraction }}</span><span style="padding: 6px 8px">{{ row.transformation }}</span><span style="padding: 6px 0 6px 8px; color: #4A5361">{{ row.recycling }}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; font-weight: 700">2. {{ tpl.s2 }}</span>
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1fr) 70px 90px minmax(0, 1.1fr); border-top: 1px solid #C9CED6">
+<span style="padding: 6px 8px 6px 0; font-weight: 600; border-bottom: 1px solid #C9CED6">Matière</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Étape la plus concentrée</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Part</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Indice HHI</span><span style="padding: 6px 0 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Repère européen de 65 %</span>
+</div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1fr) 70px 90px minmax(0, 1.1fr); border-bottom: 1px solid #E3E6EA; align-items: center">
+<span style="padding: 6px 8px 6px 0; font-weight: 600">{{ row.name }}</span><span style="padding: 6px 8px">{{ row.stage }}</span><span style="padding: 6px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ row.share }}</span><span style="padding: 6px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ row.hhi }}</span>
+<span style="padding: 6px 0 6px 8px"><span style="{{ row.benchStyle }}">{{ row.bench }}</span></span>
+</div>
+</sc-for>
+<ul style="margin: 4px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px">
+<sc-for list="{{ factors }}" as="fa" hint-placeholder-count="4"><li><span style="font-weight: 600">{{ fa.mat }} :</span> {{ fa.text }}</li></sc-for>
+</ul>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13.5px; font-weight: 700">3. {{ tpl.s3 }}</span>
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) 80px minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr); border-top: 1px solid #C9CED6">
+<span style="padding: 6px 8px 6px 0; font-weight: 600; border-bottom: 1px solid #C9CED6">Matière</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Délai X</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Stocks tampons</span><span style="padding: 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Substituts</span><span style="padding: 6px 0 6px 8px; font-weight: 600; border-bottom: 1px solid #C9CED6">Ta couverture</span>
+</div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+<div style="display: grid; grid-template-columns: minmax(110px, 0.9fr) 80px minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr); border-bottom: 1px solid #E3E6EA">
+<span style="padding: 6px 8px 6px 0; font-weight: 600">{{ row.name }}</span><span style="padding: 6px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ row.x }}</span><span style="padding: 6px 8px">{{ row.buffers }}</span><span style="padding: 6px 8px">{{ row.subs }}</span><span style="padding: 6px 0 6px 8px">{{ row.coverage }}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13.5px; font-weight: 700">4. {{ tpl.s4 }}</span>
+<sc-if value="{{ hasMeasures }}" hint-placeholder-val="{{ false }}"><span>{{ measuresText }}</span></sc-if>
+<sc-if value="{{ noMeasures }}" hint-placeholder-val="{{ true }}"><span style="color: #B4321F">À compléter : choisis au moins une mesure dans le panneau de gauche.</span></sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13.5px; font-weight: 700">5. {{ tpl.s5 }}</span>
+<span>38 sources publiques citées en annexe (statistiques officielles, presse spécialisée, communiqués d'exploitants). Concentration : part du premier pays par étape et indice de Herfindahl-Hirschman sur les parts nationales (0 à 10 000). Délai X calculé le long de la chaîne validée. Fiabilité de Goulot au 4 octobre 2026 : 7 conseils confirmés sur 9 (registre).</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; padding-top: 12px; border-top: 1px solid #C9CED6; color: #4A5361; font-size: 11px">
+<span>Aide à la préparation de l'évaluation des risques : ne vaut ni avis juridique ni attestation de conformité. Valeurs illustratives.</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">empreinte 4be1 77c0 … 9c02 · registre #215</span>
+</div>
+</article>
+</section>
+
+<aside aria-label="Contrôle avant export" style="flex: 1 1 260px; max-width: 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Contrôle avant export</h2>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{ checks }}" as="ck" hint-placeholder-count="5">
+<li style="display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 10px; align-items: start">
+<sc-if value="{{ ck.ok }}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3CCB91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6"></path></svg></sc-if>
+<sc-if value="{{ ck.todo }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 7v6M12 16.5v.5"></path></svg></sc-if>
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">{{ ck.label }}</span><span style="font-size: 12.5px; color: #A3ADBB">{{ ck.detail }}</span></span>
+</li>
+</sc-for>
+</ul>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #263040">
+<button type="button" style="{{ pdfStyle }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>{{ pdfLabel }}</button>
+<div style="display: flex; gap: 8px">
+<button type="button" style="flex: 1 1 0; min-height: 44px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; font-size: 13px; cursor: pointer">Annexe JSON</button>
+<button type="button" style="flex: 1 1 0; min-height: 44px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; font-size: 13px; cursor: pointer">Annexe CSV</button>
+</div>
+<span style="font-size: 12px; color: #A3ADBB; text-wrap: pretty">Le rapport et ses annexes sont inscrits au registre avec leur empreinte. Tu pourras prouver plus tard ce que tu savais à cette date.</span>
+</div>
+</aside>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1460}}'>
+class Component extends DCLogic {
+  data() {
+    return [
+      { id: "acn", name: "Acrylonitrile", cas: "CAS 107-13-1", validated: "2 oct. 2026",
+        extraction: "sans objet : pétrochimie (gaz naturel, naphta, propane)", transformation: "Chine 40 % · États-Unis 15 % · Europe 12 % · Corée 10 %", recycling: "non documenté",
+        stage: "Transformation (Chine)", top: 40, shares: [40, 15, 12, 10, 8, 3, 3, 3, 3, 3],
+        factors: ["flux d'Asie vers l'Europe par le canal de Suez", "arrêt imprévu d'un vapocraqueur américain (propylène), en cours", "maintenance programmée à Ulsan en novembre"],
+        x: "5 sem.", buffers: "ports d'Anvers et de Rotterdam ≈ 3 sem.", subs: "aucun substitut direct pour cet usage", coverage: "stock 5 sem. · délai 4 sem." },
+      { id: "li", name: "Carbonate de lithium", cas: "CAS 554-13-2", validated: "28 sept. 2026",
+        extraction: "Australie 37 % · Chili 25 % · Chine 18 % · Argentine 8 %", transformation: "Chine 65 % · Chili 20 % · Argentine 6 %", recycling: "marginal (Chine, Corée)",
+        stage: "Transformation (Chine)", top: 65, shares: [65, 20, 6, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        factors: ["fin de permis de deux mines de lépidolite au Jiangxi, le 15 novembre", "suspension des contrôles d'exportation chinois jusqu'au 10 novembre 2026", "saison des cyclones au Pilbara, de décembre à mars"],
+        x: "6 sem.", buffers: "stocks des convertisseurs ≈ 6 sem.", subs: "hydroxyde de lithium selon l'usage", coverage: "stock 8 sem. · délai 4 sem." },
+      { id: "ga", name: "Gallium", cas: "CAS 7440-55-3", validated: "30 sept. 2026",
+        extraction: "Chine 98 % (coproduit de l'alumine)", transformation: "Chine · Japon · Allemagne (haute pureté)", recycling: "Japon, États-Unis (chutes de production)",
+        stage: "Extraction (Chine)", top: 98, shares: [98, 1, 1],
+        factors: ["licences d'exportation chinoises depuis 2023, durcissement en consultation", "dépendance au raffinage de l'alumine, dont le gallium est un coproduit"],
+        x: "10 sem.", buffers: "distributeurs ≈ 4 sem.", subs: "peu de substituts pour les semi-conducteurs", coverage: "stock 12 sem. · délai 6 sem." }
+    ];
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var all = this.data();
+    var tpl = st.tpl || "art24";
+    var on = st.mats || { acn: true, li: true, ga: true };
+    var ms = st.measures || {};
+    var signed = !!st.signed;
+    var chosen = all.filter(function (m) { return on[m.id]; });
+    var fmtInt = function (v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); };
+    var BENCH = "display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: 600; ";
+    var rows = chosen.map(function (m) {
+      var hhi = m.shares.reduce(function (a, s) { return a + s * s; }, 0);
+      var over = m.top > 65, edge = m.top === 65;
+      return {
+        name: m.name, extraction: m.extraction, transformation: m.transformation, recycling: m.recycling,
+        stage: m.stage, share: m.top + " %", hhi: fmtInt(hhi),
+        bench: over ? "dépassé" : edge ? "à la limite" : "respecté",
+        benchStyle: BENCH + (over ? "background: #FBE3DF; color: #9E2A17" : edge ? "background: #FBF0D9; color: #7A5300" : "background: #E2F4EA; color: #1D6B43"),
+        x: m.x, buffers: m.buffers, subs: m.subs, coverage: m.coverage
+      };
+    });
+    var factors = [];
+    chosen.forEach(function (m) { m.factors.forEach(function (t) { factors.push({ mat: m.name, text: t }); }); });
+    var labels = [["stock", "Stock de sécurité"], ["second", "Second fournisseur"], ["cadre", "Contrat-cadre"], ["subst", "Substitution"]];
+    var measures = labels.map(function (l) {
+      return { label: l[1], checked: !!ms[l[0]], toggle: function () { var next = Object.assign({}, ms); next[l[0]] = !ms[l[0]]; self.setState({ measures: next }); } };
+    });
+    var picked = labels.filter(function (l) { return ms[l[0]]; }).map(function (l) { return l[1].toLowerCase(); });
+    var hasMeasures = picked.length > 0;
+    var isArt = tpl === "art24";
+    var checks = [
+      { label: "Cartographie", detail: chosen.length + " matière" + (chosen.length > 1 ? "s" : "") + ", 3 étapes chacune", ok: chosen.length > 0 },
+      { label: "Facteurs de risque", detail: "concentration, repère de 65 %, " + factors.length + " facteurs datés", ok: chosen.length > 0 },
+      { label: "Vulnérabilité", detail: "délai X et couverture renseignés", ok: chosen.length > 0 },
+      { label: "Mesures d'atténuation", detail: hasMeasures ? picked.join(", ") : "à choisir dans le panneau de gauche", ok: hasMeasures },
+      { label: "Validation", detail: signed ? "rapport relu et validé" : "relecture et signature à faire", ok: signed }
+    ].map(function (c) { return { label: c.label, detail: c.detail, ok: c.ok, todo: !c.ok }; });
+    var complete = checks.every(function (c) { return c.ok; });
+    var mats = all.map(function (m) {
+      return { name: m.name, cas: m.cas, validated: m.validated, checked: !!on[m.id], toggle: function () { var next = Object.assign({}, on); next[m.id] = !on[m.id]; self.setState({ mats: next }); } };
+    });
+    var PDF = "display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 8px; border: none; font: inherit; font-weight: 600; cursor: pointer; ";
+    return {
+      tpl: {
+        artChecked: isArt, clientChecked: !isArt,
+        pickArt: function () { self.setState({ tpl: "art24" }); },
+        pickClient: function () { self.setState({ tpl: "client" }); },
+        title: isArt ? "Évaluation des risques d'approvisionnement en matières premières" : "Réponse au questionnaire de risque d'approvisionnement",
+        subtitle: isArt ? "Modèle aligné sur l'article 24 du règlement (UE) 2024/1252 : cartographie, facteurs, vulnérabilité, mesures" : "Modèle générique pour les questionnaires de tes clients",
+        s1: isArt ? "Cartographie : où la matière est extraite, transformée et recyclée" : "Origine des matières",
+        s2: isArt ? "Facteurs pouvant affecter l'approvisionnement" : "Risques identifiés",
+        s3: isArt ? "Vulnérabilité aux ruptures" : "Capacité à livrer en cas de rupture",
+        s4: isArt ? "Mesures d'atténuation" : "Plan de continuité",
+        s5: "Sources et méthode"
+      },
+      matChoices: mats,
+      matCount: chosen.length + " matière" + (chosen.length > 1 ? "s" : ""),
+      rows: rows, factors: factors, measures: measures,
+      hasMeasures: hasMeasures, noMeasures: !hasMeasures,
+      measuresText: hasMeasures ? "Retenu pour les matières ci-dessus : " + picked.join(", ") + ". Détail et échéances en page 3." : "",
+      signed: signed, toggleSigned: function () { self.setState({ signed: !signed }); },
+      checks: checks,
+      draft: !complete,
+      pdfLabel: complete ? "Générer le PDF" : "Générer le PDF (brouillon)",
+      pdfStyle: PDF + (complete ? "background: #6CB2FF; color: #0B0E13" : "background: #1A212C; color: #E8EBF0; border: 1px solid #263040")
+    };
+  }
+}
+</script>
+</body>
+</html>

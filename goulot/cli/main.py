@@ -1,0 +1,384 @@
+"""Command line: `./bin/goulot <commande>` (phases 1 to 4), then `goulot <commande>` (phase 5).
+
+No command reads private data (docs/SECURITY.md, CLI and import). Commands that touch keys are run by the
+user in their own Terminal: setup, vault recover, vault new-recovery-key, vault add-passkey.
+"""
+
+from __future__ import annotations
+
+import argparse
+import getpass
+import socket
+import sys
+import webbrowser
+
+from goulot import __version__
+from goulot.db.backup import backup
+from goulot.db.connection import Database, get_setting, set_setting
+from goulot.doctor import FAIL, OK, WARN, run_checks
+from goulot.security.audit import audit
+from goulot.security.clock import SystemClock
+from goulot.security.fs import ensure_private_dir
+from goulot.security.logs import setup_logging
+from goulot.security.sessions import consume_one_time_token, create_one_time_token, revoke_everything
+from goulot.settings import BindError, Settings, load_settings
+from goulot.vault.keys import Vault, VaultError
+from goulot.vault.recovery import RecoveryKeyError
+from goulot.vault.tokens import VaultTokenService
+
+LATER = {
+    "update": "Mises à jour automatiques : disponibles en phase 5.",
+    "history": "Historique des prix : disponible en phase 3.",
+    "cases": "Bibliothèque de cas : disponible en phase 3.",
+    "ledger": "Registre des conseils : disponible en phase 3.",
+    "export": "Export de conformité : disponible en phase 6.",
+    "dev": "Commandes de développement : arrivent avec les phases 2 et 5.",
+}
+CLEAR_SCREEN = "\033[2J\033[3J\033[H"
+ALERT_SECRETS = frozenset({"telegram_bot", "smtp_password"})
+PRINT_HELP = "affiche le lien sans ouvrir le navigateur par défaut (pour le coller dans un autre navigateur)"
+
+
+def _db(settings: Settings, *, create: bool = False) -> Database:
+    if not create and not settings.db_path.exists():
+        sys.exit("Base absente : lancez d'abord « ./bin/goulot setup ».")
+    ensure_private_dir(settings.home)
+    db = Database(settings.db_path)
+    db.migrate()
+    return db
+
+
+def _server_running(settings: Settings) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", settings.port)) == 0
+
+
+def _open_url(url: str, *, print_only: bool = False) -> None:
+    if print_only:
+        print("Collez ce lien dans le navigateur de votre choix (valable peu de temps, utilisable une seule fois) :")
+        print(f"  {url}")
+        return
+    print("Ouverture du navigateur… Si rien ne s'ouvre, collez ce lien dans Safari ou Chrome (valable peu de temps) :")
+    print(f"  {url}")
+    webbrowser.open(url)
+
+
+# --- start, open, doctor, backup, panic ----------------------------------------------------------------
+def cmd_start(settings: Settings, _: argparse.Namespace) -> None:
+    from goulot.server import PortBusy, run
+
+    setup_logging(settings.log_dir, console=True)
+    print(f"Goulot {__version__} : {settings.origin} (Ctrl+C pour arrêter)")
+    try:
+        run(settings)
+    except PortBusy as exc:
+        sys.exit(str(exc))
+
+
+def cmd_open(settings: Settings, args: argparse.Namespace) -> None:
+    db = _db(settings)
+    if not _server_running(settings):
+        sys.exit("Le serveur ne tourne pas : lancez « ./bin/goulot start » dans un autre onglet du Terminal.")
+    token = create_one_time_token(db, _clock(), "login")
+    _open_url(f"{settings.origin}/auth#t={token}", print_only=args.print_only)
+
+
+def cmd_doctor(settings: Settings, _: argparse.Namespace) -> None:
+    checks = run_checks(settings)
+    marks = {OK: "✅", WARN: "🟠", FAIL: "❌"}
+    for c in checks:
+        print(f"{marks[c.status]} {c.label} : {c.detail}")
+    failed = [c for c in checks if c.status == FAIL]
+    print("\nTout est au vert." if not failed and all(c.status == OK for c in checks) else "")
+    if failed:
+        sys.exit(1)
+
+
+def cmd_backup(settings: Settings, _: argparse.Namespace) -> None:
+    path = backup(_db(settings), settings.backup_dir)
+    print(f"Sauvegarde écrite : {path}")
+
+
+def cmd_panic(settings: Settings, _: argparse.Namespace) -> None:
+    if settings.db_path.exists():
+        revoke_everything(_db(settings))
+        print("✅ Sessions, liens de connexion et jetons de coffre révoqués ; coffre fermé.")
+    print(
+        "\nÀ faire maintenant :\n"
+        "1. Arrêtez le serveur (Ctrl+C dans son onglet du Terminal).\n"
+        "2. Révoquez la clé API Anthropic : https://platform.claude.com/settings/keys\n"
+        "   puis créez-en une nouvelle dans l'espace de travail « goulot » et lancez « ./bin/goulot setup ».\n"
+        "3. Si vous en avez un : révoquez le jeton GitHub (https://github.com/settings/tokens).\n"
+        "4. Si vous utilisez Telegram : envoyez /revoke à @BotFather pour changer le jeton du bot.\n"
+        "5. Si la clé de signature des mises à jour est en cause : procédure de docs/UPDATES.md (« Clé compromise »)."
+    )
+
+
+# --- setup ---------------------------------------------------------------------------------------------
+def _ask_secret(label: str) -> str:
+    return getpass.getpass(f"{label} (saisie masquée, Entrée pour passer) : ").strip()
+
+
+def _show_and_confirm_recovery(recovery_key: str) -> bool:
+    print(
+        "\n================ CLÉ DE SECOURS ================\n"
+        f"\n    {recovery_key}\n\n"
+        "Notez-la maintenant (papier ou gestionnaire de mots de passe). Elle ne sera plus jamais affichée.\n"
+        "Sans elle ET sans sauvegarde Time Machine chiffrée hors du Mac, la perte du Mac emporte vos données privées.\n"
+        "Ne la donnez à personne, pas même à Claude.\n"
+        "================================================\n"
+    )
+    input("Appuyez sur Entrée une fois la clé notée…")
+    print(CLEAR_SCREEN, end="")
+    from goulot.vault.recovery import decode
+
+    expected = decode(recovery_key)
+    for attempt in range(3):
+        typed = getpass.getpass("Retapez la clé de secours en entier pour confirmer (saisie masquée) : ")
+        try:
+            if decode(typed) == expected:
+                return True
+            print("Ce n'est pas la même clé.")
+        except RecoveryKeyError as exc:
+            print(str(exc))
+        if attempt < 2:
+            print("Réessayez.")
+    return False
+
+
+def _setup_secrets(settings: Settings) -> None:
+    from goulot.security.secrets import SECRETS, has_secret, masked, set_secret
+
+    print("\n— Secrets (enregistrés dans le trousseau macOS, jamais ailleurs) —")
+    for spec in SECRETS:
+        if spec.name in ALERT_SECRETS:  # asked in the alert channel section, only when relevant
+            continue
+        state = "déjà configuré" if has_secret(spec.name) else "absent"
+        value = _ask_secret(f"{spec.label} [{state}]")
+        if not value:
+            continue
+        set_secret(spec.name, value)
+        print(f"  Enregistré ({masked(value)}).")
+        if spec.name == "anthropic":
+            _test_anthropic(settings, value)
+
+
+def _test_anthropic(settings: Settings, key: str) -> None:
+    import anthropic
+
+    from goulot.llm.client import build_anthropic_client
+    from goulot.net.allowlist import load_allowlist
+
+    try:
+        client = build_anthropic_client(key, load_allowlist(settings.config_dir))
+        client.models.retrieve("claude-sonnet-5-5")  # free call
+        print("  Test : clé acceptée par l'API Anthropic.")
+    except anthropic.AuthenticationError:
+        print("  Test : clé refusée. Vérifiez-la dans la console Anthropic (espace « goulot »).")
+    except anthropic.APIError as exc:
+        print(f"  Test impossible pour l'instant ({type(exc).__name__}) ; la clé est enregistrée.")
+
+
+def _setup_vault(db: Database) -> None:
+    vault = Vault(db)
+    print("\n— Coffre (données privées chiffrées, ouvertes par Touch ID) —")
+    if not vault.is_configured():
+        print(
+            "Le coffre chiffre vos données d'achat (stock, délais, Ma chaîne). Une clé de secours va s'afficher\n"
+            "une seule fois : elle permet de tout récupérer sur un nouveau Mac."
+        )
+        input("Appuyez sur Entrée pour créer le coffre…")
+        try:
+            recovery_key = vault.create()
+        except VaultError as exc:
+            sys.exit(str(exc))
+    elif vault.recovery_confirmed():
+        print("Coffre déjà configuré, clé de secours confirmée.")
+        return
+    else:
+        print("Coffre configuré, mais la clé de secours n'a jamais été confirmée : une nouvelle va être émise.")
+        input("Appuyez sur Entrée pour continuer…")
+        recovery_key = vault.new_recovery_key()
+    if _show_and_confirm_recovery(recovery_key):
+        vault.mark_recovery_confirmed()
+        print("✅ Clé de secours confirmée.")
+    else:
+        print("🟠 Clé non confirmée : relancez « ./bin/goulot setup » pour en recevoir une nouvelle.")
+
+
+def _ask_alert_secret(name: str, label: str) -> None:
+    """Asks for an alert secret, or only whether to replace it when the keychain already holds one."""
+    from goulot.security.secrets import has_secret, masked, set_secret
+
+    if has_secret(name) and input(f"{label} déjà enregistré. Le remplacer ? (o/N) ").strip().lower() != "o":
+        return
+    value = _ask_secret(label)
+    if value:
+        set_secret(name, value)
+        print(f"  Enregistré ({masked(value)}).")
+
+
+def _setup_alerts(db: Database) -> None:
+    print("\n— Canal d'alerte (envoi réel branché en phase 3) —")
+    with db.connect() as conn:
+        current = get_setting(conn, "alert_channel")
+        current_chat_id = get_setting(conn, "telegram_chat_id")
+    hint = {"telegram": " [actuel : Telegram]", "email": " [actuel : e-mail]"}.get(current or "", "")
+    choice = input(f"Telegram (t), e-mail (e) ou plus tard (Entrée){hint} ? ").strip().lower()
+    if choice == "t":
+        prompt = "Identifiant de votre discussion Telegram (nombre)"
+        if current_chat_id:
+            prompt += f" [{current_chat_id}, Entrée pour le garder]"
+        chat_id = input(f"{prompt} : ").strip() or (current_chat_id or "")
+        if chat_id.lstrip("-").isdigit():
+            with db.transaction() as conn:
+                set_setting(conn, "alert_channel", "telegram")
+                set_setting(conn, "telegram_chat_id", chat_id)
+        _ask_alert_secret("telegram_bot", "Jeton du bot Telegram")
+        return
+    with db.transaction() as conn:
+        if choice == "e":
+            set_setting(conn, "alert_channel", "email")
+            set_setting(conn, "smtp_host", input("Serveur SMTP (ex. smtp.exemple.fr) : ").strip())
+            set_setting(conn, "smtp_port", input("Port SMTP en TLS (465 ou 587) : ").strip() or "465")
+            set_setting(conn, "smtp_user", input("Identifiant SMTP : ").strip())
+            set_setting(conn, "alert_email_to", input("Adresse qui reçoit les alertes : ").strip())
+    if choice == "e":
+        _ask_alert_secret("smtp_password", "Mot de passe SMTP")
+
+
+def cmd_setup(settings: Settings, _: argparse.Namespace) -> None:
+    import platform
+
+    print(f"Goulot {__version__} : configuration.")
+    print(f"macOS {platform.mac_ver()[0]}, processeur {platform.machine()}.")
+    setup_logging(settings.log_dir)
+    db = _db(settings, create=True)
+    _setup_secrets(settings)
+    _setup_vault(db)
+    _setup_alerts(db)
+    print(
+        "\n— Clé d'accès (Touch ID) —\n"
+        "Pour ouvrir le coffre depuis le navigateur : lancez « ./bin/goulot start » dans un autre onglet,\n"
+        "puis « ./bin/goulot vault add-passkey ».\n"
+        "\nConfiguration terminée. Vérification : « ./bin/goulot doctor »."
+    )
+
+
+# --- vault -------------------------------------------------------------------------------------------
+def _clock() -> SystemClock:
+    return SystemClock()
+
+
+def cmd_vault(settings: Settings, args: argparse.Namespace) -> None:
+    action = args.vault_action
+    db = _db(settings)
+    vault = Vault(db)
+    if action == "status":
+        from goulot.vault.passkeys import PasskeyService
+
+        print(f"Coffre configuré : {'oui' if vault.is_configured() else 'non'}")
+        print(f"Clé de secours confirmée : {'oui' if vault.recovery_confirmed() else 'non'}")
+        print(f"Clé maîtresse dans le trousseau : {'oui' if vault.master_available() else 'non'}")
+        print(f"Clés d'accès : {PasskeyService(db, _clock(), settings.origin).count()}")
+    elif action == "lock":
+        VaultTokenService(db, _clock()).revoke_all("cli")
+        print("Coffre fermé.")
+    elif action == "add-passkey":
+        if not vault.is_configured():
+            sys.exit("Coffre non configuré : lancez « ./bin/goulot setup ».")
+        if not _server_running(settings):
+            sys.exit("Le serveur ne tourne pas : lancez « ./bin/goulot start » dans un autre onglet du Terminal.")
+        typed = getpass.getpass("Clé de secours (saisie masquée) : ")
+        try:
+            ok = vault.check_recovery_key(typed)
+        except RecoveryKeyError as exc:
+            sys.exit(str(exc))
+        if not ok:
+            with db.transaction() as conn:
+                audit(conn, "enroll_grant_refused")
+            sys.exit("Clé de secours refusée.")
+        login = create_one_time_token(db, _clock(), "login")
+        grant = create_one_time_token(db, _clock(), "enroll")
+        with db.transaction() as conn:
+            audit(conn, "enroll_grant_issued")
+        print("Lien d'enrôlement valable 10 minutes, utilisable une seule fois.")
+        _open_url(f"{settings.origin}/auth#t={login}&g={grant}", print_only=args.print_only)
+    elif action == "recover":
+        typed = getpass.getpass("Clé de secours (saisie masquée) : ")
+        try:
+            vault.recover(typed, replace_existing=args.replace)
+        except (RecoveryKeyError, VaultError) as exc:
+            sys.exit(str(exc))
+        print("✅ Clé maîtresse restaurée dans le trousseau. Vérification : « ./bin/goulot doctor ».")
+    elif action == "new-recovery-key":
+        typed = getpass.getpass("Clé de secours actuelle (saisie masquée ; Entrée si elle est perdue) : ")
+        proven = False
+        if typed.strip():
+            try:
+                proven = vault.check_recovery_key(typed)
+            except RecoveryKeyError as exc:
+                sys.exit(str(exc))
+        else:
+            code = input("Code affiché par l'app, coffre ouvert (Réglages > Coffre > Nouvelle clé de secours) : ")
+            with db.transaction() as conn:
+                proven = consume_one_time_token(conn, code.strip(), "rekey", _clock().time())
+        if not proven:
+            sys.exit("Preuve refusée : rien n'a changé.")
+        recovery_key = vault.new_recovery_key()
+        if _show_and_confirm_recovery(recovery_key):
+            vault.mark_recovery_confirmed()
+            print("✅ Nouvelle clé confirmée ; l'ancienne ne fonctionne plus.")
+        else:
+            print("🟠 Clé non confirmée : relancez la commande.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="goulot", description="Veille des goulots d'approvisionnement.")
+    parser.add_argument("--version", action="version", version=f"goulot {__version__}")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("setup", help="assistant de configuration (dans votre Terminal)")
+    sub.add_parser("start", help="lance le serveur sur http://localhost:8742")
+    open_ = sub.add_parser("open", help="ouvre l'interface avec un lien à usage unique")
+    open_.add_argument("--print", dest="print_only", action="store_true", help=PRINT_HELP)
+    sub.add_parser("doctor", help="vérifie l'installation")
+    sub.add_parser("backup", help="sauvegarde la base maintenant")
+    sub.add_parser("panic", help="révoque tout et affiche la marche à suivre")
+    vault = sub.add_parser("vault", help="coffre des données privées")
+    vsub = vault.add_subparsers(dest="vault_action", required=True)
+    vsub.add_parser("status")
+    vsub.add_parser("lock")
+    add_passkey = vsub.add_parser("add-passkey", help="enregistre une clé d'accès Touch ID (clé de secours demandée)")
+    add_passkey.add_argument("--print", dest="print_only", action="store_true", help=PRINT_HELP)
+    recover = vsub.add_parser("recover", help="restaure la clé maîtresse avec la clé de secours")
+    recover.add_argument("--replace", action="store_true", help="remplace une autre clé maîtresse du trousseau")
+    vsub.add_parser("new-recovery-key", help="émet une nouvelle clé de secours")
+    for name, message in LATER.items():
+        p = sub.add_parser(name, help=message)
+        p.add_argument("rest", nargs=argparse.REMAINDER)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    if args.command in LATER:
+        print(LATER[args.command])
+        return
+    try:
+        settings = load_settings()
+    except BindError as exc:
+        sys.exit(str(exc))
+    handlers = {
+        "setup": cmd_setup,
+        "start": cmd_start,
+        "open": cmd_open,
+        "doctor": cmd_doctor,
+        "backup": cmd_backup,
+        "panic": cmd_panic,
+        "vault": cmd_vault,
+    }
+    try:
+        handlers[args.command](settings, args)
+    except KeyboardInterrupt:
+        print("\nInterrompu.")

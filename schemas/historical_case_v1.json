@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "historical_case_v1",
+  "title": "Cas passés pour la bibliothèque de cas comparables",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "material_cas",
+    "cases",
+    "open_questions",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "material_cas": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "title_fr",
+        "event_type",
+        "first_report_date",
+        "end_date",
+        "place",
+        "country_iso2",
+        "node_type",
+        "affected_commodities",
+        "capacity_share_pct",
+        "capacity_share_basis",
+        "direction",
+        "duration_days",
+        "summary_fr",
+        "source_ids",
+        "confidence"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string"
+        },
+        "title_fr": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "labor_action",
+            "armed_conflict",
+            "civil_unrest",
+            "extreme_weather",
+            "natural_disaster",
+            "industrial_outage",
+            "maritime_disruption",
+            "infrastructure_failure",
+            "sanctions_trade_policy",
+            "export_restriction",
+            "regulatory_change",
+            "cyber_incident",
+            "health_biosecurity",
+            "other"
+          ]
+        },
+        "first_report_date": {
+          "type": "string",
+          "description": "AAAA-MM-JJ ou AAAA-MM."
+        },
+        "end_date": {
+          "type": "string",
+          "description": "AAAA-MM-JJ, AAAA-MM ou unknown."
+        },
+        "place": {
+          "type": "string"
+        },
+        "country_iso2": {
+          "type": "string",
+          "description": "Code ISO 3166-1 alpha-2, ou unknown."
+        },
+        "node_type": {
+          "type": "string",
+          "enum": [
+            "material",
+            "mine",
+            "plant",
+            "recycler",
+            "country",
+            "company",
+            "port",
+            "chokepoint",
+            "waterway",
+            "distributor",
+            "unknown"
+          ]
+        },
+        "affected_commodities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "capacity_share_pct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "capacity_share_basis": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "tightening",
+            "loosening",
+            "ambiguous"
+          ]
+        },
+        "duration_days": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "summary_fr": {
+          "type": "string"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      }
+    }
+  }
+}

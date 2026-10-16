@@ -1,0 +1,49 @@
+/* Design tokens from design/README.md. No inline style anywhere (CSP style-src 'self'). */
+:root {
+  --bg: #0b0e13;
+  --panel: #121720;
+  --row: #1a212c;
+  --topbar: #0f131a;
+  --border: #263040;
+  --text: #e8ebf0;
+  --text-2: #a3adbb;
+  --accent: #6cb2ff;
+  --amber: #f5b841;
+  --neutral: #b8c2cf;
+  --neutral-border: #3a4656;
+  font-family: "IBM Plex Sans", -apple-system, "Helvetica Neue", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); }
+.mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+.muted { color: var(--text-2); }
+.warn { color: var(--amber); }
+.topbar {
+  display: flex; align-items: center; gap: 24px; padding: 0 20px; min-height: 56px;
+  background: var(--topbar); border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 600; letter-spacing: 0.02em; }
+nav { display: flex; gap: 8px; flex: 1; }
+button, input {
+  font: inherit; color: var(--text); background: var(--row); border: 1px solid var(--border);
+  border-radius: 8px; min-height: 44px; padding: 0 14px;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tab { background: transparent; border-color: transparent; color: var(--text-2); }
+.tab.active { color: var(--text); border-color: var(--border); background: var(--row); }
+.primary { border-color: var(--accent); color: var(--accent); }
+.pill { border-radius: 999px; min-height: 36px; }
+.pill.open { color: var(--accent); background: rgba(108, 178, 255, 0.1); border-color: var(--accent); }
+.pill.closed { color: var(--neutral); border-color: var(--neutral-border); background: transparent; padding: 8px 14px; }
+.content { max-width: 880px; margin: 24px auto; padding: 0 16px; }
+.center { max-width: 560px; margin: 15vh auto; padding: 0 16px; text-align: center; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; }
+.banner { margin: 12px 20px 0; padding: 10px 14px; border: 1px solid var(--amber); border-radius: 8px; color: var(--amber); }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.plain { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+h2 { margin-top: 0; }
+h3 { margin: 24px 0 10px; font-size: 1rem; color: var(--text-2); }

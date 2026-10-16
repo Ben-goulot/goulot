@@ -1,0 +1,206 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "event_understanding", "commodity_impacts",
+    "hypotheses", "confidence", "data_gaps", "monitoring_triggers",
+    "assessment_status", "headline", "summary", "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "event_id": { "type": "string" },
+    "event_understanding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "event_status", "facts", "contradictions", "affected_entities"],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "labor_action", "armed_conflict", "civil_unrest", "extreme_weather",
+            "natural_disaster", "industrial_outage", "maritime_disruption",
+            "infrastructure_failure", "sanctions_trade_policy", "export_restriction",
+            "regulatory_change", "cyber_incident", "health_biosecurity", "other"
+          ]
+        },
+        "event_status": {
+          "type": "string",
+          "enum": ["threatened", "announced", "ongoing", "escalating", "de_escalating", "resolved", "unclear"]
+        },
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/fact" } },
+        "contradictions": { "type": "array", "items": { "$ref": "#/$defs/contradiction" } },
+        "affected_entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } }
+      }
+    },
+    "commodity_impacts": { "type": "array", "items": { "$ref": "#/$defs/commodity_impact" } },
+    "hypotheses": { "type": "array", "items": { "$ref": "#/$defs/hypothesis" } },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_quality", "mapping_quality", "analysis_confidence", "main_uncertainties"],
+      "properties": {
+        "evidence_quality": { "type": "string", "enum": ["strong", "moderate", "weak"] },
+        "mapping_quality": { "type": "string", "enum": ["strong", "moderate", "weak"] },
+        "analysis_confidence": { "type": "number", "description": "Entre 0 et 1." },
+        "main_uncertainties": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "data_gaps": { "type": "array", "items": { "$ref": "#/$defs/data_gap" } },
+    "monitoring_triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } },
+    "assessment_status": {
+      "type": "string",
+      "enum": ["impact_assessed", "no_material_impact", "insufficient_information", "out_of_scope"]
+    },
+    "headline": { "type": "string" },
+    "summary": { "type": "string" },
+    "injection_suspected": { "type": "boolean" }
+  },
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "source_ids"],
+      "properties": {
+        "statement": { "type": "string" },
+        "source_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "source_ids"],
+      "properties": {
+        "description": { "type": "string" },
+        "source_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_id", "name", "entity_type", "mapping_quality"],
+      "properties": {
+        "reference_id": { "type": "string", "description": "Identifiant R… du référentiel, ou unmapped." },
+        "name": { "type": "string" },
+        "entity_type": {
+          "type": "string",
+          "enum": [
+            "mine", "smelter_refinery", "processing_plant", "oil_gas_field", "terminal_port",
+            "pipeline", "chokepoint", "shipping_route", "country", "company", "other"
+          ]
+        },
+        "mapping_quality": { "type": "string", "enum": ["strong", "moderate", "weak"] }
+      }
+    },
+    "commodity_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commodity", "impact_channel", "transmission_chain", "supply_at_risk",
+        "expected_duration_days", "buffers", "net_balance_effect", "priced_in",
+        "severity", "severity_rationale", "second_order_effects"
+      ],
+      "properties": {
+        "commodity": { "type": "string", "description": "Code de tracked_commodities." },
+        "impact_channel": {
+          "type": "string",
+          "enum": [
+            "supply_disruption", "logistics_disruption", "demand_shock", "trade_policy",
+            "input_cost", "inventory_change", "substitution", "risk_premium", "other"
+          ]
+        },
+        "transmission_chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Étapes du mécanisme, de l'événement jusqu'au prix, une par élément."
+        },
+        "supply_at_risk": { "$ref": "#/$defs/supply_at_risk" },
+        "expected_duration_days": { "$ref": "#/$defs/duration" },
+        "buffers": { "type": "array", "items": { "type": "string" } },
+        "net_balance_effect": { "type": "string", "enum": ["tightening", "loosening", "neutral", "ambiguous"] },
+        "priced_in": { "type": "string", "enum": ["not_priced", "partially_priced", "largely_priced", "unknown"] },
+        "severity": { "type": "integer", "enum": [0, 1, 2, 3, 4] },
+        "severity_rationale": { "type": "string" },
+        "second_order_effects": { "type": "array", "items": { "$ref": "#/$defs/second_order" } }
+      }
+    },
+    "supply_at_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["volume", "unit", "global_share_pct", "basis", "reference_ids"],
+      "properties": {
+        "volume": { "type": ["number", "null"] },
+        "unit": { "type": "string" },
+        "global_share_pct": { "type": ["number", "null"] },
+        "basis": { "type": "string", "enum": ["reference_data", "source_reported", "analyst_estimate", "unknown"] },
+        "reference_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "high", "basis"],
+      "properties": {
+        "low": { "type": ["number", "null"] },
+        "high": { "type": ["number", "null"] },
+        "basis": { "type": "string" }
+      }
+    },
+    "second_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "effect", "direction"],
+      "properties": {
+        "target": { "type": "string" },
+        "effect": { "type": "string" },
+        "direction": { "type": "string", "enum": ["up", "down", "ambiguous"] }
+      }
+    },
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hypothesis_id", "instrument_id", "metric", "direction", "horizon",
+        "probability", "move_p10", "move_p90", "move_unit", "rationale", "invalidation"
+      ],
+      "properties": {
+        "hypothesis_id": { "type": "string" },
+        "instrument_id": { "type": "string", "description": "Identifiant exact d'un instrument de market_context." },
+        "metric": {
+          "type": "string",
+          "enum": ["outright_price", "calendar_spread", "location_spread", "physical_premium", "freight_rate", "implied_volatility"]
+        },
+        "direction": { "type": "string", "enum": ["up", "down"] },
+        "horizon": { "type": "string", "enum": ["1d", "5d", "20d"] },
+        "probability": {
+          "type": "number",
+          "description": "Entre 0 et 1. Probabilité d'un mouvement anormal dans le sens annoncé dépassant le seuil de matérialité."
+        },
+        "move_p10": { "type": "number", "description": "Borne basse de l'intervalle à 80 % du mouvement anormal signé." },
+        "move_p90": { "type": "number", "description": "Borne haute de l'intervalle à 80 % du mouvement anormal signé." },
+        "move_unit": { "type": "string", "enum": ["percent", "price_units"] },
+        "rationale": { "type": "string" },
+        "invalidation": { "type": "string" }
+      }
+    },
+    "data_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missing", "effect_on_assessment"],
+      "properties": {
+        "missing": { "type": "string" },
+        "effect_on_assessment": { "type": "string" }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["indicator", "signal", "implication"],
+      "properties": {
+        "indicator": { "type": "string" },
+        "signal": { "type": "string" },
+        "implication": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,67 @@
+[project]
+name = "goulot"
+version = "0.1.0"
+description = "Veille personnelle des goulots d'approvisionnement"
+requires-python = ">=3.14"
+dependencies = [
+    "anthropic",
+    "apscheduler",
+    "cryptography",
+    "defusedxml",
+    "fastapi",
+    "httpx2",
+    "jsonschema",
+    "keyring",
+    "pydantic",
+    "pyyaml",
+    "uvicorn",
+    "webauthn",
+]
+
+[dependency-groups]
+dev = [
+    "bandit",
+    "httpx",
+    "mypy",
+    "pip-audit",
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+extend-exclude = ["frontend", "_to_delete"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # French typography (guillemets, apostrophes) in strings and comments
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S104", "S105", "S106", "S108", "S311", "E501"]
+"schemas/check_schemas.py" = ["S101"]
+
+[tool.mypy]
+python_version = "3.14"
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["goulot.security.*", "goulot.net.*", "goulot.llm.*", "goulot.updater.*"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["defusedxml.*", "apscheduler.*", "yaml"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers -p no:cacheprovider"
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "frontend"]

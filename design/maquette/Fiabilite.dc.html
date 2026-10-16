@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Fiabilité</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 8px 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg>
+<span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span>
+</div>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Marchés</a>
+<a href="Chaine.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Chaîne</a>
+<a href="Fiabilite.dc.html" aria-current="page" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; background: #1A212C; color: #E8EBF0; text-decoration: none; font-weight: 600">Fiabilité</a>
+<a href="Conformite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #263040; color: #A3ADBB; font-size: 12px; white-space: nowrap">Dernière collecte : il y a 42 min</span>
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</div>
+</header>
+
+<main style="width: 100%; box-sizing: border-box; padding: 16px 24px 32px; display: flex; flex-direction: column; gap: 16px">
+
+<section aria-label="Présentation" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px">
+<div style="display: flex; flex-direction: column; gap: 6px; max-width: 760px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">Fiabilité de Goulot</h1>
+<p style="margin: 0; color: #A3ADBB; text-wrap: pretty">Chaque conseil est inscrit au registre le jour où il est donné, puis comparé à ce qui s'est vraiment passé. Rien n'est réécrit après coup : les réussites et les erreurs restent visibles.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #3CCB91; color: #3CCB91; font-size: 12.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"></path><path d="M9 12l2 2 4-4"></path></svg>Registre intact · 214 entrées · empreinte publiée le 28 sept.</span>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Exporter l'historique</button>
+</div>
+</section>
+
+<div role="group" aria-label="Portée des indicateurs" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<div style="display: flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid #263040; background: #0E1218">
+<button type="button" aria-pressed="true" style="display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 7px; border: none; background: #1A212C; color: #E8EBF0; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer">Marché</button>
+<button type="button" aria-pressed="false" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 7px; border: none; background: transparent; color: #A3ADBB; font: inherit; font-size: 13.5px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Ma matière</button>
+</div>
+<span style="font-size: 12.5px; color: #A3ADBB">Marché : prix publics seuls. Ma matière : tes réponses, devis et signaux, coffre ouvert. Chaque indicateur indique aussi la part des conseils résolus.</span>
+</div>
+
+<section aria-label="Indicateurs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Conseils confirmés</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500">{{ kpi.confirmed }}</span>
+<span style="font-size: 12px; color: #A3ADBB">{{ kpi.confirmedSub }}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Avance moyenne</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500">{{ kpi.lead }}</span>
+<span style="font-size: 12px; color: #A3ADBB">avant que la hausse franchisse ton seuil</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Fourchettes justes</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500">{{ kpi.bands }}</span>
+<span role="img" aria-label="{{ kpi.bandsAria }}" style="position: relative; display: block; height: 6px; margin-top: 4px; border-radius: 999px; background: #1E2631"><span style="{{ kpi.bandsFill }}"></span><span style="position: absolute; left: 80%; top: -4px; width: 2px; height: 14px; background: #E8EBF0"></span></span>
+<span style="font-size: 12px; color: #A3ADBB">{{ kpi.bandsSub }}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Fausses alertes</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500; color: #FF7B7B">{{ kpi.falseAlarms }}</span>
+<span style="font-size: 12px; color: #A3ADBB">alerte sans hausse ni tension ensuite</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Hausses manquées</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500; color: #FF7B7B">{{ kpi.missed }}</span>
+<span style="font-size: 12px; color: #A3ADBB">hausse de 5 % ou plus non signalée</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #121720; border: 1px dashed #3A4656; border-radius: 10px">
+<span style="font-size: 12px; color: #A3ADBB">Gain estimé sur tes achats</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 26px; font-weight: 500; color: #A3ADBB">—</span>
+<a href="#achats" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 24px; font-size: 12.5px">Déclarer mes achats pour l'estimer</a>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px">
+
+<section aria-label="Prix réel et conseils datés" style="flex: 2 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 12px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">{{ sel.title }}</h2>
+<span style="font-size: 12px; color: #A3ADBB">{{ sel.subtitle }}</span>
+</div>
+<div role="group" aria-label="Matière" style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+<button type="button" onClick="{{ t.pick }}" aria-pressed="{{ t.pressed }}" style="{{ t.style }}">{{ t.label }}</button>
+</sc-for>
+</div>
+</div>
+<svg viewBox="0 0 860 280" role="img" aria-label="{{ sel.chartLabel }}" style="display: block; width: 100%; height: auto">
+<sc-for list="{{ chart.ticks }}" as="tk" hint-placeholder-count="4">
+<line x1="8" x2="788" y1="{{ tk.y }}" y2="{{ tk.y }}" style="stroke: #222A36; stroke-width: 1"></line>
+<text x="796" y="{{ tk.ty }}" style="fill: #A3ADBB; font-size: 12px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ tk.label }}</text>
+</sc-for>
+<sc-for list="{{ chart.fans }}" as="f" hint-placeholder-count="2">
+<path d="{{ f.d }}" onClick="{{ f.pick }}" style="{{ f.style }}"></path>
+<path d="{{ f.mid }}" style="{{ f.midStyle }}"></path>
+</sc-for>
+<path d="{{ chart.line }}" style="fill: none; stroke: #6CB2FF; stroke-width: 2; stroke-linejoin: round"></path>
+<sc-for list="{{ chart.ribbon }}" as="rb" hint-placeholder-count="3">
+<rect x="{{ rb.x }}" y="236" width="{{ rb.w }}" height="10" rx="2" style="{{ rb.style }}"></rect>
+</sc-for>
+<sc-for list="{{ chart.missed }}" as="ms" hint-placeholder-count="1">
+<circle cx="{{ ms.x }}" cy="{{ ms.y }}" r="11" style="fill: none; stroke: #FF7B7B; stroke-width: 2"></circle>
+<text x="{{ ms.tx }}" y="{{ ms.ty }}" style="fill: #FF7B7B; font-size: 12px; font-weight: 600">hausse non signalée</text>
+</sc-for>
+<sc-for list="{{ chart.outcomes }}" as="o" hint-placeholder-count="2">
+<circle cx="{{ o.x }}" cy="{{ o.y }}" r="9" onClick="{{ o.pick }}" style="{{ o.style }}"></circle>
+<path d="{{ o.icon }}" style="fill: none; stroke: #0B0E13; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none"></path>
+</sc-for>
+<sc-for list="{{ chart.pendings }}" as="pd" hint-placeholder-count="1">
+<text x="{{ pd.x }}" y="{{ pd.y }}" text-anchor="end" style="fill: #A3ADBB; font-size: 12px">en cours</text>
+</sc-for>
+<sc-for list="{{ chart.diamonds }}" as="dm" hint-placeholder-count="3">
+<path d="{{ dm.d }}" onClick="{{ dm.pick }}" style="{{ dm.style }}"></path>
+<text x="{{ dm.x }}" y="{{ dm.ly }}" text-anchor="middle" style="fill: #A3ADBB; font-size: 11.5px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ dm.label }}</text>
+</sc-for>
+<sc-for list="{{ chart.months }}" as="mo" hint-placeholder-count="6">
+<text x="{{ mo.x }}" y="270" text-anchor="middle" style="fill: #A3ADBB; font-size: 12px">{{ mo.label }}</text>
+</sc-for>
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: #A3ADBB">
+<span style="display: inline-flex; align-items: center; gap: 6px"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 0L12 6L6 12L0 6Z" style="fill: #F5B841"></path></svg>conseil émis</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><path d="M0 6L22 0L22 12Z" style="fill: #F5B841; fill-opacity: 0.25"></path></svg>fourchette annoncée, 20 jours de bourse</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3CCB91"></span>fourchette juste</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #FF7B7B"></span>fourchette manquée</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #FF7B7B; box-sizing: border-box"></span>hausse non signalée</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 18px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #3A4656 0 33%, #F5B841 33% 66%, #FF8A4C 66%)"></span>verdict en vigueur</span>
+</div>
+</section>
+
+<section aria-label="Dossier du conseil sélectionné" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Dossier du conseil</h2>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: #A3ADBB">{{ pick.num }}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 18px; font-weight: 600">{{ pick.material }}</span>
+<span style="font-size: 13px; color: #A3ADBB">émis le {{ pick.date }}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-if value="{{ pick.isAnt }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: #FF8A4C; color: #14171C; font-size: 12.5px; font-weight: 600">Anticiper stock</span></sc-if>
+<sc-if value="{{ pick.isPot }}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12.5px; font-weight: 500">Problème potentiel à {{ pick.weeks }} sem.</span></sc-if>
+<sc-if value="{{ pick.isRas }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 12.5px">Rien à signaler</span></sc-if>
+<sc-if value="{{ pick.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #3CCB91; color: #3CCB91; font-size: 12.5px">Confirmé</span></sc-if>
+<sc-if value="{{ pick.isFalse }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #FF7B7B; color: #FF7B7B; font-size: 12.5px">Fausse alerte</span></sc-if>
+<sc-if value="{{ pick.isMissed }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: rgba(255, 123, 123, 0.14); border: 1px solid #FF7B7B; color: #FF7B7B; font-size: 12.5px">Hausse manquée</span></sc-if>
+<sc-if value="{{ pick.isPending }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #3A4656; color: #A3ADBB; font-size: 12.5px">En cours</span></sc-if>
+</div>
+<div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 13px">
+<span style="color: #A3ADBB">Annoncé</span><span>{{ pick.announced }}</span>
+<span style="color: #A3ADBB">Fenêtre</span><span>{{ pick.window }}</span>
+<span style="color: #A3ADBB">Constaté</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ pick.observed }}</span>
+<span style="color: #A3ADBB">Fourchette</span><span>{{ pick.band }}</span>
+<span style="color: #A3ADBB">Avance</span><span>{{ pick.lead }}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h3 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #A3ADBB">Ce que Goulot savait ce jour-là</h3>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px">
+<sc-for list="{{ pick.known }}" as="k" hint-placeholder-count="2"><li>{{ k.text }}</li></sc-for>
+</ul>
+</div>
+<sc-if value="{{ pick.hasLesson }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; padding: 10px 12px; border-radius: 8px; background: #161C25; border: 1px solid #263040; font-size: 13px; text-wrap: pretty">{{ pick.lesson }}</p></sc-if>
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid #263040">
+<span style="font-size: 12px; color: #A3ADBB">Empreinte au registre</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px">{{ pick.hash }}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg>Rejouer cette journée</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; font-size: 13px; cursor: pointer">Voir les sources</button>
+</div>
+</section>
+
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 16px">
+
+<section aria-label="Registre des conseils" style="flex: 2 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Registre des conseils</h2>
+<span style="font-size: 12px; color: #A3ADBB">{{ ledgerCount }} · clique une ligne pour l'afficher sur le graphique</span>
+</div>
+<div style="overflow-x: auto; border: 1px solid #1E2631; border-radius: 8px">
+<div style="min-width: 980px; display: flex; flex-direction: column">
+<div aria-hidden="true" style="display: grid; grid-template-columns: 60px 72px 160px 170px minmax(200px, 1.4fr) 84px minmax(170px, 1fr) 128px; gap: 12px; padding: 10px 14px; background: #0F131A; border-bottom: 1px solid #1E2631; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #A3ADBB">
+<span>N°</span><span>Date</span><span>Matière</span><span>Conseil</span><span>Annoncé</span><span>Échéance</span><span>Constaté</span><span>Résultat</span>
+</div>
+<sc-for list="{{ ledger }}" as="r" hint-placeholder-count="8">
+<button type="button" onClick="{{ r.pick }}" aria-pressed="{{ r.pressed }}" style="{{ r.rowStyle }}">
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #A3ADBB">{{ r.num }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ r.date }}</span>
+<span style="font-weight: 600">{{ r.material }}</span>
+<span>
+<sc-if value="{{ r.isAnt }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; background: #FF8A4C; color: #14171C; font-size: 11.5px; font-weight: 600; white-space: nowrap">Anticiper stock</span></sc-if>
+<sc-if value="{{ r.isPot }}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 11.5px; white-space: nowrap">Problème à {{ r.weeks }} sem.</span></sc-if>
+<sc-if value="{{ r.isRas }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 11.5px; white-space: nowrap">Rien à signaler</span></sc-if>
+</span>
+<span style="color: #E8EBF0">{{ r.announced }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #A3ADBB">{{ r.deadline }}</span>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ r.observed }}</span>
+<span>
+<sc-if value="{{ r.isConfirmed }}" hint-placeholder-val="{{ true }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid #3CCB91; color: #3CCB91; font-size: 11.5px; white-space: nowrap">Confirmé</span></sc-if>
+<sc-if value="{{ r.isFalse }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid #FF7B7B; color: #FF7B7B; font-size: 11.5px; white-space: nowrap">Fausse alerte</span></sc-if>
+<sc-if value="{{ r.isMissed }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; background: rgba(255, 123, 123, 0.14); border: 1px solid #FF7B7B; color: #FF7B7B; font-size: 11.5px; white-space: nowrap">Hausse manquée</span></sc-if>
+<sc-if value="{{ r.isPending }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid #3A4656; color: #A3ADBB; font-size: 11.5px; white-space: nowrap">En cours</span></sc-if>
+</span>
+</button>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section aria-label="Calibration" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Quand Goulot annonce 60 %, est-ce 60 % ?</h2>
+<span style="font-size: 12px; color: #A3ADBB">{{ calib.note }}</span>
+</div>
+<svg viewBox="0 0 300 240" role="img" aria-label="Diagramme de calibration : probabilité annoncée contre fréquence constatée" style="display: block; width: 100%; max-width: 420px; height: auto; opacity: 0.8">
+<line x1="40" y1="200" x2="270" y2="200" style="stroke: #3A4656; stroke-width: 1"></line>
+<line x1="40" y1="200" x2="40" y2="20" style="stroke: #3A4656; stroke-width: 1"></line>
+<line x1="40" y1="200" x2="270" y2="20" style="stroke: #5C6B7E; stroke-width: 1; stroke-dasharray: 4 4"></line>
+<text x="40" y="216" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">0</text>
+<text x="155" y="216" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">50 %</text>
+<text x="270" y="216" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">100 %</text>
+<text x="32" y="114" text-anchor="end" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">50 %</text>
+<text x="32" y="24" text-anchor="end" style="fill: #A3ADBB; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">100 %</text>
+<text x="155" y="234" text-anchor="middle" style="fill: #A3ADBB; font-size: 11px">probabilité annoncée</text>
+<text x="226" y="44" text-anchor="middle" style="fill: #5C6B7E; font-size: 10.5px">calibration parfaite</text>
+<sc-for list="{{ calib.points }}" as="cp" hint-placeholder-count="3">
+<circle cx="{{ cp.x }}" cy="{{ cp.y }}" r="{{ cp.r }}" style="fill: #6CB2FF; fill-opacity: 0.35; stroke: #6CB2FF; stroke-width: 1.5"></circle>
+<text x="{{ cp.x }}" y="{{ cp.ty }}" text-anchor="middle" style="fill: #E8EBF0; font-size: 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ cp.label }}</text>
+</sc-for>
+</svg>
+<div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px">
+<span style="color: #A3ADBB">Score de Brier</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ calib.brier }}</span>
+<span style="color: #A3ADBB">Taux de base</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">{{ calib.ref }}</span>
+</div>
+<p style="margin: 0; font-size: 13px; text-wrap: pretty">{{ calib.verdict }}</p>
+</section>
+
+</div>
+
+<section aria-label="Comment c'est compté" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Comment c'est compté</h2>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #E8EBF0">
+<li>Une fourchette est juste si la variation constatée, 20 jours de bourse plus tard, tombe dedans. Elle couvre 80 % des cas annoncés : la cible est donc 80 % de fourchettes justes.</li>
+<li>« Anticiper stock » ou « Problème à X semaines » est confirmé si la hausse atteint ton seuil (5 %) dans la fenêtre annoncée, à 2 semaines près, ou si tu signales une tension chez ton fournisseur.</li>
+<li>« Rien à signaler » est confirmé si aucune hausse de 5 % n'arrive dans les 8 semaines ; sinon, c'est une hausse manquée, affichée comme telle.</li>
+<li>Chaque entrée est chaînée à la précédente par une empreinte. Une modification ou une suppression se voit aussitôt.</li>
+</ul>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1720}}'>
+class Component extends DCLogic {
+  fmt(v, dec) {
+    var neg = v < 0;
+    var s = Math.abs(v).toFixed(dec || 0).split(".");
+    var ent = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return (neg ? "−" : "") + ent + (s[1] ? "," + s[1] : "");
+  }
+  pct(x, dec) {
+    var v = x * 100;
+    var s = Math.abs(v).toFixed(dec === undefined ? 1 : dec).replace(".", ",");
+    return (v > 0.05 ? "+" : v < -0.05 ? "−" : "±") + s + " %";
+  }
+  niceStep(x) {
+    var p = Math.pow(10, Math.floor(Math.log10(x)));
+    var f = x / p;
+    return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+  }
+  series(m) {
+    var n = 130, out = [];
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1);
+      var v = 1 + m.trend * (t - 0.5) + m.vol * (0.55 * Math.sin(i / 6.3 + m.seed) + 0.3 * Math.sin(i / 2.7 + m.seed * 1.7) + 0.15 * Math.sin(i / 17 + m.seed * 0.6));
+      if (m.bumpAt && i >= m.bumpAt) { v = v * (1 + m.bump * Math.min(1, (i - m.bumpAt) / 8)); }
+      out.push(v);
+    }
+    if (m.steps) { for (var j = 0; j < n; j++) { out[j] = out[Math.floor(j / 22) * 22]; } }
+    var k = m.price / out[n - 1];
+    return out.map(function (x) { return x * k; });
+  }
+  dateOf(i) {
+    var mois = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+    var d = new Date(Date.UTC(2026, 3, 7) + Math.round(i * 180 / 129) * 86400000);
+    return d.getUTCDate() + " " + mois[d.getUTCMonth()];
+  }
+  mats() {
+    return [
+      { id: "acn", name: "Acrylonitrile", short: "Acrylonitrile", unit: "$/t", price: 1412, dec: 0, seed: 1.2, trend: 0.10, vol: 0.025, bumpAt: 106, bump: 0.05, bands: [7, 10], priceType: "indice : propylène, ammoniac et prix douaniers" },
+      { id: "li", name: "Carbonate de lithium", short: "Lithium", unit: "¥/t", price: 78450, dec: 0, seed: 3.4, trend: -0.06, vol: 0.04, bumpAt: 98, bump: 0.06, bands: [5, 8], priceType: "futures, bourse de Guangzhou" },
+      { id: "ga", name: "Gallium", short: "Gallium", unit: "$/kg", price: 412, dec: 0, seed: 5.1, trend: 0.14, vol: 0.012, steps: true, bands: [2, 3], priceType: "prix d'agence, mensuel" },
+    ];
+  }
+  entries() {
+    return [
+      { n: 12, m: "acn", i: 10, v: "ras", hash: "213a df0f … edf4", known: ["Aucun événement sur la chaîne", "Propylène et ammoniac dans leur fourchette habituelle"] },
+      { n: 58, m: "li", i: 40, v: "pot", w: 4, band: [0.02, 0.08], p: 0.55, hash: "7f05 4670 … 8d88", known: ["Contrôle des permis miniers annoncé au Jiangxi", "Stocks des convertisseurs estimés à 6 semaines"], lesson: "Le contrôle a été reporté : l'offre n'a pas bougé. Goulot pèse désormais moins une annonce sans date d'application." },
+      { n: 83, m: "li", i: 50, v: "ras", hash: "f488 fbb1 … 3d41", known: ["Rumeur de fermeture d'une mine, une seule source peu fiable", "Aucun événement confirmé"], lesson: "La rumeur était juste : une agence l'a reprise 9 jours plus tard. Il manquait une seconde source fiable pour confirmer à temps." },
+      { n: 131, m: "li", i: 84, v: "ant", w: 4, band: [0.04, 0.12], p: 0.65, hash: "ee05 fa75 … f4e4", known: ["Fin de permis de deux mines confirmée par l'autorité locale", "Deux agences et un avis officiel"] },
+      { n: 138, m: "ga", i: 87, v: "pot", w: 10, band: [0.05, 0.15], p: 0.35, hash: "d73e ef94 … ae5a", known: ["Projet de durcissement des licences d'exportation, en consultation"] },
+      { n: 149, m: "acn", i: 92, v: "pot", w: 5, band: [0.03, 0.09], p: 0.6, hash: "3fe4 4319 … 9048", known: ["Basses eaux du Rhin, barges chargées à 40 %", "Maintenance annoncée à Ulsan pour novembre"] },
+      { n: 201, m: "acn", i: 118, v: "ant", w: 5, band: [0.03, 0.09], p: 0.6, hash: "5825 0d29 … 9fb8", known: ["Arrêt imprévu d'un vapocraqueur, côte du Golfe", "Basses eaux du Rhin", "Maintenance à Ulsan en novembre"] },
+      { n: 212, m: "li", i: 123, v: "pot", w: 6, band: [0.02, 0.07], p: 0.45, hash: "f97f 1999 … cd28", known: ["Fin de permis de deux mines de lépidolite à la mi-novembre", "Cyclone près de Port Hedland, signal faible"] }
+    ];
+  }
+  evaluate(e, s) {
+    var N = 130, TH = 0.05, p0 = s[e.i], last = N - 1, j;
+    var r = { cross: -1, maxRise: 0, i1: e.i + 20, change: null, bandHit: null };
+    var end = e.v === "ras" ? e.i + 40 : e.i + 5 * (Math.max(e.w || 4, 4) + 2);
+    r.end = end;
+    for (j = e.i + 1; j <= Math.min(end, last); j++) {
+      var rise = s[j] / p0 - 1;
+      if (rise > r.maxRise) { r.maxRise = rise; }
+      if (r.cross < 0 && rise >= TH) { r.cross = j; }
+    }
+    if (e.v === "ras") {
+      r.status = r.cross >= 0 ? "missed" : (end <= last ? "confirmed" : "pending");
+    } else {
+      r.status = r.cross >= 0 ? "confirmed" : (end <= last ? "false" : "pending");
+    }
+    if (e.band && r.i1 <= last) {
+      r.change = s[r.i1] / p0 - 1;
+      r.bandHit = r.change >= e.band[0] && r.change <= e.band[1];
+    }
+    r.lead = (e.v !== "ras" && r.cross >= 0) ? (r.cross - e.i) / 5 : null;
+    return r;
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var mats = this.mats();
+    var byId = {};
+    mats.forEach(function (m) { byId[m.id] = m; m.s = self.series(m); });
+    var all = this.entries().map(function (e) { e.r = self.evaluate(e, byId[e.m].s); return e; });
+    var pickN = st.pick || 149;
+    var picked = all.filter(function (e) { return e.n === pickN; })[0] || all[0];
+    var selId = st.sel || picked.m;
+    var m = byId[selId];
+    var COL = { ant: "#FF8A4C", pot: "#F5B841", ras: "#B8C2CF" };
+    var RIB = { ant: "#FF8A4C", pot: "#F5B841", ras: "#3A4656" };
+    var self2 = this;
+
+    var resolved = all.filter(function (e) { return e.r.status !== "pending"; });
+    var conf = resolved.filter(function (e) { return e.r.status === "confirmed"; });
+    var leads = all.filter(function (e) { return e.r.lead !== null; }).map(function (e) { return e.r.lead; });
+    var meanLead = leads.length ? leads.reduce(function (a, b) { return a + b; }, 0) / leads.length : 0;
+    var bh = 0, bt = 0;
+    mats.forEach(function (x) { bh += x.bands[0]; bt += x.bands[1]; });
+    var bandRate = bt ? bh / bt : 0;
+
+    var s = m.s, n = s.length, X0 = 8, W = 780, Y0 = 24, HH = 200;
+    var mine = all.filter(function (e) { return e.m === selId; }).sort(function (a, b) { return a.i - b.i; });
+    var lo = Math.min.apply(null, s), hi = Math.max.apply(null, s);
+    mine.forEach(function (e) {
+      if (e.band) {
+        var p0 = s[e.i];
+        lo = Math.min(lo, p0 * (1 + e.band[0]));
+        hi = Math.max(hi, p0 * (1 + e.band[1]));
+      }
+    });
+    var pad = (hi - lo) * 0.08 || hi * 0.02;
+    lo = lo - pad; hi = hi + pad;
+    var step = this.niceStep((hi - lo) / 4);
+    var ticks = [];
+    for (var v = Math.ceil(lo / step) * step; v <= hi; v += step) { ticks.push(v); }
+    var X = function (i) { return X0 + i / (n - 1) * W; };
+    var Y = function (val) { return Y0 + (hi - val) / (hi - lo) * HH; };
+    var line = s.map(function (val, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(val).toFixed(1); }).join("");
+    var months = [["mai", 0.148], ["juin", 0.317], ["juil.", 0.481], ["août", 0.65], ["sept.", 0.82], ["oct.", 0.984]].map(function (p) { return { label: p[0], x: (X0 + p[1] * W).toFixed(1) }; });
+    var pickFn = function (e) { return function () { self2.setState({ pick: e.n, sel: e.m }); }; };
+
+    var fans = [], outcomes = [], pendings = [], missed = [], diamonds = [], ribbon = [];
+    mine.forEach(function (e, k) {
+      var on = e.n === picked.n;
+      var p0 = s[e.i], x0 = X(e.i), y0 = Y(p0), c = COL[e.v];
+      if (e.band) {
+        var i1 = Math.min(e.r.i1, n - 1), frac = (i1 - e.i) / 20, x1 = X(i1);
+        var yH = Y(p0 * (1 + e.band[1] * frac)), yL = Y(p0 * (1 + e.band[0] * frac)), yM = Y(p0 * (1 + (e.band[0] + e.band[1]) / 2 * frac));
+        fans.push({
+          d: "M" + x0.toFixed(1) + " " + y0.toFixed(1) + "L" + x1.toFixed(1) + " " + yH.toFixed(1) + "L" + x1.toFixed(1) + " " + yL.toFixed(1) + "Z",
+          mid: "M" + x0.toFixed(1) + " " + y0.toFixed(1) + "L" + x1.toFixed(1) + " " + yM.toFixed(1),
+          style: "fill: " + c + "; fill-opacity: " + (on ? 0.32 : 0.16) + "; stroke: " + c + "; stroke-opacity: " + (on ? 0.9 : 0.45) + "; stroke-width: " + (on ? 1.5 : 1) + "; cursor: pointer",
+          midStyle: "fill: none; stroke: " + c + "; stroke-width: 1; stroke-dasharray: 3 3; opacity: " + (on ? 0.9 : 0.5),
+          pick: pickFn(e)
+        });
+        if (e.r.i1 <= n - 1) {
+          var hit = e.r.bandHit, ox = X(e.r.i1), oy = Y(s[e.r.i1]);
+          outcomes.push({
+            x: ox.toFixed(1), y: oy.toFixed(1),
+            style: "fill: " + (hit ? "#3CCB91" : "#FF7B7B") + "; stroke: #121720; stroke-width: 2; cursor: pointer",
+            icon: hit ? "M" + (ox - 4).toFixed(1) + " " + oy.toFixed(1) + "l3 3l5 -6" : "M" + (ox - 3.5).toFixed(1) + " " + (oy - 3.5).toFixed(1) + "l7 7M" + (ox + 3.5).toFixed(1) + " " + (oy - 3.5).toFixed(1) + "l-7 7",
+            pick: pickFn(e)
+          });
+        } else {
+          pendings.push({ x: (X(n - 1) - 4).toFixed(1), y: (Math.min(yL, yH) - 8).toFixed(1) });
+        }
+      }
+      if (e.r.status === "missed") {
+        var mx = X(e.r.cross), my = Y(s[e.r.cross]);
+        missed.push({ x: mx.toFixed(1), y: my.toFixed(1), tx: (mx + 16).toFixed(1), ty: (my - 12).toFixed(1) });
+      }
+      var size = on ? 9 : 7;
+      diamonds.push({
+        d: "M" + x0.toFixed(1) + " " + (y0 - size).toFixed(1) + "l" + size + " " + size + "l" + (-size) + " " + size + "l" + (-size) + " " + (-size) + "Z",
+        x: x0.toFixed(1), ly: (y0 - size - 6).toFixed(1), label: "#" + e.n,
+        style: "fill: " + c + "; stroke: #121720; stroke-width: 2; cursor: pointer",
+        pick: pickFn(e)
+      });
+      var next = mine[k + 1];
+      var endI = next ? next.i : n - 1;
+      ribbon.push({ x: X(e.i).toFixed(1), w: Math.max(2, X(endI) - X(e.i) - 2).toFixed(1), style: "fill: " + RIB[e.v] });
+    });
+
+    var tabBase = "min-height: 36px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 12.5px; cursor: pointer; ";
+    var tabs = mats.map(function (x) {
+      var on = x.id === selId;
+      return {
+        label: x.short, pressed: on,
+        style: tabBase + (on ? "border: 1px solid #6CB2FF; background: #1A212C; color: #E8EBF0; font-weight: 600" : "border: 1px solid #263040; background: transparent; color: #A3ADBB"),
+        pick: function () { var first = all.filter(function (e) { return e.m === x.id; }).sort(function (a, b) { return b.i - a.i; })[0]; self2.setState({ sel: x.id, pick: first ? first.n : pickN }); }
+      };
+    });
+
+    var announced = function (e) {
+      if (e.v === "ras") { return "pas de hausse de 5 % sous 8 semaines"; }
+      return "hausse de 5 % ou tension avant le " + self.dateOf(e.r.end);
+    };
+    var observed = function (e) {
+      var r = e.r;
+      if (r.status === "confirmed" && e.v !== "ras") { return "+5 % franchi le " + self.dateOf(r.cross); }
+      if (r.status === "missed") { return "+5 % franchi le " + self.dateOf(r.cross); }
+      if (r.status === "pending") { return "en cours · max " + self.pct(r.maxRise); }
+      return "max " + self.pct(r.maxRise);
+    };
+    var ROW = "display: grid; grid-template-columns: 60px 72px 160px 170px minmax(200px, 1.4fr) 84px minmax(170px, 1fr) 128px; gap: 12px; align-items: center; width: 100%; min-height: 48px; padding: 8px 14px; text-align: left; font: inherit; font-size: 13px; color: #E8EBF0; cursor: pointer; border: none; border-bottom: 1px solid #1E2631; ";
+    var ledger = all.slice().sort(function (a, b) { return b.n - a.n; }).map(function (e) {
+      var on = e.n === picked.n;
+      return {
+        num: "#" + e.n, date: self.dateOf(e.i), material: byId[e.m].name, weeks: e.w,
+        isAnt: e.v === "ant", isPot: e.v === "pot", isRas: e.v === "ras",
+        announced: announced(e), deadline: self.dateOf(e.r.end), observed: observed(e),
+        isConfirmed: e.r.status === "confirmed", isFalse: e.r.status === "false", isMissed: e.r.status === "missed", isPending: e.r.status === "pending",
+        pressed: on,
+        rowStyle: ROW + (on ? "background: #1A212C; box-shadow: inset 3px 0 0 #6CB2FF" : "background: transparent"),
+        pick: pickFn(e)
+      };
+    });
+
+    var pr = picked.r;
+    var bandTxt = "aucune (verdict sans hypothèse de prix)";
+    if (picked.band) {
+      var bTxt = self.pct(picked.band[0], 0) + " à " + self.pct(picked.band[1], 0) + " sous 20 jours, probabilité " + Math.round(picked.p * 100) + " %";
+      bandTxt = pr.change === null ? bTxt + " · échéance le " + self.dateOf(pr.i1) : bTxt + " · constaté " + self.pct(pr.change) + (pr.bandHit ? " : juste" : " : manquée");
+    }
+
+    var buckets = [{ p: 0.40, f: 0.36, n: 14 }, { p: 0.60, f: 0.55, n: 22 }, { p: 0.78, f: 0.70, n: 10 }];
+    var nTot = 0, sse = 0, hits = 0;
+    buckets.forEach(function (b) { nTot += b.n; sse += b.n * (b.f * Math.pow(1 - b.p, 2) + (1 - b.f) * Math.pow(b.p, 2)); hits += b.f * b.n; });
+    var brier = sse / nTot, base = hits / nTot, ref = base * (1 - base);
+    var cpoints = buckets.map(function (b) {
+      var x = 40 + b.p * 230, y = 200 - b.f * 180;
+      return { x: x.toFixed(1), y: y.toFixed(1), r: (5 + Math.sqrt(b.n) * 1.6).toFixed(1), ty: (y - 12 - Math.sqrt(b.n) * 1.6).toFixed(1), label: "n=" + b.n };
+    });
+
+    return {
+      kpi: {
+        confirmed: conf.length + " sur " + resolved.length,
+        confirmedSub: Math.round(conf.length / resolved.length * 100) + " % des conseils arrivés à échéance",
+        lead: this.fmt(meanLead, 1) + " sem.",
+        bands: bh + " sur " + bt,
+        bandsAria: Math.round(bandRate * 100) + " % de fourchettes justes, cible 80 %",
+        bandsFill: "position: absolute; left: 0; top: 0; height: 6px; border-radius: 999px; background: #6CB2FF; width: " + (bandRate * 100).toFixed(0) + "%",
+        bandsSub: Math.round(bandRate * 100) + " % · cible 80 %",
+        falseAlarms: resolved.filter(function (e) { return e.r.status === "false"; }).length,
+        missed: resolved.filter(function (e) { return e.r.status === "missed"; }).length
+      },
+      tabs: tabs,
+      sel: {
+        title: m.name + " : prix réel et conseils datés",
+        subtitle: m.priceType + " · 6 derniers mois · " + m.bands[0] + " fourchettes justes sur " + m.bands[1],
+        chartLabel: "Prix de " + m.name + " sur 6 mois avec les conseils de Goulot et leurs fourchettes, données fictives"
+      },
+      chart: {
+        line: line, months: months, fans: fans, outcomes: outcomes, pendings: pendings, missed: missed, diamonds: diamonds, ribbon: ribbon,
+        ticks: ticks.map(function (val) { return { y: Y(val).toFixed(1), ty: (Y(val) + 4).toFixed(1), label: self.fmt(val, m.dec) }; })
+      },
+      pick: {
+        num: "#" + picked.n, material: byId[picked.m].name, date: self.dateOf(picked.i), weeks: picked.w,
+        isAnt: picked.v === "ant", isPot: picked.v === "pot", isRas: picked.v === "ras",
+        isConfirmed: pr.status === "confirmed", isFalse: pr.status === "false", isMissed: pr.status === "missed", isPending: pr.status === "pending",
+        announced: announced(picked), window: "du " + self.dateOf(picked.i) + " au " + self.dateOf(pr.end),
+        observed: observed(picked), band: bandTxt,
+        lead: pr.lead !== null ? this.fmt(pr.lead, 1) + " semaines avant le franchissement du seuil" : "—",
+        known: picked.known.map(function (t) { return { text: t }; }),
+        hasLesson: !!picked.lesson, lesson: picked.lesson ? "Retour d'expérience : " + picked.lesson : "",
+        hash: picked.hash + " · chaînée à #" + (picked.n - 1)
+      },
+      ledger: ledger,
+      ledgerCount: all.length + " conseils sur 214 entrées",
+      calib: {
+        points: cpoints,
+        note: "Indicatif : " + nTot + " hypothèses résolues, il en faut 50 pour un diagramme fiable",
+        brier: brier.toFixed(3).replace(".", ","),
+        ref: ref.toFixed(3).replace(".", ","),
+        verdict: brier < ref ? "Un peu mieux que le taux de base : les probabilités annoncées apportent de l'information, avec une légère tendance à l'optimisme." : "Pas mieux que le taux de base pour l'instant : les probabilités annoncées sont à recalibrer."
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

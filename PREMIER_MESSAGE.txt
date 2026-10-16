@@ -1,0 +1,17 @@
+Copie tout le texte ci-dessous dans Claude Code, ouvert dans ce dossier.
+
+---
+
+Tu vas construire Goulot, une app de veille des goulots d'approvisionnement pour mes achats, en suivant CLAUDE.md et les documents du dossier docs/.
+
+1. Lis CLAUDE.md, docs/SECURITY.md, docs/SPEC.md, docs/UPDATES.md et docs/DECISIONS.md.
+2. Vérifie dans la documentation officielle à jour les paramètres de l'API Claude que nous utilisons (noms des modèles, sorties structurées, Batch, outil de recherche web, cache de prompt) et les points d'accès de config/sources.example.yaml. Note les écarts dans docs/DECISIONS.md.
+3. Vérifie que ton bac à sable est actif et ce qui est installé sur mon Mac (version de macOS, processeur, uv, Node.js, git, gh), puis dis-moi en une liste courte ce qu'il faut installer.
+4. Présente-moi le plan de la phase 1 (fondations sécurisées) en 10 lignes au plus, puis réalise-la.
+5. À la fin de chaque phase : lance tous les tests, dont tests/security, résume le résultat en 5 lignes, et attends mon feu vert avant la phase suivante.
+
+Règles :
+- Ne me demande jamais de coller une clé ou un mot de passe dans la conversation : passe par `goulot setup`, en saisie masquée, avec enregistrement dans le trousseau macOS.
+- Ne me demande jamais ma clé de secours dans la conversation : elle s'affiche et se saisit seulement dans le Terminal (`goulot setup`, `goulot vault recover`).
+- Demande-moi avant de créer le dépôt GitHub (dis-moi en une phrase pourquoi tu le recommandes public), de pousser du code, d'installer un LaunchAgent, d'ajouter une dépendance hors de la liste prévue, d'élargir ton bac à sable ou de dépenser plus de 1 $ d'API pendant un test.
+- Je ne suis pas développeur : quand tu as besoin de moi, explique en une phrase simple ce que tu fais et ce que j'ai à faire.

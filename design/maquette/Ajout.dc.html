@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Ajouter une matière</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 8px 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg>
+<span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span>
+</div>
+<nav aria-label="Navigation principale" style="display: flex; flex-wrap: wrap; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Marchés</a>
+<a href="Chaine.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Chaîne</a>
+<a href="Fiabilite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Fiabilité</a>
+<a href="Conformite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<span style="margin-left: auto; display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</header>
+
+<main style="width: 100%; max-width: 880px; margin: 0 auto; box-sizing: border-box; padding: 24px 24px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<a href="Main.dc.html" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #A3ADBB; text-decoration: none; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>Retour aux marchés</a>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Ajouter une matière</h1>
+<p style="margin: 0; color: #A3ADBB; max-width: 620px; text-wrap: pretty">Tape un nom ou un numéro CAS. L'app identifie la substance, puis reconstruit sa chaîne d'approvisionnement en quelques minutes.</p>
+</div>
+
+<form style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px">
+<div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 6px">
+<label for="recherche-matiere" style="font-size: 13px; color: #A3ADBB">Nom ou numéro CAS</label>
+<input id="recherche-matiere" type="search" value="107-13-1" style="min-height: 48px; padding: 0 14px; border-radius: 8px; border: 1px solid #6CB2FF; background: #121720; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 16px">
+</div>
+<button type="submit" style="min-height: 48px; padding: 0 20px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Rechercher</button>
+</form>
+
+<section aria-label="Substance identifiée" style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Acrylonitrile</h2>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; color: #A3ADBB">C₃H₃N</span>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid #3CCB91; color: #3CCB91; font-size: 12px">Identifiée</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px 24px; font-size: 13px">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Numéro CAS</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">107-13-1</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Code douanier (nomenclature combinée)</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">2926 10 00</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Synonymes</span><span>2-propènenitrile, cyanure de vinyle</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #A3ADBB">Sources</span><span>PubChem, ECICS</span></div>
+</div>
+<a href="#autres-substances" style="align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; font-size: 13px">Ce n'est pas la bonne substance ? Voir les autres résultats</a>
+</section>
+
+<section aria-label="Reconstruction de la chaîne" style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Reconstruction de la chaîne</h2>
+<span style="font-size: 13px; color: #A3ADBB">environ 3 min · coût estimé ≈ 1,40 $</span>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+<li style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3CCB91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6"></path></svg>
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">Identifier <span style="font-weight: 400; color: #3CCB91">· fait</span></span><span style="color: #A3ADBB; font-size: 13px">Fiche PubChem et code douanier ECICS</span></span>
+</li>
+<li style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3CCB91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6"></path></svg>
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">Esquisser <span style="font-weight: 400; color: #3CCB91">· fait</span></span><span style="color: #A3ADBB; font-size: 13px">24 maillons proposés sur trois niveaux en amont, dont 2 coproduits</span></span>
+</li>
+<li style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6CB2FF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#263040"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 6px"><span style="font-weight: 600">Recouper <span style="font-weight: 400; color: #6CB2FF">· en cours</span></span><span style="color: #A3ADBB; font-size: 13px">17 chiffres sur 23 confrontés aux bases publiques ; 1 écart signalé sur la part de l'Europe</span>
+<span role="progressbar" aria-label="Recoupement" aria-valuenow="74" aria-valuemin="0" aria-valuemax="100" style="display: block; height: 6px; border-radius: 999px; background: #1E2631; overflow: hidden"><span style="display: block; width: 74%; height: 6px; background: #6CB2FF"></span></span>
+</span>
+</li>
+<li style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5C6B7E" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle></svg>
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">Valider <span style="font-weight: 400; color: #A3ADBB">· à toi de jouer</span></span><span style="color: #A3ADBB; font-size: 13px">Tu relis la chaîne et corriges les maillons douteux</span></span>
+</li>
+<li style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5C6B7E" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle></svg>
+<span style="display: flex; flex-direction: column"><span style="font-weight: 600">Armer la veille <span style="font-weight: 400; color: #A3ADBB">· ensuite</span></span><span style="color: #A3ADBB; font-size: 13px">46 mots-clés en 5 langues, 9 zones autour des sites, 4 pays et 2 codes douaniers surveillés</span></span>
+</li>
+</ol>
+</section>
+
+<section aria-label="Ta couverture" style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; background: #121720; border: 1px solid #263040; border-radius: 10px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Ta couverture</h2>
+<span style="font-size: 13px; color: #A3ADBB">Facultatif ; sert à calculer la fenêtre d'action du verdict.</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="stock-semaines" style="font-size: 13px; color: #A3ADBB">Stock actuel, en semaines</label>
+<input id="stock-semaines" type="number" value="5" min="0" style="min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="delai-fournisseur" style="font-size: 13px; color: #A3ADBB">Délai de ton fournisseur, en semaines</label>
+<input id="delai-fournisseur" type="number" value="4" min="0" style="min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="seuil-hausse" style="font-size: 13px; color: #A3ADBB">Hausse qui déclenche « Anticiper stock », en %</label>
+<input id="seuil-hausse" type="number" value="5" min="0" style="min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #263040; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px">
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px; border-radius: 8px; border: 1px solid #263040; color: #E8EBF0; text-decoration: none">Annuler</a>
+<a href="Chaine.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 20px; border-radius: 8px; background: #6CB2FF; color: #0B0E13; font-weight: 600; text-decoration: none">Relire et valider la chaîne<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

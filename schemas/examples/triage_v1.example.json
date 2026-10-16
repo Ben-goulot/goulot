@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "relevant": true,
+  "event_type": "industrial_outage",
+  "event_status": "ongoing",
+  "title_fr": "Arrêt imprévu d'un vapocraqueur sur la côte du Golfe",
+  "summary_fr": "Un vapocraqueur de la société fictive Gulfchem est à l'arrêt depuis le 1er octobre après un incendie ; l'exploitant prévoit plusieurs semaines de réparation.",
+  "place": "Côte du Golfe, Texas",
+  "country_iso2": "US",
+  "event_date": "2026-10-01",
+  "matched_node_ids": [
+    "plant_gulf_cracker",
+    "propylene"
+  ],
+  "entities": [
+    {
+      "name": "Gulfchem (fictif)",
+      "kind": "company"
+    },
+    {
+      "name": "Vapocraqueur de la côte du Golfe (fictif)",
+      "kind": "site"
+    }
+  ],
+  "future_dates": [
+    {
+      "date": "2026-11",
+      "what": "Redémarrage visé par l'exploitant"
+    }
+  ],
+  "cited_origin": "Gulfchem (communiqué)",
+  "severity_hint": 2,
+  "injection_suspected": false
+}

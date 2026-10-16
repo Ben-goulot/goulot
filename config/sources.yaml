@@ -1,0 +1,273 @@
+# Sources gratuites de Goulot.
+# Points d'accès vérifiés le 15 octobre 2026 depuis l'extérieur (écarts dans docs/DECISIONS.md) ;
+# à revérifier depuis le Mac en phase 3, au premier branchement de chaque collecteur.
+# Les hôtes des sources actives (url et extra_hosts) forment la liste blanche du client HTTP, avec les hôtes
+# fixes de goulot/net/allowlist.py (API Anthropic, Telegram, GitHub) et le serveur SMTP choisi.
+# HTTPS obligatoire, hôte exact (pas de sous-domaine implicite).
+# auth : none, ou key:<nom> = secret stocké dans le trousseau sous ce nom (jamais ici).
+# enabled : false = hors de la liste blanche (raison dans notes).
+
+sources:
+  # --- Identification et référentiel ---
+  - id: pubchem
+    enabled: true
+    family: reference
+    url: https://pubchem.ncbi.nlm.nih.gov/rest/pug/
+    auth: none
+    use: CAS, nom, formule, synonymes
+    notes: "vérifié : /rest/pug/compound/name/107-13-1/property/MolecularFormula,IUPACName/JSON répond ; limite de 5 requêtes par seconde et 400 par minute (politique PubChem)"
+  - id: wikidata
+    enabled: true
+    family: reference
+    url: https://query.wikidata.org/sparql
+    auth: none
+    use: CAS (propriété P231), producteurs, lieux
+  - id: ecics
+    enabled: true
+    family: reference
+    url: https://ec.europa.eu/taxation_customs/dds2/ecics/
+    auth: none
+    use: CAS vers code douanier (nomenclature combinée)
+    notes: pas d'API ; la page propose le téléchargement complet de la base (« Download all chemical substances »), à charger une fois et à rafraîchir par les mises à jour quotidiennes, plutôt que d'interroger les pages ; conditions d'utilisation à relire en phase 2, sinon codes proposés par l'IA marqués « à vérifier »
+  - id: usgs_mcs
+    enabled: true
+    family: reference
+    url: https://www.usgs.gov/centers/national-minerals-information-center
+    auth: none
+    use: production et réserves par pays (minerais et métaux), publication annuelle
+  - id: un_comtrade
+    enabled: true
+    family: reference
+    url: https://comtradeapi.un.org/
+    auth: key:comtrade
+    use: exportateurs, importateurs, prix unitaires mensuels
+    notes: clé gratuite (en-tête Ocp-Apim-Subscription-Key), gérée sur le portail « My API » de comtradeplus.un.org ; limites à relire sur comtradeplus.un.org/ApiDocs en phase 2
+
+  # --- Actualités ---
+  - id: gdelt_doc
+    enabled: true
+    family: news
+    url: https://api.gdeltproject.org/api/v2/doc/doc
+    auth: none
+    frequency: 3h
+    use: actualités multilingues par requête (mots-clés des règles de veille)
+    notes: vérifié ; mode=artlist, format=json, maxrecords 250 au plus, fenêtre glissante de 3 mois (startdatetime au format YYYYMMDDHHMMSS)
+  - id: google_news_rss
+    enabled: true
+    family: news
+    url: https://news.google.com/rss/search
+    auth: none
+    frequency: 3h
+    use: actualités par requête, dont annonces officielles chinoises
+    notes: "flux non officiel, usage personnel ; analyser avec defusedxml ; vérifié : chaque article porte <source url=...>, qui donne la fiabilité"
+
+  # --- Aléas naturels ---
+  - id: gdacs
+    enabled: true
+    family: hazard
+    url: https://www.gdacs.org/xml/rss.xml
+    auth: none
+    frequency: 3h
+    use: cyclones, inondations, séismes, volcans, sécheresses
+  - id: usgs_earthquakes
+    enabled: true
+    family: hazard
+    url: https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson
+    auth: none
+    frequency: 3h
+  - id: nasa_firms
+    enabled: true
+    family: hazard
+    url: https://firms.modaps.eosdis.nasa.gov/api/
+    auth: key:nasa_firms
+    frequency: 3h
+    use: incendies actifs près des sites
+    notes: "vérifié : /api/area/csv/<MAP_KEY>/VIIRS_SNPP_NRT/<ouest,sud,est,nord>/<1 à 5 jours> ; 5 000 transactions par 10 minutes ; la clé est dans le chemin de l'URL, expurgée des journaux"
+  - id: noaa_nhc
+    enabled: true
+    family: hazard
+    url: https://www.nhc.noaa.gov/
+    auth: none
+    frequency: 3h
+    use: cyclones de l'Atlantique et du Pacifique Est
+    notes: vérifié ; flux RSS index-at.xml (Atlantique) et index-ep.xml (Pacifique Est)
+
+  # --- Logistique ---
+  - id: imf_portwatch_chokepoints
+    enabled: true
+    family: logistics
+    url: https://services9.arcgis.com/weJ1QsnbMYJlCHdG/ArcGIS/rest/services/Daily_Chokepoints_Data/FeatureServer
+    auth: none
+    frequency: daily
+    use: passages quotidiens et volumes estimés dans 28 détroits (données AIS)
+    notes: conditions d'utilisation du FMI ; citer « UN Global Platform ; IMF PortWatch »
+  - id: pegelonline
+    enabled: true
+    family: logistics
+    url: https://www.pegelonline.wsv.de/webservices/rest-api/v2/
+    auth: none
+    frequency: daily
+    use: niveau du Rhin à Kaub (station KAUB) et autres voies navigables allemandes
+
+  # --- Politique commerciale ---
+  - id: federal_register
+    enabled: true
+    family: policy
+    url: https://www.federalregister.gov/api/v1/
+    auth: none
+    frequency: daily
+    use: droits de douane et contrôles américains
+  - id: ofac_sanctions
+    enabled: true
+    family: policy
+    url: https://ofac.treasury.gov/
+    auth: none
+    frequency: daily
+    extra_hosts: [sanctionslist.ofac.treas.gov]
+    notes: listes SDN servies par le Sanctions List Service (sanctionslist.ofac.treas.gov) ; adresse exacte du fichier à relever en phase 3
+
+  # --- Énergie ---
+  - id: eia
+    enabled: true
+    family: energy
+    url: https://api.eia.gov/v2/
+    auth: key:eia
+    frequency: daily
+    use: prix et stocks de pétrole et de gaz ; repères quotidiens Brent (série RBRTE, depuis 1987), WTI (RWTC), Henry Hub (RNGWHHD)
+
+  # --- Prix : sources officielles d'abord (docs/SPEC.md, section 6) ---
+  - id: dce
+    enabled: true
+    family: price
+    url: https://www.dce.com.cn/
+    auth: none
+    frequency: daily
+    history: archives annuelles depuis le lancement de chaque contrat
+    use: Dalian, cours de clôture et de compensation quotidiens ; polyéthylène (LLDPE), PVC, polypropylène, éthylène glycol, styrène, GPL, benzène (depuis le 8 juillet 2025)
+    notes: pages publiques et fichiers de téléchargement de la bourse, appelés par le client maison, sans akshare ; HTTPS à confirmer en phase 1 pour les pages et les fichiers, sinon source désactivée (aucune exception à la règle HTTPS) ; licence de redistribution à vérifier avant toute vente
+  - id: czce
+    enabled: true
+    family: price
+    url: https://www.czce.com.cn/
+    auth: none
+    frequency: daily
+    history: archives annuelles
+    use: Zhengzhou ; méthanol, PTA, paraxylène, propylène (depuis le 22 juillet 2025), urée, soude caustique, carbonate de sodium, PET bouteille, fibre polyester, verre
+    notes: mêmes conditions que dce ; le 15 octobre 2026, la page d'accueil a répondu HTTP 412 à une requête automatisée, à retester depuis le Mac
+  - id: shfe_ine
+    enabled: true
+    extra_hosts: [www.ine.cn]
+    family: price
+    url: https://www.shfe.com.cn/
+    auth: none
+    frequency: daily
+    use: "Shanghai ; caoutchouc naturel, caoutchouc butadiène, bitume, fioul ; plateforme INE (www.ine.cn) : pétrole brut SC, fioul à basse teneur en soufre"
+    notes: "mêmes conditions que dce ; vérifié : rapports quotidiens sous /reports/tradedata/dailyandweeklydata/"
+  - id: gfex
+    enabled: false
+    family: price
+    url: https://www.gfex.com.cn/
+    auth: none
+    frequency: daily
+    use: Guangzhou ; carbonate de lithium, silicium industriel, polysilicium
+    notes: désactivée le 15 octobre 2026 ; le certificat HTTPS présenté couvre d'autres domaines (CDN), le client le refuse ; à retester depuis le Mac, sans aucune exception à la vérification des certificats
+  - id: nbs_china_prices
+    enabled: true
+    family: price
+    url: https://www.stats.gov.cn/sj/zxfb/
+    auth: none
+    frequency: 10 jours (communiqués vers le 4, le 14 et le 24 de chaque mois)
+    use: Bureau national des statistiques chinois, « prix de marché des principaux moyens de production » ; 50 produits en 9 familles, dont acide sulfurique 98 %, soude liquide 32 %, méthanol, benzène, éthanol 95 %, polyéthylène LLDPE, polypropylène, acide acétique, caoutchouc butadiène, fil polyester, phosphate de fer lithié, GNL, GPL, essence, gazole, paraffine
+    notes: "tableaux HTML des communiqués, en chinois ; analyser le tableau avec une liste blanche de noms de produits ; statistiques publiques, citer la source ; vérifié : communiqués « 流通领域重要生产资料市场价格变动情况 » vers le 4, le 14 et le 24"
+  - id: bls_ppi
+    enabled: true
+    family: price
+    url: https://api.bls.gov/publicAPI/v2/timeseries/data/
+    auth: key:bls
+    frequency: monthly
+    history: depuis les années 1970 pour beaucoup de séries
+    use: "indices de prix à la production américains de la chimie (famille WPU06 : chimie industrielle WPU061, chimie organique de base WPU0614, résines plastiques…)"
+    notes: "clé gratuite sur inscription ; données publiques ; avec clé : 500 requêtes par jour, 50 séries et 20 ans par requête"
+  - id: eurostat
+    enabled: true
+    family: price
+    url: https://ec.europa.eu/eurostat/api/dissemination/
+    auth: none
+    frequency: monthly
+    use: indices de prix à la production de la chimie (jeu sts_inpp_m, NACE C20) ; commerce extérieur Comext par code NC à 8 chiffres (valeur et quantité, d'où un prix unitaire mensuel)
+    notes: "vérifié : statistics/1.0/data/sts_inpp_m répond en JSON-stat 2.0 ; point d'accès Comext à confirmer (api/comext/dissemination) ; réutilisation libre avec citation"
+  - id: us_census_trade
+    enabled: true
+    family: price
+    url: https://api.census.gov/data/timeseries/intltrade/imports/hs
+    auth: key:census
+    frequency: monthly
+    use: importations américaines par code à 10 chiffres et par pays d'origine (GEN_VAL_MO, GEN_QY1_MO, UNIT_QY1), d'où un prix unitaire mensuel par CAS
+    notes: clé gratuite désormais obligatoire (paramètre key=, réponse « Missing Key » sans elle), expurgée des journaux ; données publiques
+  - id: world_bank_pink_sheet
+    enabled: true
+    extra_hosts: [thedocs.worldbank.org]
+    family: price
+    url: https://www.worldbank.org/en/research/commodity-markets
+    auth: none
+    frequency: monthly
+    history: depuis 1960
+    use: Brent, Dubaï, WTI, gaz naturel Europe et États-Unis, GNL Japon, charbon, urée, DAP, chlorure de potassium, roche phosphatée
+    notes: fichier mensuel CMO-Historical-Data-Monthly.xlsx, servi par thedocs.worldbank.org (adresse relevée le 15 octobre 2026, elle change à chaque mise à jour) ; seule source gratuite du gaz européen, en moyenne mensuelle
+  - id: fred
+    enabled: true
+    family: price
+    url: https://api.stlouisfed.org/fred/
+    auth: key:fred
+    frequency: daily ou monthly selon la série
+    use: miroir pratique de séries EIA et BLS (DCOILBRENTEU, WPU0614…)
+    notes: clé gratuite et facultative ; chaque série porte ses propres conditions ; préférer la source d'origine quand elle répond
+  # Dépannage seulement : points d'accès non officiels, usage personnel, jamais pour une série qui existe ci-dessus.
+  - id: yahoo_chart
+    enabled: true
+    family: price
+    url: https://query1.finance.yahoo.com/v8/finance/chart/
+    auth: none
+    frequency: daily
+    use: dépannage, par exemple le gaz européen TTF au jour le jour, qu'aucune source officielle gratuite ne publie
+    notes: point d'accès non officiel, usage personnel ; appelé directement par le client maison, sans yfinance
+  - id: stooq
+    enabled: true
+    family: price
+    url: https://stooq.com/
+    auth: none
+    frequency: daily
+    use: dépannage, historiques en CSV
+    notes: non officiel, usage personnel
+  # Exclus : sites de prix chinois en accès partiel (SunSirs, 100ppi, Echemi, ChemAnalyst) protégés contre la collecte automatique ;
+  # bases payantes (ICIS, Argus, Platts) ; EM-DAT, réservé aux organismes de recherche et interdit d'usage commercial.
+
+  # --- Bibliothèque de cas : sources d'événements passés (docs/SPEC.md, section 6) ---
+  - id: emars
+    enabled: true
+    family: history
+    url: https://industry.eea.europa.eu/seveso/accidents
+    auth: none
+    use: accidents industriels majeurs déclarés dans l'Union européenne (directive Seveso), avec date, site et substances
+    notes: base gérée par l'Agence européenne pour l'environnement depuis le 1er janvier 2026 (auparavant le JRC) ; téléchargement public, sans API ; conditions à relire
+  - id: gdacs_archive
+    enabled: true
+    family: history
+    url: https://www.gdacs.org/
+    auth: none
+    use: catastrophes naturelles passées (cyclones, séismes, inondations), dates et zones
+  - id: reliefweb
+    enabled: false
+    family: history
+    url: https://api.reliefweb.int/
+    auth: none
+    use: catastrophes et crises passées, rapports datés
+    notes: "désactivée ; depuis le 1er novembre 2025, l'API v2 exige un appname pré-approuvé (formulaire de demande sur apidoc.reliefweb.int) : à demander par l'utilisateur, puis activer"
+
+  # --- Carte (appelée par le navigateur uniquement) ---
+  - id: openfreemap
+    enabled: false   # appelée par le navigateur seulement (CSP), jamais par le serveur
+    family: map
+    url: https://tiles.openfreemap.org/
+    auth: none
+    notes: gratuit, sans clé ; choisir ou adapter un style sombre

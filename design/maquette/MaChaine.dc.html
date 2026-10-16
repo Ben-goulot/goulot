@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Goulot — Ma chaîne et coffre</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0E13}
+a{color:#6CB2FF}a:hover{color:#9CCBFF}
+button:focus-visible,a:focus-visible{outline:2px solid #6CB2FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; background: #0B0E13; color: #E8EBF0; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.45; overflow: hidden">
+
+<div style="position: absolute; left: 0px; top: 0px; width: 1600px; height: 64px; box-sizing: border-box; display: flex; align-items: center; gap: 28px; padding: 0 24px; border-bottom: 1px solid #263040; background: #0F131A">
+<span style="display: flex; align-items: center; gap: 10px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5B841" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14M5 21h14M7 3c0 5 4 6 4 9s-4 4-4 9M17 3c0 5-4 6-4 9s4 4 4 9"></path></svg><span style="font-weight: 700; font-size: 17px; letter-spacing: 0.02em">Goulot</span></span>
+<nav aria-label="Navigation principale" style="display: flex; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Marchés</a>
+<a href="Chaine.dc.html" aria-current="page" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; background: #1A212C; color: #E8EBF0; text-decoration: none; font-weight: 600">Chaîne</a>
+<a href="Fiabilite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Fiabilité</a>
+<a href="Conformite.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Conformité</a>
+<a href="#calendrier" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Calendrier</a>
+<a href="#reglages" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: #A3ADBB; text-decoration: none">Réglages</a>
+</nav>
+<div style="margin-left: auto; display: flex; align-items: center; gap: 10px">
+<sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ lock }}" aria-label="Coffre ouvert, cliquer pour le fermer" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #6CB2FF; background: rgba(108, 178, 255, 0.10); color: #6CB2FF; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 7.6-1.8"></path></svg>Coffre ouvert · 14 min</button></sc-if>
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askUnlock }}" aria-label="Coffre fermé, cliquer pour l'ouvrir" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #3A4656; background: #121720; color: #B8C2CF; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Coffre fermé</button></sc-if>
+<sc-if value="{{ notPresent }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ togglePresent }}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #263040; background: transparent; color: #A3ADBB; font: inherit; font-size: 13px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>Mode présentation</button></sc-if>
+<sc-if value="{{ present }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ togglePresent }}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #F5B841; background: rgba(245, 184, 65, 0.10); color: #F5B841; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>Mode présentation activé</button></sc-if>
+<span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; white-space: nowrap">Maquette · données fictives</span>
+</div>
+</div>
+
+<h1 style="position: absolute; left: 64px; top: 80px; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Chaîne d'approvisionnement : acrylonitrile</h1>
+<sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><div style="position: absolute; left: 64px; top: 118px; color: #A3ADBB; font-size: 14px"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">CAS 107-13-1</span> · Ma chaîne : révision 3 du 28 sept. 2026, chiffrée sur ce Mac · exemple illustratif</div></sc-if>
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 64px; top: 118px; color: #A3ADBB; font-size: 14px"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace">CAS 107-13-1</span> · chaîne type du 2 oct. 2026 · Ma chaîne : dans le coffre</div></sc-if>
+
+<div role="group" aria-label="Vue de la chaîne" style="position: absolute; left: 64px; top: 150px; display: flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid #263040; background: #0E1218">
+<button type="button" onClick="{{ showType }}" style="{{ segType }}">Chaîne type</button>
+<button type="button" onClick="{{ showMine }}" style="{{ segMine }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Ma chaîne</button>
+</div>
+<sc-if value="{{ present }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 340px; top: 158px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12.5px">Mode présentation : noms et chiffres floutés, même coffre ouvert</div></sc-if>
+
+<div style="position: absolute; left: 1264px; top: 84px; width: 272px; display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: #A3ADBB">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 2px solid #FF8A4C"></span>En cours</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 18px; height: 4px; border-radius: 2px; background: #6CB2FF"></span>Ma chaîne (épaisseur = part)</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 2px dashed #6CB2FF"></span>Site privé</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border-radius: 3px; border: 1px solid #2E3846; background: #0B0E13; opacity: 0.6"></span>Pas chez toi</span>
+</div>
+
+<div style="position: absolute; left: 64px; top: 204px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">MATIÈRES DE BASE</div>
+<div style="position: absolute; left: 304px; top: 204px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">INTRANTS</div>
+<div style="position: absolute; left: 544px; top: 204px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">PRODUCTION</div>
+<div style="position: absolute; left: 784px; top: 204px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">LOGISTIQUE</div>
+<div style="position: absolute; left: 1024px; top: 204px; color: #A3ADBB; font-size: 12px; font-weight: 600; letter-spacing: 0.06em">TON APPROVISIONNEMENT</div>
+
+<div style="position: absolute; left: 52px; top: 228px; width: 216px; height: 472px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 292px; top: 228px; width: 216px; height: 472px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 532px; top: 228px; width: 216px; height: 472px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 772px; top: 228px; width: 216px; height: 472px; border-radius: 12px; background: #0E1218"></div>
+<div style="position: absolute; left: 1012px; top: 228px; width: 216px; height: 472px; border-radius: 12px; background: #0E1218"></div>
+
+<svg width="46" height="8" viewBox="0 0 46 8" style="position: absolute; left: 256px; top: 286px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g1" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#mc-g1)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" style="position: absolute; left: 256px; top: 402px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g2" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#mc-g2)"></path></svg>
+<svg width="24" height="8" viewBox="0 0 24 8" style="position: absolute; left: 496px; top: 286px; width: 24px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 24 4"></path></svg>
+<svg width="24" height="8" viewBox="0 0 24 8" style="position: absolute; left: 496px; top: 402px; width: 24px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><path d="M 0 4 L 24 4"></path></svg>
+<svg width="8" height="348" viewBox="0 0 8 348" style="position: absolute; left: 516px; top: 290px; width: 8px; height: 348px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><path d="M 4 0 L 4 348"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" style="position: absolute; left: 520px; top: 286px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g3" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#mc-g3)"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" style="position: absolute; left: 520px; top: 518px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g4" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#mc-g4)"></path></svg>
+<svg width="22" height="8" viewBox="0 0 22 8" style="position: absolute; left: 520px; top: 634px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g5" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#mc-g5)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" style="position: absolute; left: 736px; top: 286px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g6" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#mc-g6)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" style="position: absolute; left: 736px; top: 518px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g7" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#mc-g7)"></path></svg>
+<svg width="46" height="8" viewBox="0 0 46 8" style="position: absolute; left: 976px; top: 518px; width: 46px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g8" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 46 4" marker-end="url(#mc-g8)"></path></svg>
+<sc-if value="{{ noOverlay }}" hint-placeholder-val="{{ false }}"><svg width="48" height="140" viewBox="0 0 48 140" style="position: absolute; left: 976px; top: 286px; width: 48px; height: 140px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="mc-g9" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 24 4 L 24 134 L 46 134" marker-end="url(#mc-g9)"></path></svg></sc-if>
+
+<div style="position: absolute; left: 64px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Gaz naturel</b><br>États-Unis, Moyen-Orient, Russie</span></div>
+<div style="position: absolute; left: 64px; top: 360px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Naphta et propane</b><br>raffineries, gaz de schiste</span></div>
+<div style="position: absolute; left: 304px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Ammoniac</b><br>Chine, Russie, États-Unis</span></div>
+<div style="position: absolute; left: 304px; top: 360px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Propylène</b><br>vapocraqueurs, déshydrogénation</span></div>
+<button type="button" onClick="{{ pickChine }}" style="position: absolute; left: 544px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font: inherit; font-size: 13px; line-height: 18px; color: #E8EBF0; cursor: pointer"><span><b style="font-size: 14px">Production, Chine</b><br>grands sites du Zhejiang et du Shandong</span></button>
+<button type="button" onClick="{{ pickEurope }}" style="position: absolute; left: 544px; top: 476px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font: inherit; font-size: 13px; line-height: 18px; color: #E8EBF0; cursor: pointer"><span><b style="font-size: 14px">Production, Europe</b><br>Allemagne, Royaume-Uni</span></button>
+<div style="position: absolute; left: 544px; top: 592px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 138, 76, 0.10); border: 2px solid #FF8A4C; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Production, États-Unis</b> <b style="color: #FF8A4C">· B</b><br>arrêt d'un vapocraqueur</span></div>
+<div style="position: absolute; left: 784px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Fret maritime</b><br>Asie vers Anvers, ≈ 5 sem. via Suez</span></div>
+<div style="position: absolute; left: 784px; top: 476px; width: 192px; height: 92px; box-sizing: border-box; padding: 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: #121720; border: 1px solid #2E3846; border-radius: 10px; font-size: 13px; line-height: 18px"><span><b style="font-size: 14px">Barges sur le Rhin</b><br>≈ 1 sem.</span></div>
+<div style="position: absolute; left: 1024px; top: 360px; width: 192px; height: 208px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; background: rgba(108, 178, 255, 0.10); border: 2px solid #6CB2FF; border-radius: 10px; font-size: 13px; line-height: 18px"><b style="font-size: 16px">Toi</b><span style="color: #A3ADBB">acrylonitrile</span><sc-if value="{{ open }}" hint-placeholder-val="{{ true }}"><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace"><span style="{{ pv }}">stock 5 sem.</span></span></sc-if></div>
+
+<sc-if value="{{ overlay }}" hint-placeholder-val="{{ true }}">
+<div style="position: absolute; left: 544px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; border-radius: 10px; background: rgba(11, 14, 19, 0.70); color: #A3ADBB; font-size: 11.5px; pointer-events: none">pas chez toi</div>
+<div style="position: absolute; left: 544px; top: 592px; width: 192px; height: 92px; box-sizing: border-box; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; border-radius: 10px; background: rgba(11, 14, 19, 0.70); color: #A3ADBB; font-size: 11.5px">pas sur tes chemins · effet prix seulement</div>
+<svg width="22" height="8" viewBox="0 0 22 8" style="position: absolute; left: 520px; top: 402px; width: 22px; height: 8px; overflow: visible; fill: none; stroke: #5C6B7E; stroke-width: 2; stroke-linecap: round"><defs><marker id="mc-g10" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5C6B7E" stroke="none"></path></marker></defs><path d="M 0 4 L 22 4" marker-end="url(#mc-g10)"></path></svg>
+<svg width="48" height="128" viewBox="0 0 48 128" style="position: absolute; left: 736px; top: 284px; width: 48px; height: 128px; overflow: visible; fill: none; stroke: #6CB2FF; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="mc-b1" markerUnits="userSpaceOnUse" orient="auto" markerWidth="12" markerHeight="12" refX="0" refY="6" overflow="visible"><path d="M0 0 L12 6 L0 12 Z" fill="#6CB2FF" stroke="none"></path></marker></defs><path d="M 0 122 L 24 122 L 24 6 L 36 6" marker-end="url(#mc-b1)"></path></svg>
+<svg width="48" height="12" viewBox="0 0 48 12" style="position: absolute; left: 976px; top: 284px; width: 48px; height: 12px; overflow: visible; fill: none; stroke: #6CB2FF; stroke-width: 6; stroke-linecap: round"><defs><marker id="mc-b2" markerUnits="userSpaceOnUse" orient="auto" markerWidth="12" markerHeight="12" refX="0" refY="6" overflow="visible"><path d="M0 0 L12 6 L0 12 Z" fill="#6CB2FF" stroke="none"></path></marker></defs><path d="M 0 6 L 36 6" marker-end="url(#mc-b2)"></path></svg>
+<svg width="12" height="24" viewBox="0 0 12 24" style="position: absolute; left: 1114px; top: 336px; width: 12px; height: 24px; overflow: visible; fill: none; stroke: #6CB2FF; stroke-width: 6; stroke-linecap: round"><defs><marker id="mc-b3" markerUnits="userSpaceOnUse" orient="auto" markerWidth="12" markerHeight="12" refX="0" refY="6" overflow="visible"><path d="M0 0 L12 6 L0 12 Z" fill="#6CB2FF" stroke="none"></path></marker></defs><path d="M 6 0 L 6 12" marker-end="url(#mc-b3)"></path></svg>
+<svg width="48" height="12" viewBox="0 0 48 12" style="position: absolute; left: 736px; top: 516px; width: 48px; height: 12px; overflow: visible; fill: none; stroke: #6CB2FF; stroke-width: 3.5; stroke-linecap: round"><defs><marker id="mc-b4" markerUnits="userSpaceOnUse" orient="auto" markerWidth="10" markerHeight="10" refX="0" refY="5" overflow="visible"><path d="M0 0 L10 5 L0 10 Z" fill="#6CB2FF" stroke="none"></path></marker></defs><path d="M 0 6 L 38 6" marker-end="url(#mc-b4)"></path></svg>
+<svg width="48" height="12" viewBox="0 0 48 12" style="position: absolute; left: 976px; top: 516px; width: 48px; height: 12px; overflow: visible; fill: none; stroke: #6CB2FF; stroke-width: 3.5; stroke-linecap: round"><defs><marker id="mc-b5" markerUnits="userSpaceOnUse" orient="auto" markerWidth="10" markerHeight="10" refX="0" refY="5" overflow="visible"><path d="M0 0 L10 5 L0 10 Z" fill="#6CB2FF" stroke="none"></path></marker></defs><path d="M 0 6 L 38 6" marker-end="url(#mc-b5)"></path></svg>
+<div style="position: absolute; left: 984px; top: 256px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; color: #6CB2FF"><span style="{{ pv }}">63 %</span></div>
+<div style="position: absolute; left: 984px; top: 488px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; color: #6CB2FF"><span style="{{ pv }}">37 %</span></div>
+<button type="button" onClick="{{ pickBeta }}" style="position: absolute; left: 544px; top: 360px; width: 192px; height: 92px; box-sizing: border-box; padding: 10px 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 138, 76, 0.10); border: 2px solid #FF8A4C; border-radius: 10px; font: inherit; font-size: 13px; line-height: 18px; color: #E8EBF0; cursor: pointer"><span><b style="font-size: 14px"><span style="{{ pv }}">Usine Bêta · Ningbo</span></b> <b style="color: #FF8A4C">· A</b><br>incendie, confirmé<br><span style="display: inline-flex; align-items: center; gap: 4px; color: #6CB2FF; font-size: 12px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>privé · hors chaîne type</span></span></button>
+<button type="button" onClick="{{ pickAlpha }}" style="position: absolute; left: 1024px; top: 244px; width: 192px; height: 92px; box-sizing: border-box; padding: 10px 12px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(108, 178, 255, 0.06); border: 2px dashed #6CB2FF; border-radius: 10px; font: inherit; font-size: 13px; line-height: 18px; color: #E8EBF0; cursor: pointer"><span><b style="font-size: 14px"><span style="{{ pv }}">Distributeur Alpha · Anvers</span></b><br><span style="{{ pv }}">stock 3 sem.</span><br><span style="display: inline-flex; align-items: center; gap: 4px; color: #6CB2FF; font-size: 12px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>privé</span></span></button>
+<span style="position: absolute; left: 556px; top: 466px; pointer-events: none; padding: 1px 8px; border-radius: 999px; background: #6CB2FF; color: #0B0E13; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap">MON FOURNISSEUR · <span style="{{ pv }}">37 %</span></span>
+</sc-if>
+
+<sc-if value="{{ ringBeta }}" hint-placeholder-val="{{ true }}"><div style="position: absolute; left: 539px; top: 355px; width: 202px; height: 102px; box-sizing: border-box; border: 2px solid rgba(108, 178, 255, 0.65); border-radius: 13px; pointer-events: none"></div></sc-if>
+<sc-if value="{{ ringAlpha }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 1019px; top: 239px; width: 202px; height: 102px; box-sizing: border-box; border: 2px solid rgba(108, 178, 255, 0.65); border-radius: 13px; pointer-events: none"></div></sc-if>
+<sc-if value="{{ ringEurope }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 539px; top: 471px; width: 202px; height: 102px; box-sizing: border-box; border: 2px solid rgba(108, 178, 255, 0.65); border-radius: 13px; pointer-events: none"></div></sc-if>
+<sc-if value="{{ ringChine }}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 539px; top: 239px; width: 202px; height: 102px; box-sizing: border-box; border: 2px solid rgba(108, 178, 255, 0.65); border-radius: 13px; pointer-events: none"></div></sc-if>
+
+<aside aria-label="Panneau du maillon" style="position: absolute; left: 1264px; top: 156px; width: 272px; box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 14px; background: #121720; border: 1px solid #263040; border-radius: 12px; font-size: 13px">
+
+<sc-if value="{{ pBeta }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">SITE DE MA CHAÎNE</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600"><span style="{{ pv }}">Usine Bêta · Ningbo</span></h2>
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #FF8A4C; color: #FF8A4C; font-size: 12px">En cours · événement A</span><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #6CB2FF; color: #6CB2FF; font-size: 12px">privé</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 9px">
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Rôle</span><span>Producteur, absent de la chaîne type</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Part de ton volume</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace"><span style="{{ pv }}">63 %</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Poids mondial</span><span>0,3 % de l'offre · seuil d'analyse du marché : 0,5 %</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Délai jusqu'à toi (X)</span><span>8 sem. : mer jusqu'à Anvers 5 sem., puis stock chez <span style="{{ pv }}">Alpha</span> 3 sem.</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Délai contractuel</span><span><span style="{{ pv }}">9 sem., allongé de 6 à 9 sem. le 12 sept.</span> (signal)</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Stocks</span><span><span style="{{ pv }}">chez toi 5 sem. · chez Alpha 3 sem.</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Amont</span><span>inconnu : supposé comme le marché</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Plan B</span><span><span style="{{ pv }}">Usine Gamma · Tarragone, qualifiée, bascule en 6 sem.</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Surveillance en ligne</span><span>ville et matière ; nom de l'entreprise : non</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Signal fournisseur</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Modifier</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ pAlpha }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">SITE DE MA CHAÎNE</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600"><span style="{{ pv }}">Distributeur Alpha · Anvers</span></h2>
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #6CB2FF; color: #6CB2FF; font-size: 12px">privé</span><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #3A4656; color: #B8C2CF; font-size: 12px">fournisseur direct</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 9px">
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Rôle</span><span>Distributeur</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Part de ton volume</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace"><span style="{{ pv }}">63 %</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">S'approvisionne chez</span><span><span style="{{ pv }}">Usine Bêta, Ningbo</span> (déclaré par toi)</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Livraison</span><span><span style="{{ pv }}">1 sem. · incoterm DAP</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Stock chez lui</span><span><span style="{{ pv }}">3 sem.</span>, communiqué le 30 sept.</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Signaux</span><span>aucun depuis 90 jours</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Surveillance en ligne</span><span>ville et matière</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Signal fournisseur</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Modifier</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ pEurope }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">MAILLON ADOPTÉ</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Production, Europe</h2>
+<span style="align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: #6CB2FF; color: #0B0E13; font-size: 12px; font-weight: 600">mon fournisseur · <span style="{{ pv }}">37 %</span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 9px">
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Rôle</span><span>Maillon de la chaîne type : tu y achètes en direct</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Part de ton volume</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace"><span style="{{ pv }}">37 %</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Route</span><span>barges sur le Rhin, ≈ 1 sem.</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Délai contractuel</span><span><span style="{{ pv }}">3 sem.</span></span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Stock tampon</span><span>21 j par défaut, hypothèse : X affiché en fourchette</span></div>
+<div style="display: flex; flex-direction: column; gap: 1px"><span style="color: #A3ADBB">Surveillance en ligne</span><span>celle de la chaîne type</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Signal fournisseur</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Modifier</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ pAdopt }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">MAILLON DE LA CHAÎNE TYPE</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Production, Chine</h2>
+<span style="color: #A3ADBB">grands sites du Zhejiang et du Shandong · 38 % de l'offre mondiale</span>
+</div>
+<sc-if value="{{ adoptNote }}" hint-placeholder-val="{{ false }}"><span style="color: #A3ADBB">Tu n'y passes pas aujourd'hui.</span></sc-if>
+<sc-if value="{{ noForm }}" hint-placeholder-val="{{ true }}">
+<span style="font-size: 14px; font-weight: 600">Tu passes par ce maillon ?</span>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<button type="button" onClick="{{ adopt }}" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer; text-align: left">C'est mon fournisseur</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer; text-align: left">Je ne passe pas par là</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer; text-align: left">Ajouter un site absent</button>
+<button type="button" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer; text-align: left">Importer un CSV de ton ERP</button>
+</div>
+</sc-if>
+<sc-if value="{{ form }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 14px; font-weight: 600">Trois champs pour commencer</span>
+<label style="display: flex; flex-direction: column; gap: 4px"><span style="color: #A3ADBB">Site ou entreprise</span><input type="text" placeholder="ex. usine de ton fournisseur, ville" style="min-height: 40px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid #2E3846; background: #0E1218; color: #E8EBF0; font: inherit"></label>
+<label style="display: flex; flex-direction: column; gap: 4px"><span style="color: #A3ADBB">Ta part de volume (%)</span><input type="text" inputmode="decimal" placeholder="ex. 40" style="min-height: 40px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid #2E3846; background: #0E1218; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace"></label>
+<label style="display: flex; flex-direction: column; gap: 4px"><span style="color: #A3ADBB">Délai jusqu'à toi (semaines)</span><input type="text" inputmode="decimal" placeholder="ex. 6" style="min-height: 40px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; border: 1px solid #2E3846; background: #0E1218; color: #E8EBF0; font-family: 'IBM Plex Mono', ui-monospace, monospace"></label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" onClick="{{ saveForm }}" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Enregistrer dans le coffre</button>
+<button type="button" onClick="{{ saveForm }}" style="min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Annuler</button>
+</div>
+<span style="font-size: 12.5px; color: #A3ADBB">Stocks, route et alternatives se complètent plus tard, si tu veux.</span>
+</sc-if>
+<span style="font-size: 12.5px; color: #A3ADBB">Rien de ce que tu saisis ne part vers l'IA ni vers les sources : tout reste chiffré sur ce Mac.</span>
+</sc-if>
+
+<sc-if value="{{ pLocked }}" hint-placeholder-val="{{ false }}">
+<div style="width: 48px; height: 48px; border-radius: 12px; border: 1px solid #3A4656; display: flex; align-items: center; justify-content: center; color: #B8C2CF"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></div>
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Coffre fermé</h2>
+<span>Ma chaîne, tes stocks, tes prix et tes signaux sont chiffrés sur ce Mac.</span>
+<button type="button" onClick="{{ askUnlock }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 11v3a6 6 0 0 1-1.2 3.6"></path><path d="M8.6 8.6A4.8 4.8 0 0 1 16.8 12v1.6"></path><path d="M6.2 12.4a6 6 0 0 1 .9-3.2"></path><path d="M15.4 16.4a10 10 0 0 1-1.4 3.6"></path><path d="M12 4.8a7.2 7.2 0 0 1 7.2 7.2v1"></path><path d="M4.9 9.6a7.2 7.2 0 0 1 3.4-4"></path></svg>Ouvrir avec Touch ID</button>
+<div style="padding: 12px; border-radius: 8px; background: #0E1218; border: 1px solid #263040; font-size: 12.5px; color: #A3ADBB">Ce que voit quelqu'un d'autre : la chaîne type, les verdicts et les événements publics. Rien qui trahisse tes fournisseurs.</div>
+<span style="font-size: 12.5px; color: #A3ADBB">Fermeture automatique : 15 min sans activité, mise en veille du Mac, onglet masqué 5 min.</span>
+</sc-if>
+
+</aside>
+
+<div style="position: absolute; left: 64px; top: 716px; width: 560px; height: 172px; box-sizing: border-box; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: #121720; border: 1px solid #263040; border-radius: 12px">
+<sc-if value="{{ overlay }}" hint-placeholder-val="{{ true }}">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">CE QUE MA CHAÎNE CHANGE</span>
+<span style="font-size: 15px; font-weight: 600">Incendie à l'usine <span style="{{ pv }}">Bêta</span> (A) : <span style="{{ pv }}">63 %</span> de ton volume</span>
+<span style="font-size: 13px; line-height: 18px; color: #C9D0DA">L'usine pèse 0,3 % de l'offre mondiale : sans Ma chaîne, rien ne se serait déclenché. L'arrêt aux États-Unis (B) n'est pas sur tes chemins : effet prix seulement.</span>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="padding: 3px 10px; border-radius: 999px; background: #FF8A4C; color: #14171C; font-size: 12px; font-weight: 600">Anticiper stock</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px">X 8 sem. · fenêtre d'action dépassée</span></div>
+<span style="font-size: 12.5px; color: #A3ADBB">Plan B : <span style="{{ pv }}">Usine Gamma, qualifiée, bascule en 6 sem. · stock chez Alpha : 3 sem.</span></span>
+</sc-if>
+<sc-if value="{{ typeView }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">VUE CHAÎNE TYPE · VERDICT MARCHÉ</span>
+<span style="font-size: 15px; font-weight: 600">Le marché, sans tes fournisseurs</span>
+<span style="font-size: 13px; line-height: 18px; color: #C9D0DA">L'usine <span style="{{ pv }}">Bêta</span> n'y figure pas : son incendie n'y déclenche rien. L'arrêt aux États-Unis (B), lui, y compte comme si tu en dépendais.</span>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="padding: 3px 10px; border-radius: 999px; border: 1px solid #F5B841; color: #F5B841; font-size: 12px; font-weight: 500">Problème à 4 sem.</span><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #A3ADBB">verdict marché, sans tes données</span></div>
+</sc-if>
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">VERDICT PERSONNEL</span>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="padding: 3px 10px; border-radius: 999px; background: #FF8A4C; color: #14171C; font-size: 12px; font-weight: 600">Anticiper stock</span><span style="display: inline-flex; align-items: center; gap: 6px; color: #A3ADBB; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>motif dans le coffre</span></div>
+<span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px">fenêtre d'action dépassée</span>
+<span style="font-size: 13px; line-height: 18px; color: #C9D0DA">Coffre fermé : on voit le verdict et la fenêtre d'action, jamais tes fournisseurs, ni X, ni tes chiffres. Un événement qui ne touche que Ma chaîne n'apparaît pas.</span>
+</sc-if>
+</div>
+
+<div style="position: absolute; left: 640px; top: 716px; width: 576px; height: 172px; box-sizing: border-box; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; background: #121720; border: 1px solid #263040; border-radius: 12px">
+<sc-if value="{{ overlay }}" hint-placeholder-val="{{ true }}">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">CONCENTRATION CACHÉE</span>
+<div style="display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 12px; row-gap: 10px; align-items: center">
+<span style="color: #A3ADBB; font-size: 13px">Marché</span>
+<div style="display: flex; align-items: center; gap: 12px"><div style="width: 220px; height: 10px; border-radius: 999px; background: #1A212C; overflow: hidden"><div style="width: 38%; height: 10px; background: #8A95A5"></div></div><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px">Chine 38 % · HHI 2 312</span></div>
+<span style="color: #A3ADBB; font-size: 13px">Toi</span>
+<div style="display: flex; align-items: center; gap: 12px"><div style="width: 220px; height: 10px; border-radius: 999px; background: #1A212C; overflow: hidden"><div style="width: 63%; height: 10px; background: #6CB2FF"></div></div><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px"><span style="{{ pv }}">Chine 63 % · HHI 5 338</span></span></div>
+</div>
+<span style="font-size: 15px; font-weight: 600; color: #6CB2FF">Le marché est diversifié, toi non.</span>
+<span style="font-size: 12.5px; color: #A3ADBB">Part du premier pays et indice de Herfindahl-Hirschman, calculés sur ton Mac.</span>
+</sc-if>
+<sc-if value="{{ noOverlay }}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: #A3ADBB">CONCENTRATION · MARCHÉ</span>
+<div style="display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 12px; row-gap: 10px; align-items: center">
+<span style="color: #A3ADBB; font-size: 13px">Marché</span>
+<div style="display: flex; align-items: center; gap: 12px"><div style="width: 220px; height: 10px; border-radius: 999px; background: #1A212C; overflow: hidden"><div style="width: 38%; height: 10px; background: #8A95A5"></div></div><span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px">Chine 38 % · HHI 2 312</span></div>
+</div>
+<sc-if value="{{ typeView }}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #A3ADBB">Passe en « Ma chaîne » pour comparer avec ton propre approvisionnement.</span></sc-if>
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #A3ADBB"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Ta propre concentration reste dans le coffre.</span></sc-if>
+</sc-if>
+</div>
+
+<sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0px; top: 0px; width: 1600px; height: 900px; background: rgba(5, 7, 10, 0.72)"></div>
+<div role="dialog" aria-label="Ouvrir le coffre" style="position: absolute; left: 620px; top: 250px; width: 360px; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; background: #161B24; border: 1px solid #2E3846; border-radius: 14px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5)">
+<div style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid #6CB2FF; display: flex; align-items: center; justify-content: center; color: #6CB2FF"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 11v3a6 6 0 0 1-1.2 3.6"></path><path d="M8.6 8.6A4.8 4.8 0 0 1 16.8 12v1.6"></path><path d="M6.2 12.4a6 6 0 0 1 .9-3.2"></path><path d="M15.4 16.4a10 10 0 0 1-1.4 3.6"></path><path d="M12 4.8a7.2 7.2 0 0 1 7.2 7.2v1"></path><path d="M4.9 9.6a7.2 7.2 0 0 1 3.4-4"></path><path d="M9.6 14.4a2.4 2.4 0 0 0 0-1.6"></path></svg></div>
+<span style="font-size: 17px; font-weight: 600">Ouvrir le coffre de Goulot</span>
+<span style="color: #A3ADBB; font-size: 13px">localhost demande ta clé d'accès : Touch ID ou mot de passe du Mac.</span>
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<button type="button" onClick="{{ cancelUnlock }}" style="min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #263040; background: transparent; color: #E8EBF0; font: inherit; cursor: pointer">Annuler</button>
+<button type="button" onClick="{{ confirmUnlock }}" style="min-height: 44px; padding: 0 16px; border-radius: 8px; border: none; background: #6CB2FF; color: #0B0E13; font: inherit; font-weight: 600; cursor: pointer">Simuler Touch ID</button>
+</div>
+<span style="font-size: 12px; color: #A3ADBB">Le coffre se referme après 15 min sans activité, à la mise en veille ou si l'onglet reste masqué 5 min.</span>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var vault = st.vault || "open";
+    var view = st.view || "mine";
+    var sel = st.sel || "beta";
+    var present = !!st.present;
+    var sheet = !!st.sheet;
+    var form = !!st.form;
+    var open = vault === "open";
+    var overlay = open && view === "mine";
+    var typeView = open && view === "type";
+    var locked = !open;
+    var segOn = "display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 7px; border: none; background: #1A212C; color: #E8EBF0; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer";
+    var segOff = "display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 7px; border: none; background: transparent; color: #A3ADBB; font: inherit; font-size: 13.5px; cursor: pointer";
+    function set(o) { self.setState(o); }
+    return {
+      open: open,
+      locked: locked,
+      overlay: overlay,
+      noOverlay: !overlay,
+      typeView: typeView,
+      present: present,
+      notPresent: !present,
+      sheet: sheet,
+      pv: present ? "filter: blur(6px); user-select: none" : "",
+      segMine: view === "mine" ? segOn : segOff,
+      segType: view === "type" ? segOn : segOff,
+      ringBeta: overlay && sel === "beta",
+      ringAlpha: overlay && sel === "alpha",
+      ringEurope: overlay && sel === "europe",
+      ringChine: open && (sel === "chine" || typeView),
+      pBeta: overlay && sel === "beta",
+      pAlpha: overlay && sel === "alpha",
+      pEurope: overlay && sel === "europe",
+      pAdopt: typeView || (overlay && sel === "chine"),
+      adoptNote: overlay && sel === "chine",
+      form: form,
+      noForm: !form,
+      pLocked: locked,
+      lock: function () { set({ vault: "locked", sheet: false }); },
+      askUnlock: function () { set({ sheet: true }); },
+      cancelUnlock: function () { set({ sheet: false }); },
+      confirmUnlock: function () { set({ vault: "open", sheet: false }); },
+      showMine: function () { if (open) { set({ view: "mine" }); } else { set({ view: "mine", sheet: true }); } },
+      showType: function () { set({ view: "type" }); },
+      togglePresent: function () { set({ present: !present }); },
+      pickBeta: function () { if (open) { set({ sel: "beta", view: "mine", form: false }); } },
+      pickAlpha: function () { if (open) { set({ sel: "alpha", view: "mine", form: false }); } },
+      pickEurope: function () { if (open) { set({ sel: "europe", form: false }); } },
+      pickChine: function () { if (open) { set({ sel: "chine", form: false }); } },
+      adopt: function () { set({ form: true }); },
+      saveForm: function () { set({ form: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
