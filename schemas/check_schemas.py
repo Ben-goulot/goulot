@@ -277,6 +277,7 @@ def main() -> int:
         print("\n".join(errors))
         return 1
     chain_ids = check_chain(examples["supply_chain_v1"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
+    check_chain(examples["supply_chain_v2"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
     check_triage(examples["triage_v1"], chain_ids)
     check_impact(examples["impact_assessment_v1"], {
         "events": {"EVT-2026-10-03-0142"},

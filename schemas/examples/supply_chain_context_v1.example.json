@@ -1,0 +1,56 @@
+{
+  "schema_version": "context-1.0",
+  "routes": [
+    {
+      "route_id": "route_ammoxidation",
+      "name": "Ammoxydation du propylène (procédé SOHIO)",
+      "global_share_pct": 95,
+      "description": "Propylène et ammoniac réagissent avec l'air sur catalyseur. Valeur de part illustrative.",
+      "node_ids": [
+        "propylene",
+        "ammonia",
+        "acrylonitrile"
+      ],
+      "source_ids": [
+        "src1"
+      ]
+    }
+  ],
+  "substitutes": [],
+  "structural_risks": [
+    {
+      "risk_type": "geographic_concentration",
+      "description": "La Chine porte la plus grande part de la production mondiale (valeur illustrative).",
+      "node_ids": [
+        "cn_acrylonitrile"
+      ],
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "risk_type": "logistics_chokepoint",
+      "description": "Les flux d'Asie vers l'Europe passent par le canal de Suez.",
+      "node_ids": [
+        "chokepoint_suez"
+      ],
+      "source_ids": [
+        "src3"
+      ]
+    }
+  ],
+  "upcoming_dates": [
+    {
+      "date": "2027-03",
+      "what": "Maintenance programmée d'une usine d'acrylonitrile en Allemagne (exemple fictif)",
+      "node_ids": [
+        "de_acrylonitrile"
+      ],
+      "source_ids": [
+        "src4"
+      ]
+    }
+  ],
+  "open_questions": [],
+  "injection_suspected": false
+}

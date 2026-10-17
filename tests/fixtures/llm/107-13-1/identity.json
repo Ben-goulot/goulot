@@ -1,0 +1,30 @@
+{
+ "cas": "107-13-1",
+ "name": "Acrylonitrile",
+ "name_fr": "acrylonitrile",
+ "formula": "C3H3N",
+ "synonyms": [
+  "ACRYLONITRILE",
+  "2-Propenenitrile",
+  "Vinyl cyanide",
+  "Prop-2-enenitrile",
+  "Propenenitrile",
+  "Cyanoethylene",
+  "Fumigrain",
+  "Ventox",
+  "Carbacryl",
+  "Acritet",
+  "Acrylon",
+  "Nitrile acrylique"
+ ],
+ "sources": [
+  {
+   "name": "PubChem",
+   "url": "https://pubchem.ncbi.nlm.nih.gov/compound/7855"
+  },
+  {
+   "name": "Wikidata",
+   "url": "https://www.wikidata.org/wiki/Q342968"
+  }
+ ]
+}

@@ -49,10 +49,11 @@ def fetch(
     url: str,
     *,
     params: dict[str, str] | None = None,
+    headers: dict[str, str] | None = None,
     max_bytes: int = MAX_RESPONSE_BYTES,
 ) -> FetchResult:
     """GET with a limit on the decoded body as well (protection against compression bombs)."""
-    with client.stream("GET", url, params=params) as response:
+    with client.stream("GET", url, params=params, headers=headers) as response:
         chunks: list[bytes] = []
         total = 0
         for chunk in response.iter_bytes():

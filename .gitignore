@@ -10,6 +10,7 @@ secrets/
 *.sqlite-wal
 *.sqlite-shm
 data/
+!goulot/data/
 backups/
 *.log
 

@@ -1,0 +1,479 @@
+{
+  "schema_version": "2.0",
+  "material": {
+    "name": "Acrylonitrile",
+    "cas": "107-13-1",
+    "hs_code_candidates": [
+      "292610"
+    ]
+  },
+  "routes": [
+    {
+      "route_id": "route_ammoxidation",
+      "name": "Ammoxydation du propylène (procédé SOHIO)",
+      "global_share_pct": 95,
+      "description": "Propylène et ammoniac réagissent avec l'air sur catalyseur. Valeur de part illustrative.",
+      "node_ids": [
+        "propylene",
+        "ammonia",
+        "acrylonitrile"
+      ],
+      "source_ids": [
+        "src1"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "acrylonitrile",
+      "node_type": "material",
+      "name": "Acrylonitrile",
+      "product": "acrylonitrile",
+      "tier": 0,
+      "country_iso2": "unknown",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ],
+      "notes": ""
+    },
+    {
+      "node_id": "propylene",
+      "node_type": "material",
+      "name": "Propylène",
+      "product": "propylène",
+      "tier": 1,
+      "country_iso2": "unknown",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ],
+      "notes": "Intrant principal."
+    },
+    {
+      "node_id": "ammonia",
+      "node_type": "material",
+      "name": "Ammoniac",
+      "product": "ammoniac",
+      "tier": 1,
+      "country_iso2": "unknown",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ],
+      "notes": ""
+    },
+    {
+      "node_id": "naphtha_propane",
+      "node_type": "material",
+      "name": "Naphta et propane",
+      "product": "naphta, propane",
+      "tier": 2,
+      "country_iso2": "unknown",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src2"
+      ],
+      "notes": ""
+    },
+    {
+      "node_id": "natural_gas",
+      "node_type": "material",
+      "name": "Gaz naturel",
+      "product": "gaz naturel",
+      "tier": 2,
+      "country_iso2": "unknown",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src2"
+      ],
+      "notes": "Matière de base de l'ammoniac."
+    },
+    {
+      "node_id": "plant_gulf_cracker",
+      "node_type": "plant",
+      "name": "Vapocraqueur de la côte du Golfe (fictif)",
+      "product": "propylène",
+      "tier": 2,
+      "country_iso2": "US",
+      "place": "Côte du Golfe, Texas",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "low",
+      "source_ids": [
+        "src2"
+      ],
+      "notes": "Lieu trop vague pour des coordonnées."
+    },
+    {
+      "node_id": "cn_acrylonitrile",
+      "node_type": "country",
+      "name": "Chine",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "CN",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": 40,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ],
+      "notes": "Part illustrative."
+    },
+    {
+      "node_id": "us_acrylonitrile",
+      "node_type": "country",
+      "name": "États-Unis",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "US",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": 15,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ],
+      "notes": "Part illustrative ; exporte vers l'Europe."
+    },
+    {
+      "node_id": "de_acrylonitrile",
+      "node_type": "country",
+      "name": "Allemagne",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "DE",
+      "place": "unknown",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "low",
+      "source_ids": [
+        "src4"
+      ],
+      "notes": "Source unique et ancienne."
+    },
+    {
+      "node_id": "chokepoint_suez",
+      "node_type": "chokepoint",
+      "name": "Canal de Suez",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "EG",
+      "place": "Canal de Suez",
+      "lat": 30.58,
+      "lon": 32.27,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ],
+      "notes": "Route Asie vers Europe."
+    },
+    {
+      "node_id": "port_rotterdam",
+      "node_type": "port",
+      "name": "Port de Rotterdam",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "NL",
+      "place": "Rotterdam",
+      "lat": 51.95,
+      "lon": 4.14,
+      "global_share_pct": null,
+      "buffer_days": 21,
+      "capacity_text": "unknown",
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ],
+      "notes": "Stock tampon illustratif."
+    },
+    {
+      "node_id": "waterway_rhine",
+      "node_type": "waterway",
+      "name": "Rhin",
+      "product": "acrylonitrile",
+      "tier": 1,
+      "country_iso2": "DE",
+      "place": "Rhin",
+      "lat": null,
+      "lon": null,
+      "global_share_pct": null,
+      "buffer_days": null,
+      "capacity_text": "unknown",
+      "confidence": "low",
+      "source_ids": [
+        "src3"
+      ],
+      "notes": "Sensible aux basses eaux."
+    }
+  ],
+  "edges": [
+    {
+      "from_id": "naphtha_propane",
+      "to_id": "propylene",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "medium",
+      "source_ids": [
+        "src2"
+      ]
+    },
+    {
+      "from_id": "natural_gas",
+      "to_id": "ammonia",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "medium",
+      "source_ids": [
+        "src2"
+      ]
+    },
+    {
+      "from_id": "plant_gulf_cracker",
+      "to_id": "propylene",
+      "relation": "produces",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "low",
+      "source_ids": [
+        "src2"
+      ]
+    },
+    {
+      "from_id": "propylene",
+      "to_id": "cn_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "propylene",
+      "to_id": "us_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "propylene",
+      "to_id": "de_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "ammonia",
+      "to_id": "cn_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "ammonia",
+      "to_id": "us_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "ammonia",
+      "to_id": "de_acrylonitrile",
+      "relation": "feedstock_of",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "high",
+      "source_ids": [
+        "src1"
+      ]
+    },
+    {
+      "from_id": "cn_acrylonitrile",
+      "to_id": "chokepoint_suez",
+      "relation": "ships_via",
+      "transport_mode": "sea",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "from_id": "chokepoint_suez",
+      "to_id": "port_rotterdam",
+      "relation": "ships_via",
+      "transport_mode": "sea",
+      "lead_time_days": 12,
+      "share_pct": null,
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "from_id": "us_acrylonitrile",
+      "to_id": "port_rotterdam",
+      "relation": "ships_via",
+      "transport_mode": "sea",
+      "lead_time_days": 18,
+      "share_pct": null,
+      "confidence": "medium",
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "from_id": "port_rotterdam",
+      "to_id": "waterway_rhine",
+      "relation": "ships_via",
+      "transport_mode": "river",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "low",
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "from_id": "waterway_rhine",
+      "to_id": "acrylonitrile",
+      "relation": "ships_via",
+      "transport_mode": "river",
+      "lead_time_days": 5,
+      "share_pct": null,
+      "confidence": "low",
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "from_id": "de_acrylonitrile",
+      "to_id": "acrylonitrile",
+      "relation": "produces",
+      "transport_mode": "none",
+      "lead_time_days": null,
+      "share_pct": null,
+      "confidence": "low",
+      "source_ids": [
+        "src4"
+      ]
+    }
+  ],
+  "substitutes": [],
+  "structural_risks": [
+    {
+      "risk_type": "geographic_concentration",
+      "description": "La Chine porte la plus grande part de la production mondiale (valeur illustrative).",
+      "node_ids": [
+        "cn_acrylonitrile"
+      ],
+      "source_ids": [
+        "src3"
+      ]
+    },
+    {
+      "risk_type": "logistics_chokepoint",
+      "description": "Les flux d'Asie vers l'Europe passent par le canal de Suez.",
+      "node_ids": [
+        "chokepoint_suez"
+      ],
+      "source_ids": [
+        "src3"
+      ]
+    }
+  ],
+  "upcoming_dates": [
+    {
+      "date": "2027-03",
+      "what": "Maintenance programmée d'une usine d'acrylonitrile en Allemagne (exemple fictif)",
+      "node_ids": [
+        "de_acrylonitrile"
+      ],
+      "source_ids": [
+        "src4"
+      ]
+    }
+  ],
+  "open_questions": [
+    "Délai de fret Chine–Suez non sourcé : à calculer avec searoute depuis les ports d'exportation.",
+    "Substituts : aucun cité par le rapport.",
+    "Part de la production allemande : source unique et ancienne."
+  ],
+  "injection_suspected": false
+}

@@ -79,7 +79,7 @@ Updater (LaunchAgent quotidien) ──► release GitHub signée ──► véri
 
 ## Stack
 
-- Python 3.12 ou plus, géré par `uv`, projet non empaqueté (`[tool.uv] package = false`). FastAPI et Uvicorn ; SQLite en mode WAL avec migrations SQL numérotées ; APScheduler ; httpx ; pydantic v2 ; SDK `anthropic` ; `keyring` ; `defusedxml` ; `nh3` ; `networkx` ; `searoute` ; `jsonschema` ; `cryptography` (vérification Ed25519, AES-256-GCM, HKDF) ; `webauthn` (Duo Labs : vérification des clés d'accès du coffre) ; `pyyaml`. Données embarquées : frontières Natural Earth ; liste des villes de plus de 15 000 habitants de GeoNames (licence CC BY 4.0), réduite au nom, aux noms alternatifs, au pays et aux coordonnées.
+- Python 3.12 ou plus, géré par `uv`, projet non empaqueté (`[tool.uv] package = false`). FastAPI et Uvicorn ; SQLite en mode WAL avec migrations SQL numérotées ; APScheduler ; httpx ; pydantic v2 ; SDK `anthropic` ; `keyring` ; `defusedxml` ; `nh3` ; `networkx` ; `jsonschema` ; `cryptography` (vérification Ed25519, AES-256-GCM, HKDF) ; `webauthn` (Duo Labs : vérification des clés d'accès du coffre) ; `pyyaml`. Données embarquées : frontières Natural Earth ; liste des villes de plus de 15 000 habitants de GeoNames (licence CC BY 4.0), réduite au nom, aux noms alternatifs, au pays et aux coordonnées.
 - Frontend : React, Vite et TypeScript ; TradingView Lightweight Charts (prix) ; MapLibre GL JS avec tuiles OpenFreeMap (carte) ; React Flow (graphe de chaîne) ; polices IBM Plex auto-hébergées, sans appel à Google Fonts.
 - Qualité : `ruff`, `mypy` (strict sur `security/`, `net/`, `llm/`, `updater/`), `pytest`, `vitest`, `bandit`, `pip-audit`, `npm audit`, `gitleaks` en pré-commit et en CI.
 - Prends la dernière version stable de chaque outil au moment de coder, puis fige-la.
@@ -125,8 +125,9 @@ Vérifie chaque paramètre dans la documentation officielle à jour avant de cod
 | --- | --- | --- | --- |
 | Tri des articles candidats | `claude-haiku-5-5` | prompt `prompts/triage_v1.md`, `thinking: {"type": "disabled"}` (accepté à l'effort `high` ou moins ; effort laissé par défaut, `medium`), `output_config.format` avec `schemas/triage_v1.json` | Batch |
 | Analyse d'impact | `claude-sonnet-5-5` | prompt `prompts/impact_v1.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "high"`, `output_config.format` avec `schemas/impact_assessment_v1.json` | Batch ; API standard si la sévérité préliminaire est ≥ 3 |
-| Reconstruction, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 20`, prompt `prompts/chain_research_v1.md` | standard, en streaming |
-| Reconstruction, étape 2 : structuration | `claude-sonnet-5-5` | prompt `prompts/chain_structure_v1.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "medium"`, `output_config.format` avec `schemas/supply_chain_v1.json` | standard |
+| Reconstruction, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 20`, `allowed_callers: ["direct"]` (sinon aucune citation), prompt `prompts/chain_research_v1.md` | standard, en streaming |
+| Reconstruction, étape 2 : structuration des maillons et liens | `claude-sonnet-5-5` | prompt `prompts/chain_structure_v2.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "medium"`, `output_config.format` avec `schemas/supply_chain_core_v1.json` | standard |
+| Reconstruction, étape 3 : voies, substituts, risques, échéances | `claude-sonnet-5-5` | prompt `prompts/chain_context_v1.md`, mêmes réglages, `schemas/supply_chain_context_v1.json` ; facultatif : un échec garde la chaîne | standard |
 | Cas comparables, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 10`, prompt `prompts/case_research_v1.md` | standard, en streaming |
 | Cas comparables, étape 2 : structuration | `claude-sonnet-5-5` | prompt `prompts/case_structure_v1.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "medium"`, `output_config.format` avec `schemas/historical_case_v1.json` | standard |
 | Synthèse hebdomadaire | `claude-sonnet-5-5` | prompt `prompts/digest_v1.md`, `thinking: {"type": "between_tools"}` (sans outil, donc sans réflexion), `output_config.effort: "medium"`, `output_config.format` avec `schemas/digest_v1.json` | Batch |
@@ -175,7 +176,7 @@ Critères : les tests de phase 1 de `docs/SECURITY.md` passent, sans test vide n
 
 ### Phase 2 — Reconstruction de chaîne
 
-Écran « Ajouter une matière » ; identification (PubChem, Wikidata, ECICS) ; recherche puis structuration ; recoupement minimal (USGS, UN Comtrade) ; calcul des délais (searoute et valeurs par défaut) ; écran « Chaîne » avec React Flow et correction des maillons ; devis et confirmation.
+Écran « Ajouter une matière » ; identification (PubChem, Wikidata, ECICS) ; recherche puis structuration ; recoupement minimal (USGS, UN Comtrade) ; calcul des délais (estimation maritime entre ports et valeurs par défaut) ; écran « Chaîne » avec React Flow et correction des maillons ; devis et confirmation.
 
 Critères : pour 3 CAS de test (107-13-1, 554-13-2, 7440-55-3), puis pour ceux de l'utilisateur, la chaîne contient au moins une voie de production, des pays et des sites sourcés, une confiance par maillon, passe les contrôles de `schemas/check_schemas.py`, et le coût affiché reste sous 3 $ par matière ; tests de phase 2 au vert.
 

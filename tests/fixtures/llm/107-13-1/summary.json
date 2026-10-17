@@ -1,0 +1,19 @@
+{
+ "nodes": 14,
+ "edges": 22,
+ "routes": 4,
+ "countries": [
+  "CN",
+  "DE",
+  "NL",
+  "US"
+ ],
+ "sourced_sites": 6,
+ "confidence": {
+  "low": 6,
+  "medium": 8
+ },
+ "sources": 55,
+ "injection_suspected": false,
+ "cost_usd": 2.6541
+}

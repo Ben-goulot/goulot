@@ -1,0 +1,214 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "material",
+    "nodes",
+    "edges",
+    "open_questions",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "core-1.0"
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "cas",
+        "hs_code_candidates"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "cas": {
+          "type": "string",
+          "description": "Numéro CAS reçu dans <material>, recopié sans modification."
+        },
+        "hs_code_candidates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Codes SH à 6 chiffres plausibles, à vérifier."
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      },
+      "minItems": 1
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "node_type",
+        "name",
+        "product",
+        "tier",
+        "country_iso2",
+        "place",
+        "lat",
+        "lon",
+        "global_share_pct",
+        "buffer_days",
+        "capacity_text",
+        "confidence",
+        "source_ids",
+        "notes"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Minuscules, chiffres et tirets bas ; unique."
+        },
+        "node_type": {
+          "type": "string",
+          "description": "Une valeur parmi : material, mine, plant, recycler, country, company, port, chokepoint, waterway, distributor, other."
+        },
+        "name": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string",
+          "description": "Matière produite ou manipulée par le maillon."
+        },
+        "tier": {
+          "type": "integer",
+          "description": "Entier de 0 à 3."
+        },
+        "country_iso2": {
+          "type": "string",
+          "description": "Code ISO 3166-1 alpha-2, ou unknown."
+        },
+        "place": {
+          "type": "string",
+          "description": "Ville, site, port ou détroit ; unknown sinon."
+        },
+        "lat": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lon": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "global_share_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Part de la production ou des exportations mondiales, de 0 à 100, ou null."
+        },
+        "buffer_days": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "capacity_text": {
+          "type": "string",
+          "description": "Capacité publiée avec son unité, ou unknown."
+        },
+        "confidence": {
+          "type": "string",
+          "description": "Une valeur parmi : high, medium, low."
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_id",
+        "to_id",
+        "relation",
+        "transport_mode",
+        "lead_time_days",
+        "share_pct",
+        "confidence",
+        "source_ids"
+      ],
+      "properties": {
+        "from_id": {
+          "type": "string",
+          "description": "Maillon amont."
+        },
+        "to_id": {
+          "type": "string",
+          "description": "Maillon aval."
+        },
+        "relation": {
+          "type": "string",
+          "description": "feedstock_of : produit vers ses utilisateurs ; produces : producteur vers son produit ; ships_via : vers l'étape logistique suivante ou la matière achetée ; yields_coproduct : production principale vers son coproduit ; supplies : lien commercial. Une valeur parmi : feedstock_of, produces, ships_via, yields_coproduct, supplies."
+        },
+        "transport_mode": {
+          "type": "string",
+          "description": "none pour un lien sans transport (intrant, production, coproduit). Une valeur parmi : sea, river, rail, road, pipeline, air, none, unknown."
+        },
+        "lead_time_days": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "share_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Part du flux aval fournie par l'origine, de 0 à 100, ou null."
+        },
+        "confidence": {
+          "type": "string",
+          "description": "Une valeur parmi : high, medium, low."
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

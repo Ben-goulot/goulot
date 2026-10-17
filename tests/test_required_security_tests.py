@@ -19,6 +19,8 @@ PHASE_1 = {
     "test_unlock_rate_limited", "test_passkey_enrollment_requires_proof",
 }
 
+PHASE_2 = {"test_prompt_injection_fixtures", "test_no_user_data_in_prompts"}
+
 
 def _security_tests() -> dict[str, ast.FunctionDef]:
     found: dict[str, ast.FunctionDef] = {}
@@ -29,9 +31,9 @@ def _security_tests() -> dict[str, ast.FunctionDef]:
     return found
 
 
-def test_phase_1_security_tests_present_and_real() -> None:
+def test_security_tests_of_finished_phases_present_and_real() -> None:
     found = _security_tests()
-    missing = PHASE_1 - found.keys()
+    missing = (PHASE_1 | PHASE_2) - found.keys()
     assert not missing, missing
     for name, node in found.items():
         source = ast.unparse(node)

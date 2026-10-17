@@ -1,0 +1,23 @@
+{
+ "nodes": 21,
+ "edges": 22,
+ "routes": 3,
+ "countries": [
+  "AU",
+  "BR",
+  "CA",
+  "CN",
+  "GN",
+  "IN",
+  "JP",
+  "KR"
+ ],
+ "sourced_sites": 4,
+ "confidence": {
+  "medium": 16,
+  "low": 5
+ },
+ "sources": 29,
+ "injection_suspected": false,
+ "cost_usd": 0.9177
+}

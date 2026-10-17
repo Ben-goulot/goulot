@@ -1,0 +1,39 @@
+{
+ "key": "chain_context_7440-55-3",
+ "model": "claude-sonnet-5-5",
+ "params_sha256": "b94ef8673028df3721f0ff222b4c29cda0e2a897cd0f804a04be97e2ab786764",
+ "response": {
+  "_request_id": "",
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"context-1.0\",\"routes\":[{\"route_id\":\"bayer_liquor\",\"name\":\"Liqueur Bayer (alumine)\",\"global_share_pct\":null,\"description\":\"Voie dominante : récupération du gallium dans la liqueur d'aluminate des raffineries d'alumine. La plupart des raffineries ne récupèrent pas le gallium. Le partage exact avec la voie zinc n'est pas publié.\",\"node_ids\":[\"crude_ga\",\"alumina\",\"bauxite\",\"chalco\",\"east_hope_mianchi\"],\"source_ids\":[\"src1\"]},{\"route_id\":\"zinc_residues\",\"name\":\"Résidus de la métallurgie du zinc\",\"global_share_pct\":null,\"description\":\"Voie minoritaire pratiquée notamment au Japon et en Corée du Sud ; le gallium est présent dans la sphalérite.\",\"node_ids\":[\"crude_ga\",\"zinc_residues\",\"sphalerite\",\"dowa_iijima\",\"country_kr_ga\"],\"source_ids\":[\"src2\",\"src7\"]},{\"route_id\":\"new_scrap_recycling\",\"name\":\"Recyclage des chutes neuves GaAs\",\"global_share_pct\":null,\"description\":\"Recyclage des chutes de fabrication de dispositifs GaAs ; capacité secondaire de haute pureté estimée à 280 t/an. Le recyclage de fin de vie est quasi inexistant. Une ancienne estimation USGS (2014) attribuait 40 à 45 % de la consommation à du matériau recyclé.\",\"node_ids\":[\"scrap_recycling\",\"neo_peterborough\"],\"source_ids\":[\"src1\",\"src3\",\"src4\",\"src11\"]}],\"substitutes\":[],\"structural_risks\":[{\"risk_type\":\"geographic_concentration\",\"description\":\"La Chine produit 99 % du gallium primaire de faible pureté et détient environ 89 % de la capacité mondiale de faible pureté ; elle détient aussi près de 60 % de la capacité de raffinage haute pureté.\",\"node_ids\":[\"country_cn_ga\",\"chalco\",\"east_hope_mianchi\",\"other_cn_producers\"],\"source_ids\":[\"src1\",\"src3\",\"src5\"]},{\"risk_type\":\"export_control\",\"description\":\"Licences d'exportation chinoises obligatoires depuis août 2023, interdiction vers les États-Unis en décembre 2024 suspendue jusqu'au 27 novembre 2026. Les licences restent obligatoires, le gallium reste sur la liste des biens à double usage, l'interdiction vers les utilisateurs militaires américains reste en vigueur et les délais de licence se sont allongés.\",\"node_ids\":[\"country_cn_ga\",\"crude_ga\"],\"source_ids\":[\"src3\",\"src21\",\"src24\",\"src25\",\"src26\"]},{\"risk_type\":\"coproduct_dependency\",\"description\":\"Le gallium est un sous-produit de l'alumine et du zinc : l'offre suit l'activité de l'aluminium et du zinc, et non la demande de gallium, et ne peut être augmentée seule en réponse au prix.\",\"node_ids\":[\"alumina\",\"zinc_residues\",\"crude_ga\"],\"source_ids\":[\"src1\",\"src22\"]},{\"risk_type\":\"geographic_concentration\",\"description\":\"La Chine produit 62 % de l'alumine mondiale (93 Mt sur 150 Mt) ; la Guinée assure 72 % des exportations mondiales de bauxite et 74 % des importations chinoises, dont la dépendance à la bauxite importée dépasse 55 %.\",\"node_ids\":[\"country_cn_alumina\",\"country_gn_bauxite\",\"bauxite\"],\"source_ids\":[\"src6\",\"src8\"]},{\"risk_type\":\"single_supplier\",\"description\":\"Hors Chine, seul le site d'Iijima (Japon) produit encore du gallium primaire, pour environ 5 t ; une seule installation recycle les chutes aux États-Unis.\",\"node_ids\":[\"dowa_iijima\"],\"source_ids\":[\"src1\",\"src5\"]}],\"upcoming_dates\":[{\"date\":\"2026-11-27\",\"what\":\"Fin de la suspension de l'interdiction chinoise d'exporter du gallium vers les États-Unis ; aucune prolongation confirmée.\",\"node_ids\":[\"country_cn_ga\"],\"source_ids\":[\"src24\"]},{\"date\":\"2027\",\"what\":\"Montée en charge du projet Metlen (Grèce, 50 t/an) en 2027, plein régime en 2028 ; premier gallium d'Alcoa Wagerup annoncé pour 2027 (une autre source évoque 2026) ; usine pilote Rio Tinto à Jonquière/Saguenay.\",\"node_ids\":[],\"source_ids\":[\"src12\",\"src13\",\"src14\"]}],\"open_questions\":[\"Quel est le partage exact entre la voie Bayer et la voie zinc ?\",\"Quels substituts du gallium existent ? Le rapport n'a pas fait de recherche sur ce point.\",\"Quelles sont les statistiques de production de zinc par pays ?\",\"Quels sont les ports, détroits, canaux et durées de transit, et quelles routes maritimes relient la Guinée à la Chine ?\",\"Quels sont les stocks tampons exprimés en jours ?\",\"Quelle information existe sur la saisonnalité et les maintenances programmées ?\",\"L'échéance du 27 novembre 2026 sera-t-elle prolongée ?\",\"Quelle est la capacité réelle de Chalco (200 t/an selon Reuters, 160 t/an selon d'autres sources) ?\",\"Quel est l'exploitant exact de l'usine d'Iijima ?\"],\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011Cg6GmfgmC9cMUMLDbSeNY",
+  "model": "claude-sonnet-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2266,
+   "inference_geo": "global",
+   "input_tokens": 6925,
+   "output_tokens": 1897,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "standard",
+   "speed": "standard"
+  }
+ }
+}

@@ -47,3 +47,40 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .plain { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
 h2 { margin-top: 0; }
 h3 { margin: 24px 0 10px; font-size: 1rem; color: var(--text-2); }
+select { font: inherit; color: var(--text); background: var(--row); border: 1px solid var(--border); border-radius: 8px; min-height: 44px; padding: 0 10px; }
+a { color: var(--accent); }
+.content.wide { max-width: none; margin: 16px 0; padding: 0 20px; }
+.card { margin-top: 16px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--row); }
+.eyebrow { margin: 16px 0 6px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.card .eyebrow:first-child, .side .eyebrow:first-child { margin-top: 0; }
+.title { margin: 0 0 12px; font-size: 1.15rem; color: var(--text); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.facts dt { color: var(--text-2); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.source { margin-right: 12px; }
+.steps { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.step::before { content: "○ "; color: var(--text-2); }
+.step.fait::before { content: "● "; color: #3ccb91; }
+.step.en-cours::before { content: "◐ "; color: var(--accent); }
+.step.arrêté::before { content: "✕ "; color: #ff7b7b; }
+.list-item { width: 100%; display: grid; grid-template-columns: 1fr auto auto; gap: 16px; text-align: left; }
+button:disabled { opacity: 0.55; cursor: default; }
+.chain-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.chain-head h2 { margin: 0; }
+.chain-layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; margin-top: 12px; }
+.chain-graph { position: relative; height: 72vh; min-height: 480px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+.columns { position: absolute; top: 8px; left: 12px; right: 12px; z-index: 5; display: flex; justify-content: space-between; pointer-events: none; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.side { max-height: 72vh; overflow: auto; }
+.form { display: grid; gap: 10px; margin-top: 12px; }
+.form label { display: grid; gap: 4px; color: var(--text-2); font-size: 0.9rem; }
+.validate { margin-top: 20px; display: grid; gap: 8px; }
+.react-flow { --xy-background-color: var(--panel); --xy-edge-stroke: #8a95a5; --xy-edge-label-background-color: var(--panel); --xy-edge-label-color: var(--text-2); }
+.react-flow__node.chain-node { width: 200px; padding: 8px 10px; border-radius: 8px; border: 1px solid #2e3846; background: var(--row); color: var(--text); text-align: left; font-size: 0.85rem; cursor: pointer; }
+.react-flow__node.chain-node.conf-low { border-style: dashed; border-color: var(--amber); }
+.react-flow__node.chain-node.purchased { border-color: var(--accent); }
+.react-flow__node.chain-node.selected { outline: 2px solid var(--accent); }
+.node-name { font-weight: 600; }
+.node-sub { color: var(--text-2); font-size: 0.78rem; margin-top: 2px; }
+.node-flag { color: var(--amber); font-size: 0.75rem; margin-top: 2px; }
+.react-flow__edge.conf-low path { stroke-dasharray: 5 4; }
+@media (max-width: 900px) { .chain-layout { grid-template-columns: 1fr; } }

@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, exchange, hasVaultToken, loadSession, setVaultToken, type VaultStatus } from "./api";
 import { assertionToJson, creationOptions, parseFragment, registrationToJson, requestOptions } from "./webauthn";
+import { AddMaterial } from "./chain/AddMaterial";
+import { ChainView } from "./chain/ChainView";
+import type { Material } from "./chain/types";
 
 const POLL_MS = 60_000;
 const HIDDEN_LOCK_MS = 5 * 60_000;
 
 type Passkey = { id: string; label: string; created_at: string; last_used_at: string | null };
-type Page = "accueil" | "coffre";
+type Page = "accueil" | "coffre" | "ajout" | `chaine/${string}`;
+
+const CHAIN_PATH = /^\/chaine\/([0-9a-f-]{36})$/;
 
 function pageFromPath(): Page {
-  return window.location.pathname.startsWith("/coffre") ? "coffre" : "accueil";
+  const path = window.location.pathname;
+  if (path.startsWith("/coffre")) return "coffre";
+  if (path === "/ajout") return "ajout";
+  const m = CHAIN_PATH.exec(path);
+  return m ? `chaine/${m[1]}` : "accueil";
 }
 
 export default function App() {
@@ -70,9 +79,15 @@ export default function App() {
   });
 
   const go = (p: Page) => {
-    history.pushState(null, "", p === "coffre" ? "/coffre" : "/");
+    history.pushState(null, "", p === "accueil" ? "/" : `/${p}`);
     setPage(p);
   };
+
+  useEffect(() => {
+    const onPop = () => setPage(pageFromPath());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const unlock = async () => {
     setMessage(null);
@@ -114,8 +129,11 @@ export default function App() {
       <header className="topbar">
         <span className="brand">Goulot</span>
         <nav>
-          <button className={page === "accueil" ? "tab active" : "tab"} onClick={() => go("accueil")}>
+          <button className={page === "accueil" || page.startsWith("chaine") ? "tab active" : "tab"} onClick={() => go("accueil")}>
             Marchés
+          </button>
+          <button className={page === "ajout" ? "tab active" : "tab"} onClick={() => go("ajout")}>
+            Ajouter une matière
           </button>
           <button className={page === "coffre" ? "tab active" : "tab"} onClick={() => go("coffre")}>
             Réglages du coffre
@@ -124,10 +142,11 @@ export default function App() {
         <VaultPill status={status} onUnlock={unlock} onLock={lock} />
       </header>
       {message && <p className="banner">{message}</p>}
-      <main className="content">
-        {page === "accueil" ? (
-          <Home />
-        ) : (
+      <main className={page.startsWith("chaine/") ? "content wide" : "content"}>
+        {page === "accueil" && <Home onOpen={(id) => go(`chaine/${id}`)} onAdd={() => go("ajout")} />}
+        {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
+        {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
+        {page === "coffre" && (
           <VaultPage status={status} grant={grant} refresh={refresh} onUnlock={unlock} setMessage={setMessage} />
         )}
       </main>
@@ -155,15 +174,44 @@ function VaultPill(props: { status: VaultStatus; onUnlock: () => void; onLock: (
   );
 }
 
-function Home() {
+const STATUS: Record<Material["status"], string> = {
+  draft: "à reconstruire",
+  reconstructing: "reconstruction en cours",
+  review: "à relire",
+  validated: "chaîne validée",
+  archived: "archivée",
+};
+
+function Home(props: { onOpen: (id: string) => void; onAdd: () => void }) {
   const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [materials, setMaterials] = useState<Material[]>([]);
   useEffect(() => {
     api.get<Record<string, string>>("/api/settings/secrets").then(setSecrets, () => undefined);
+    api.get<Material[]>("/api/materials").then(setMaterials, () => undefined);
   }, []);
   return (
     <section className="panel">
       <h2>Marchés</h2>
-      <p className="muted">La liste de suivi arrive avec la veille (phase 3). Phase 1 : fondations sécurisées.</p>
+      <p className="muted">Les verdicts arrivent avec la veille (phase 3). Phase 2 : reconstruction des chaînes.</p>
+      <h3>Matières</h3>
+      {materials.length === 0 ? (
+        <p className="muted">Aucune matière pour l'instant.</p>
+      ) : (
+        <ul className="plain">
+          {materials.map((m) => (
+            <li key={m.id}>
+              <button className="list-item" onClick={() => props.onOpen(m.id)} disabled={m.status === "draft" || m.status === "reconstructing"}>
+                <span>{m.name}</span>
+                <span className="mono muted">{m.cas}</span>
+                <span className="muted">{STATUS[m.status]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button className="primary" onClick={props.onAdd}>
+        Ajouter une matière
+      </button>
       <h3>Secrets du trousseau</h3>
       <ul className="plain">
         {Object.entries(secrets).map(([name, state]) => (

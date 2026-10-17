@@ -1,0 +1,21 @@
+{
+ "nodes": 23,
+ "edges": 28,
+ "routes": 5,
+ "countries": [
+  "AR",
+  "AU",
+  "CL",
+  "CN",
+  "ZW"
+ ],
+ "sourced_sites": 11,
+ "confidence": {
+  "medium": 16,
+  "low": 5,
+  "high": 2
+ },
+ "sources": 55,
+ "injection_suspected": false,
+ "cost_usd": 0.9949
+}

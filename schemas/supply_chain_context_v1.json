@@ -1,0 +1,182 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "routes",
+    "substitutes",
+    "structural_risks",
+    "upcoming_dates",
+    "open_questions",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "context-1.0"
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/route"
+      }
+    },
+    "substitutes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/substitute"
+      }
+    },
+    "structural_risks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/structural_risk"
+      }
+    },
+    "upcoming_dates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/upcoming_date"
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_id",
+        "name",
+        "global_share_pct",
+        "description",
+        "node_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "route_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "global_share_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Part mondiale de la voie, de 0 à 100, ou null."
+        },
+        "description": {
+          "type": "string"
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "substitute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "explanation",
+        "source_ids"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "structural_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "risk_type",
+        "description",
+        "node_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "risk_type": {
+          "type": "string",
+          "description": "Une valeur parmi : geographic_concentration, single_supplier, export_control, logistics_chokepoint, seasonality, recurring_maintenance, regulatory, coproduct_dependency, other."
+        },
+        "description": {
+          "type": "string"
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "upcoming_date": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "what",
+        "node_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "AAAA-MM-JJ ou AAAA-MM."
+        },
+        "what": {
+          "type": "string"
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

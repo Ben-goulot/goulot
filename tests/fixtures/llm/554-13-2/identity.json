@@ -1,0 +1,30 @@
+{
+ "cas": "554-13-2",
+ "name": "Lithium Carbonate",
+ "name_fr": "carbonate de lithium",
+ "formula": "CLi2O3",
+ "synonyms": [
+  "LITHIUM CARBONATE",
+  "Dilithium carbonate",
+  "Lithobid",
+  "Lithane",
+  "Carbonic acid, dilithium salt",
+  "Eskalith",
+  "Lithotabs",
+  "Carbonic acid lithium salt",
+  "Camcolit",
+  "Liskonum",
+  "Lithizine",
+  "Limas"
+ ],
+ "sources": [
+  {
+   "name": "PubChem",
+   "url": "https://pubchem.ncbi.nlm.nih.gov/compound/11125"
+  },
+  {
+   "name": "Wikidata",
+   "url": "https://www.wikidata.org/wiki/Q410174"
+  }
+ ]
+}
