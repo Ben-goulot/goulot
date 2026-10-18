@@ -3,22 +3,26 @@ import { api, ApiError, exchange, hasVaultToken, loadSession, setVaultToken, typ
 import { assertionToJson, creationOptions, parseFragment, registrationToJson, requestOptions } from "./webauthn";
 import { AddMaterial } from "./chain/AddMaterial";
 import { ChainView } from "./chain/ChainView";
-import type { Material } from "./chain/types";
+import { Markets } from "./watch/Markets";
+import { Reliability } from "./watch/Reliability";
+import { Sheet } from "./watch/Sheet";
+import { WatchSettings } from "./watch/WatchSettings";
 
 const POLL_MS = 60_000;
 const HIDDEN_LOCK_MS = 5 * 60_000;
 
 type Passkey = { id: string; label: string; created_at: string; last_used_at: string | null };
-type Page = "accueil" | "coffre" | "ajout" | `chaine/${string}`;
+type Page = "accueil" | "coffre" | "ajout" | "fiabilite" | `chaine/${string}` | `matiere/${string}` | `fiabilite/${string}`;
 
-const CHAIN_PATH = /^\/chaine\/([0-9a-f-]{36})$/;
+const WITH_ID = /^\/(chaine|matiere|fiabilite)\/([0-9a-f-]{36})$/;
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
   if (path.startsWith("/coffre")) return "coffre";
   if (path === "/ajout") return "ajout";
-  const m = CHAIN_PATH.exec(path);
-  return m ? `chaine/${m[1]}` : "accueil";
+  if (path === "/fiabilite") return "fiabilite";
+  const m = WITH_ID.exec(path);
+  return m ? (`${m[1]}/${m[2]}` as Page) : "accueil";
 }
 
 export default function App() {
@@ -129,25 +133,48 @@ export default function App() {
       <header className="topbar">
         <span className="brand">Goulot</span>
         <nav>
-          <button className={page === "accueil" || page.startsWith("chaine") ? "tab active" : "tab"} onClick={() => go("accueil")}>
+          <button
+            className={page === "accueil" || page.startsWith("chaine") || page.startsWith("matiere") ? "tab active" : "tab"}
+            onClick={() => go("accueil")}
+          >
             Marchés
           </button>
           <button className={page === "ajout" ? "tab active" : "tab"} onClick={() => go("ajout")}>
             Ajouter une matière
           </button>
+          <button className={page.startsWith("fiabilite") ? "tab active" : "tab"} onClick={() => go("fiabilite")}>
+            Fiabilité
+          </button>
           <button className={page === "coffre" ? "tab active" : "tab"} onClick={() => go("coffre")}>
-            Réglages du coffre
+            Réglages
           </button>
         </nav>
         <VaultPill status={status} onUnlock={unlock} onLock={lock} />
       </header>
       {message && <p className="banner">{message}</p>}
-      <main className={page.startsWith("chaine/") ? "content wide" : "content"}>
-        {page === "accueil" && <Home onOpen={(id) => go(`chaine/${id}`)} onAdd={() => go("ajout")} />}
+      <main className={page === "accueil" || page === "ajout" || page === "coffre" ? "content" : "content wide"}>
+        {page === "accueil" && (
+          <>
+            <Markets onOpen={(id) => go(`matiere/${id}`)} onChain={(id) => go(`chaine/${id}`)} onAdd={() => go("ajout")} />
+            <Home />
+          </>
+        )}
+        {page.startsWith("matiere/") && (
+          <Sheet
+            materialId={page.slice(8)}
+            onChain={() => go(`chaine/${page.slice(8)}`)}
+            onReliability={() => go(`fiabilite/${page.slice(8)}`)}
+            onBack={() => go("accueil")}
+          />
+        )}
+        {page.startsWith("fiabilite") && <Reliability materialId={page.length > 10 ? page.slice(10) : null} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
         {page === "coffre" && (
-          <VaultPage status={status} grant={grant} refresh={refresh} onUnlock={unlock} setMessage={setMessage} />
+          <>
+            <WatchSettings />
+            <VaultPage status={status} grant={grant} refresh={refresh} onUnlock={unlock} setMessage={setMessage} />
+          </>
         )}
       </main>
     </>
@@ -174,44 +201,13 @@ function VaultPill(props: { status: VaultStatus; onUnlock: () => void; onLock: (
   );
 }
 
-const STATUS: Record<Material["status"], string> = {
-  draft: "à reconstruire",
-  reconstructing: "reconstruction en cours",
-  review: "à relire",
-  validated: "chaîne validée",
-  archived: "archivée",
-};
-
-function Home(props: { onOpen: (id: string) => void; onAdd: () => void }) {
+function Home() {
   const [secrets, setSecrets] = useState<Record<string, string>>({});
-  const [materials, setMaterials] = useState<Material[]>([]);
   useEffect(() => {
     api.get<Record<string, string>>("/api/settings/secrets").then(setSecrets, () => undefined);
-    api.get<Material[]>("/api/materials").then(setMaterials, () => undefined);
   }, []);
   return (
     <section className="panel">
-      <h2>Marchés</h2>
-      <p className="muted">Les verdicts arrivent avec la veille (phase 3). Phase 2 : reconstruction des chaînes.</p>
-      <h3>Matières</h3>
-      {materials.length === 0 ? (
-        <p className="muted">Aucune matière pour l'instant.</p>
-      ) : (
-        <ul className="plain">
-          {materials.map((m) => (
-            <li key={m.id}>
-              <button className="list-item" onClick={() => props.onOpen(m.id)} disabled={m.status === "draft" || m.status === "reconstructing"}>
-                <span>{m.name}</span>
-                <span className="mono muted">{m.cas}</span>
-                <span className="muted">{STATUS[m.status]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <button className="primary" onClick={props.onAdd}>
-        Ajouter une matière
-      </button>
       <h3>Secrets du trousseau</h3>
       <ul className="plain">
         {Object.entries(secrets).map(([name, state]) => (

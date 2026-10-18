@@ -1,0 +1,37 @@
+{
+ "key": "tri_107131_7ad42a5582606b631687936e",
+ "model": "claude-haiku-5-5",
+ "response": {
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"1.0\",\"relevant\":true,\"event_type\":\"sanctions_trade_policy\",\"event_status\":\"announced\",\"title_fr\":\"Antidumping préliminaire sur l'acrylonitrile coréen aux États-Unis\",\"summary_fr\":\"Le Département du Commerce américain détermine préliminairement que l'acrylonitrile coréen est vendu en dessous de la juste valeur.\",\"place\":\"Corée du Sud / États-Unis\",\"country_iso2\":\"KR\",\"event_date\":\"2026-10-16\",\"matched_node_ids\":[\"acrylonitrile\"],\"entities\":[{\"name\":\"Department of Commerce\",\"kind\":\"government_body\"},{\"name\":\"Republic of Korea\",\"kind\":\"country\"}],\"future_dates\":[],\"cited_origin\":\"Federal Register\",\"severity_hint\":2,\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011CgADxA7VQR7VEZFFJ3Fe4",
+  "model": "claude-haiku-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2571,
+   "inference_geo": "global",
+   "input_tokens": 142,
+   "output_tokens": 283,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "batch",
+   "speed": "standard"
+  }
+ }
+}

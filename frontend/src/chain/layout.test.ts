@@ -9,15 +9,22 @@ const node = (key: string, type: string, tier: number): ChainNode => ({
 });
 
 describe("chain layout", () => {
-  it("puts upstream on the left and the purchased material alone on the right", () => {
+  it("keeps every node in its role column, upstream on the left", () => {
     expect(column(node("gas", "material", 2))).toBe(0);
-    expect(column(node("propylene", "material", 1))).toBe(1);
-    expect(column(node("cn", "country", 1))).toBe(2);
-    expect(column(node("rotterdam", "port", 1))).toBe(3);
-    expect(column(node("acn", "material", 0))).toBe(4);
-    const pos = layout([node("a", "country", 1), node("b", "country", 1), node("acn", "material", 0)]);
-    expect(pos.get("acn")!.x).toBeGreaterThan(pos.get("a")!.x);
-    expect(pos.get("a")!.y).not.toBe(pos.get("b")!.y);
+    expect(column(node("cracker", "plant", 2))).toBe(1); // an upstream plant is not an input
+    expect(column(node("propylene", "material", 1))).toBe(2);
+    expect(column(node("cn", "country", 1))).toBe(3);
+    expect(column(node("hormuz", "chokepoint", 1))).toBe(4);
+    expect(column(node("acn", "material", 0))).toBe(5);
+  });
+  it("draws a title above each used column, aligned with its nodes", () => {
+    const { positions, headers } = layout([node("a", "country", 1), node("b", "country", 1), node("p", "port", 1),
+      node("acn", "material", 0)]);
+    expect(headers.map((h) => h.label)).toEqual(["Production", "Logistique", "Ta matière"]);
+    expect(headers[0].x).toBe(positions.get("a")!.x);
+    expect(headers[1].x).toBe(positions.get("p")!.x);
+    expect(positions.get("acn")!.x).toBeGreaterThan(positions.get("p")!.x);
+    expect(positions.get("a")!.y).not.toBe(positions.get("b")!.y);
   });
 });
 

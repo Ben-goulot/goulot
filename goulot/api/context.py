@@ -10,6 +10,7 @@ import httpx2
 
 from goulot.db.connection import Database
 from goulot.llm.backend import MessageBackend
+from goulot.llm.batch import BatchBackend
 from goulot.llm.budget import Budget
 from goulot.net.allowlist import load_allowlist
 from goulot.net.client import build_client
@@ -37,6 +38,7 @@ class AppContext:
     # Built on demand: the API key is read from the keychain only when an AI call is about to happen.
     llm_backend: Callable[[], MessageBackend]
     http_client: Callable[[], httpx2.Client]
+    llm_batch: Callable[[], BatchBackend] = field(default_factory=lambda: _no_batch)
     jobs: ThreadPoolExecutor = field(default_factory=lambda: ThreadPoolExecutor(max_workers=1))
 
 
@@ -57,11 +59,27 @@ def build_context(settings: Settings, clock: Clock | None = None) -> AppContext:
         budget=Budget(db, clock),
         llm_backend=lambda: live_backend(settings),
         http_client=lambda: build_client(load_allowlist(settings.config_dir)),
+        llm_batch=lambda: live_batch_backend(settings),
     )
 
 
 class MissingAPIKey(RuntimeError):
     pass
+
+
+def _no_batch() -> BatchBackend:
+    raise MissingAPIKey("Traitement différé indisponible.")
+
+
+def live_batch_backend(settings: Settings) -> BatchBackend:
+    from goulot.llm.batch import AnthropicBatchBackend
+    from goulot.llm.client import build_anthropic_client
+    from goulot.security.secrets import get_secret
+
+    key = get_secret("anthropic")
+    if not key:
+        raise MissingAPIKey("Clé API Anthropic absente : lancez « ./bin/goulot setup ».")
+    return AnthropicBatchBackend(build_anthropic_client(key, load_allowlist(settings.config_dir)))
 
 
 def live_backend(settings: Settings) -> MessageBackend:

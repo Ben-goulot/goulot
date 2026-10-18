@@ -1,0 +1,245 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "commodity_impacts",
+    "monitoring_triggers",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "impacts-1.0"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "commodity_impacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/commodity_impact"
+      }
+    },
+    "monitoring_triggers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/trigger"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "commodity_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commodity",
+        "impact_channel",
+        "transmission_chain",
+        "supply_at_risk",
+        "expected_duration_days",
+        "buffers",
+        "net_balance_effect",
+        "priced_in",
+        "severity",
+        "severity_rationale",
+        "second_order_effects"
+      ],
+      "properties": {
+        "commodity": {
+          "type": "string",
+          "description": "Code de tracked_commodities."
+        },
+        "impact_channel": {
+          "type": "string",
+          "enum": [
+            "supply_disruption",
+            "logistics_disruption",
+            "demand_shock",
+            "trade_policy",
+            "input_cost",
+            "inventory_change",
+            "substitution",
+            "risk_premium",
+            "other"
+          ]
+        },
+        "transmission_chain": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Étapes du mécanisme, de l'événement jusqu'au prix, une par élément."
+        },
+        "supply_at_risk": {
+          "$ref": "#/$defs/supply_at_risk"
+        },
+        "expected_duration_days": {
+          "$ref": "#/$defs/duration"
+        },
+        "buffers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "net_balance_effect": {
+          "type": "string",
+          "enum": [
+            "tightening",
+            "loosening",
+            "neutral",
+            "ambiguous"
+          ]
+        },
+        "priced_in": {
+          "type": "string",
+          "enum": [
+            "not_priced",
+            "partially_priced",
+            "largely_priced",
+            "unknown"
+          ]
+        },
+        "severity": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "severity_rationale": {
+          "type": "string"
+        },
+        "second_order_effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/second_order"
+          }
+        }
+      }
+    },
+    "supply_at_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "volume",
+        "unit",
+        "global_share_pct",
+        "basis",
+        "reference_ids"
+      ],
+      "properties": {
+        "volume": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "global_share_pct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "reference_data",
+            "source_reported",
+            "analyst_estimate",
+            "unknown"
+          ]
+        },
+        "reference_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "low",
+        "high",
+        "basis"
+      ],
+      "properties": {
+        "low": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "high": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": "string"
+        }
+      }
+    },
+    "second_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "effect",
+        "direction"
+      ],
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down",
+            "ambiguous"
+          ]
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "indicator",
+        "signal",
+        "implication"
+      ],
+      "properties": {
+        "indicator": {
+          "type": "string"
+        },
+        "signal": {
+          "type": "string"
+        },
+        "implication": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

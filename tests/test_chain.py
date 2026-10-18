@@ -470,11 +470,11 @@ def test_routes_add_quote_reconstruct_validate(client: TestClient, ctx: AppConte
     chain = client.get(f"/api/materials/{mid}/chain").json()
     assert chain["material"]["status"] == "review" and len(chain["nodes"]) == 12
     delay = {n["node_key"]: n["delay"] for n in chain["nodes"]}
-    assert delay["acrylonitrile"] == {"days": 0, "low": 0, "high": 0}
+    assert delay["acrylonitrile"] == {"days": 0, "low": 0, "high": 0, "buffers": 0}
     # Rotterdam: Rhine barge 5 d + Rhine 0 d buffer + last leg 5 d = 10 d; its own buffer is not counted.
     assert delay["port_rotterdam"]["days"] == 10
     # US producers: sea 18 d + Rotterdam buffer 21 d (given, so the same in every bound) + 10 d.
-    assert delay["us_acrylonitrile"] == {"days": 49, "low": 49, "high": 49}
+    assert delay["us_acrylonitrile"] == {"days": 49, "low": 49, "high": 49, "buffers": 21}  # Rotterdam's stock
     r = client.patch(f"/api/materials/{mid}/nodes/port_rotterdam", json={"buffer_days": 9}, headers=h)
     assert r.status_code == 200
     assert client.patch(f"/api/materials/{mid}/nodes/port_rotterdam", json={"tier": 2}, headers=h).status_code == 422
@@ -488,7 +488,8 @@ def test_recorded_fixtures_meet_phase_2_criteria(ctx: AppContext) -> None:
     """Replays every recording made by `goulot dev record` (none before the user runs it)."""
     from goulot.cli.dev import FIXTURES, TEST_CAS
 
-    for directory in sorted(p for p in FIXTURES.glob("*") if (p / "summary.json").is_file()):
+    for directory in sorted(p for p in FIXTURES.glob("*") if (p / "summary.json").is_file()
+                            and not p.name.startswith("watch_")):  # the watch scenario has its own test
         assert directory.name in TEST_CAS
         identity = json.loads((directory / "identity.json").read_text(encoding="utf-8"))
         with ctx.db.transaction() as conn:

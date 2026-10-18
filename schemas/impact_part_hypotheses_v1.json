@@ -1,0 +1,107 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "hypotheses",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "hypotheses-1.0"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hypothesis"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hypothesis_id",
+        "instrument_id",
+        "metric",
+        "direction",
+        "horizon",
+        "probability",
+        "move_p10",
+        "move_p90",
+        "move_unit",
+        "rationale",
+        "invalidation"
+      ],
+      "properties": {
+        "hypothesis_id": {
+          "type": "string"
+        },
+        "instrument_id": {
+          "type": "string",
+          "description": "Identifiant exact d'un instrument de market_context."
+        },
+        "metric": {
+          "type": "string",
+          "enum": [
+            "outright_price",
+            "calendar_spread",
+            "location_spread",
+            "physical_premium",
+            "freight_rate",
+            "implied_volatility"
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down"
+          ]
+        },
+        "horizon": {
+          "type": "string",
+          "enum": [
+            "1d",
+            "5d",
+            "20d"
+          ]
+        },
+        "probability": {
+          "type": "number",
+          "description": "Entre 0 et 1. Probabilité d'un mouvement anormal dans le sens annoncé dépassant le seuil de matérialité."
+        },
+        "move_p10": {
+          "type": "number",
+          "description": "Borne basse de l'intervalle à 80 % du mouvement anormal signé."
+        },
+        "move_p90": {
+          "type": "number",
+          "description": "Borne haute de l'intervalle à 80 % du mouvement anormal signé."
+        },
+        "move_unit": {
+          "type": "string",
+          "enum": [
+            "percent",
+            "price_units"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "invalidation": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

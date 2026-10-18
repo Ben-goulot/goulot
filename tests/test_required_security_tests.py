@@ -20,6 +20,11 @@ PHASE_1 = {
 }
 
 PHASE_2 = {"test_prompt_injection_fixtures", "test_no_user_data_in_prompts"}
+PHASE_3 = {
+    "test_xss_fixtures_rendered_as_text", "test_prompt_injection_fixtures", "test_fake_sites_cannot_confirm",
+    "test_alert_links_defanged", "test_budget_cap_modes", "test_circuit_breaker", "test_telegram_send_only",
+    "test_collector_limits", "test_ledger_append_only", "test_ledger_tamper_detected",
+}
 
 
 def _security_tests() -> dict[str, ast.FunctionDef]:
@@ -33,7 +38,7 @@ def _security_tests() -> dict[str, ast.FunctionDef]:
 
 def test_security_tests_of_finished_phases_present_and_real() -> None:
     found = _security_tests()
-    missing = (PHASE_1 | PHASE_2) - found.keys()
+    missing = (PHASE_1 | PHASE_2 | PHASE_3) - found.keys()
     assert not missing, missing
     for name, node in found.items():
         source = ast.unparse(node)

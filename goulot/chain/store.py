@@ -275,6 +275,7 @@ def correct_node(conn: sqlite3.Connection, material_id: str, node_key: str, chan
     cur = conn.execute(INSERT_NODE, [new[c] for c in NODE_COLUMNS])
     conn.execute("INSERT INTO node_sources SELECT ?, source_id FROM node_sources WHERE node_id = ?",
                  (cur.lastrowid, row["id"]))
+    refresh_rules(conn, material_id)
 
 
 def correct_edge(conn: sqlite3.Connection, material_id: str, edge_id: int, changes: dict[str, Any]) -> None:
@@ -311,3 +312,17 @@ def validate_material(conn: sqlite3.Connection, material_id: str, *, acknowledge
     now = utcnow()
     conn.execute("UPDATE materials SET status = 'validated', validated_at = ?, updated_at = ? WHERE id = ?",
                  (now, now, material_id))
+    refresh_rules(conn, material_id)
+    from goulot.prices.collect import propose_links
+
+    propose_links(conn, material_id)
+
+
+def refresh_rules(conn: sqlite3.Connection, material_id: str) -> int:
+    """Watch rules of a validated chain (step 7 « Armer la veille »); nothing is watched before validation."""
+    from goulot.collect.rules import generate
+
+    material = get_material(conn, material_id)
+    if material is None or material["status"] != "validated":
+        return 0
+    return generate(conn, material, load_chain(conn, material_id)["nodes"])

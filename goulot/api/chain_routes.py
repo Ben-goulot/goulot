@@ -217,6 +217,17 @@ def build_router(ctx: AppContext) -> APIRouter:
             raise HTTPException(409, str(exc)) from None
         return {"ok": True}
 
+    @router.get("/watch/status")
+    def watch_status() -> dict[str, Any]:
+        from goulot.collect.runner import freshness
+
+        with ctx.db.connect() as conn:
+            sources = [dict(r) for r in conn.execute(
+                "SELECT source, family, MAX(started_at) AS last_run, "
+                "MAX(CASE WHEN ok = 1 THEN started_at END) AS last_ok FROM collect_runs "
+                "GROUP BY source ORDER BY source")]
+        return {**freshness(ctx.db, _now()), "sources": sources}
+
     @router.get("/llm/spend")
     def llm_spend() -> dict[str, dict[str, float]]:
         return {b: {"spent_usd": round(ctx.budget.spent(b), 4), "cap_usd": ctx.budget.cap(b)}

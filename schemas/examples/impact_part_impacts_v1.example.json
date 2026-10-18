@@ -1,0 +1,64 @@
+{
+  "schema_version": "impacts-1.0",
+  "event_id": "EVT-2026-10-03-0142",
+  "commodity_impacts": [
+    {
+      "commodity": "copper",
+      "impact_channel": "supply_disruption",
+      "transmission_chain": [
+        "Grève : extraction et broyage réduits à la mine",
+        "Moins d'expéditions de concentré vers les fonderies",
+        "Marché du concentré plus tendu, frais de traitement en baisse",
+        "Effet sur le cathode retardé tant que les fonderies puisent dans leurs stocks de concentré"
+      ],
+      "supply_at_risk": {
+        "volume": 21,
+        "unit": "kt de cuivre contenu par mois",
+        "global_share_pct": 1.1,
+        "basis": "reference_data",
+        "reference_ids": [
+          "R1",
+          "R2"
+        ]
+      },
+      "expected_duration_days": {
+        "low": 0,
+        "high": 30,
+        "basis": "Grève incertaine ; les conflits comparables du référentiel ont duré de une à quatre semaines."
+      },
+      "buffers": [
+        "Stocks de concentré des fonderies estimés à plusieurs semaines (R5)",
+        "Stocks LME en hausse sur un mois (R6)"
+      ],
+      "net_balance_effect": "tightening",
+      "priced_in": "partially_priced",
+      "severity": 1,
+      "severity_rationale": "1,1 % de l'offre minière mondiale est exposé, mais la grève reste incertaine et une production partielle est possible ; les tampons couvrent le court terme.",
+      "second_order_effects": [
+        {
+          "target": "Frais de traitement du concentré (TC/RC)",
+          "effect": "Pression à la baisse sur les prochaines négociations spot.",
+          "direction": "down"
+        },
+        {
+          "target": "Molybdène, coproduit de la mine (R1)",
+          "effect": "Offre réduite à proportion de l'arrêt.",
+          "direction": "up"
+        }
+      ]
+    }
+  ],
+  "monitoring_triggers": [
+    {
+      "indicator": "Issue de la médiation gouvernementale",
+      "signal": "Accord ou échec annoncé avant le 8 octobre",
+      "implication": "En cas d'échec, relever la sévérité à 2 et la probabilité de H1."
+    },
+    {
+      "indicator": "Vraquiers en attente au terminal de concentrés (AIS)",
+      "signal": "Attente moyenne supérieure à cinq jours",
+      "implication": "Confirme une baisse effective des expéditions."
+    }
+  ],
+  "injection_suspected": false
+}

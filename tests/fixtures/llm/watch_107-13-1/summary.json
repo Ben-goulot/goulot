@@ -1,0 +1,65 @@
+{
+ "articles": {
+  "outage_reuters": {
+   "status": "grouped",
+   "event": "EVT-2026-10-18-0001"
+  },
+  "outage_icis": {
+   "status": "grouped",
+   "event": "EVT-2026-10-18-0001"
+  },
+  "trap": {
+   "status": "quarantined",
+   "event": null
+  },
+  "fake_1": {
+   "status": "irrelevant",
+   "event": null
+  },
+  "fake_2": {
+   "status": "irrelevant",
+   "event": null
+  },
+  "fake_3": {
+   "status": "irrelevant",
+   "event": null
+  },
+  "commentary": {
+   "status": "irrelevant",
+   "event": null
+  },
+  "offtopic": {
+   "status": "irrelevant",
+   "event": null
+  },
+  "https://www.federalregister.gov/d/2026-99999": {
+   "status": "grouped",
+   "event": "EVT-2026-10-18-0002"
+  }
+ },
+ "events": [
+  {
+   "id": "EVT-2026-10-18-0001",
+   "type": "infrastructure_failure",
+   "confirmation": "confirmed",
+   "lineages": 2,
+   "origin": "news",
+   "analysis": "done"
+  },
+  {
+   "id": "EVT-2026-10-18-0002",
+   "type": "sanctions_trade_policy",
+   "confirmation": "confirmed",
+   "lineages": 1,
+   "origin": "policy",
+   "analysis": "done"
+  }
+ ],
+ "verdict": {
+  "verdict": "ant",
+  "pressure": 1,
+  "x_weeks": 0.0,
+  "event_ids": "[\"EVT-2026-10-18-0001\"]"
+ },
+ "ai_cost_usd": 0.062
+}

@@ -67,3 +67,27 @@ def fetch(
             content=b"".join(chunks),
             final_url=str(response.url),
         )
+
+
+def post_json(
+    client: httpx2.Client,
+    url: str,
+    payload: dict[str, object],
+    *,
+    max_bytes: int = MAX_RESPONSE_BYTES,
+) -> FetchResult:
+    """POST a JSON body (e.g. the BLS API, whose key goes in the body, never in the URL), same limits as GET."""
+    with client.stream("POST", url, json=payload) as response:
+        chunks: list[bytes] = []
+        total = 0
+        for chunk in response.iter_bytes():
+            total += len(chunk)
+            if total > max_bytes:
+                raise ResponseTooLarge("decoded response larger than the limit")
+            chunks.append(chunk)
+        return FetchResult(
+            status=response.status_code,
+            content_type=response.headers.get("content-type", ""),
+            content=b"".join(chunks),
+            final_url=str(response.url),
+        )

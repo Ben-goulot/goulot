@@ -1,0 +1,249 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_understanding",
+    "confidence",
+    "data_gaps",
+    "assessment_status",
+    "headline",
+    "summary",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "comprehension-1.0"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "event_understanding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_type",
+        "event_status",
+        "facts",
+        "contradictions",
+        "affected_entities"
+      ],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "labor_action",
+            "armed_conflict",
+            "civil_unrest",
+            "extreme_weather",
+            "natural_disaster",
+            "industrial_outage",
+            "maritime_disruption",
+            "infrastructure_failure",
+            "sanctions_trade_policy",
+            "export_restriction",
+            "regulatory_change",
+            "cyber_incident",
+            "health_biosecurity",
+            "other"
+          ]
+        },
+        "event_status": {
+          "type": "string",
+          "enum": [
+            "threatened",
+            "announced",
+            "ongoing",
+            "escalating",
+            "de_escalating",
+            "resolved",
+            "unclear"
+          ]
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fact"
+          }
+        },
+        "contradictions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/contradiction"
+          }
+        },
+        "affected_entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entity"
+          }
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_quality",
+        "mapping_quality",
+        "analysis_confidence",
+        "main_uncertainties"
+      ],
+      "properties": {
+        "evidence_quality": {
+          "type": "string",
+          "enum": [
+            "strong",
+            "moderate",
+            "weak"
+          ]
+        },
+        "mapping_quality": {
+          "type": "string",
+          "enum": [
+            "strong",
+            "moderate",
+            "weak"
+          ]
+        },
+        "analysis_confidence": {
+          "type": "number",
+          "description": "Entre 0 et 1."
+        },
+        "main_uncertainties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "data_gaps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/data_gap"
+      }
+    },
+    "assessment_status": {
+      "type": "string",
+      "enum": [
+        "impact_assessed",
+        "no_material_impact",
+        "insufficient_information",
+        "out_of_scope"
+      ]
+    },
+    "headline": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statement",
+        "source_ids"
+      ],
+      "properties": {
+        "statement": {
+          "type": "string"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description",
+        "source_ids"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_id",
+        "name",
+        "entity_type",
+        "mapping_quality"
+      ],
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "description": "Identifiant R… du référentiel, ou unmapped."
+        },
+        "name": {
+          "type": "string"
+        },
+        "entity_type": {
+          "type": "string",
+          "enum": [
+            "mine",
+            "smelter_refinery",
+            "processing_plant",
+            "oil_gas_field",
+            "terminal_port",
+            "pipeline",
+            "chokepoint",
+            "shipping_route",
+            "country",
+            "company",
+            "other"
+          ]
+        },
+        "mapping_quality": {
+          "type": "string",
+          "enum": [
+            "strong",
+            "moderate",
+            "weak"
+          ]
+        }
+      }
+    },
+    "data_gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missing",
+        "effect_on_assessment"
+      ],
+      "properties": {
+        "missing": {
+          "type": "string"
+        },
+        "effect_on_assessment": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

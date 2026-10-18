@@ -5,3 +5,5 @@ useDefault = true
 [allowlist]
 description = "Fake values used by the security tests"
 paths = ['''tests/security/test_secrets_logs_files\.py''', '''tests/security/test_outbound\.py''']
+# Recorded AI answers are named by their request id (triage or analysis), which looks like a key to the rules.
+regexes = ['''^(tri|ana)_[A-Za-z0-9-]+(_[A-Za-z0-9-]+)*$''']

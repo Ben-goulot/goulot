@@ -18,6 +18,7 @@ from goulot import __version__
 from goulot.api.chain_routes import build_router
 from goulot.api.context import AppContext
 from goulot.api.middleware import SecurityMiddleware
+from goulot.api.watch_routes import build_router as build_watch_router
 from goulot.db.connection import set_setting
 from goulot.private import coverage
 from goulot.security.audit import audit
@@ -255,6 +256,7 @@ def create_app(ctx: AppContext) -> FastAPI:
         return {"ok": coverage.delete(ctx.db, _check_ref(ref))}
 
     app.include_router(build_router(ctx))
+    app.include_router(build_watch_router(ctx))
 
     # --- frontend (static, no data) --------------------------------------------------------------------
     dist = ctx.settings.frontend_dist

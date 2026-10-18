@@ -30,7 +30,6 @@ LATER = {
     "update": "Mises à jour automatiques : disponibles en phase 5.",
     "history": "Historique des prix : disponible en phase 3.",
     "cases": "Bibliothèque de cas : disponible en phase 3.",
-    "ledger": "Registre des conseils : disponible en phase 3.",
     "export": "Export de conformité : disponible en phase 6.",
 }
 CLEAR_SCREEN = "\033[2J\033[3J\033[H"
@@ -353,11 +352,17 @@ def build_parser() -> argparse.ArgumentParser:
     recover = vsub.add_parser("recover", help="restaure la clé maîtresse avec la clé de secours")
     recover.add_argument("--replace", action="store_true", help="remplace une autre clé maîtresse du trousseau")
     vsub.add_parser("new-recovery-key", help="émet une nouvelle clé de secours")
+    ledger = sub.add_parser("ledger", help="registre des conseils")
+    lsub = ledger.add_subparsers(dest="ledger_action", required=True)
+    lsub.add_parser("verify", help="contrôle la chaîne d'empreintes du registre")
     dev = sub.add_parser("dev", help="commandes de développement (dans votre Terminal)")
     dsub = dev.add_subparsers(dest="dev_action", required=True)
     rec = dsub.add_parser("record", help="reconstruction réelle d'un CAS de test, réponses IA enregistrées")
     rec.add_argument("--cas", required=True, help="107-13-1, 554-13-2 ou 7440-55-3")
     rec.add_argument("--force", action="store_true", help="repart de zéro (sinon : reprise après un échec)")
+    rw = dsub.add_parser("record-watch", help="enregistre le tri et l'analyse du scénario de veille (moins de 1 $)")
+    rw.add_argument("--force", action="store_true",
+                    help="recommence : les réponses de tri inchangées sont reprises sans être repayées")
     dsub.add_parser("probe", help="essai à blanc des variantes du schéma de structuration (moins de 0,15 $)")
     for later in ("keygen", "release", "bootstrap"):
         p = dsub.add_parser(later, help="disponible en phase 5")
@@ -368,8 +373,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
+    from goulot.ledger.chain import verify
+
+    with _db(settings).connect() as conn:
+        result = verify(conn)
+    if result.ok:
+        print(f"✅ Registre intact : {result.entries} entrée(s), dernière empreinte {result.head[:16]}…")
+        return
+    sys.exit(f"❌ Registre altéré à l'entrée n° {result.at_seq} : {result.problem}.")
+
+
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
-    if args.dev_action not in ("record", "probe"):
+    if args.dev_action not in ("record", "probe", "record-watch"):
         print("Signature et publication des mises à jour : disponibles en phase 5.")
         return
     from goulot.cli.dev import cmd_dev as run_dev
@@ -395,6 +411,7 @@ def main(argv: list[str] | None = None) -> None:
         "panic": cmd_panic,
         "vault": cmd_vault,
         "dev": cmd_dev,
+        "ledger": cmd_ledger,
     }
     try:
         handlers[args.command](settings, args)

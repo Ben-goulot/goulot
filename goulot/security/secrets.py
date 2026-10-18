@@ -34,6 +34,7 @@ SECRETS: tuple[SecretSpec, ...] = (
     SecretSpec("bls", "Clé BLS", True),
     SecretSpec("census", "Clé des douanes américaines (Census)", True),
     SecretSpec("fred", "Clé FRED (facultative)", True),
+    SecretSpec("healthcheck", "Adresse secrète de l'alerte de vie externe (facultative)", True),
     SecretSpec("github_token", "Jeton GitHub en lecture seule (dépôt privé seulement)", True),
 )
 SECRET_NAMES = frozenset(s.name for s in SECRETS)

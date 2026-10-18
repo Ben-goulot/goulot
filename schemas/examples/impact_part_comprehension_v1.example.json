@@ -1,0 +1,65 @@
+{
+  "schema_version": "comprehension-1.0",
+  "event_id": "EVT-2026-10-03-0142",
+  "event_understanding": {
+    "event_type": "labor_action",
+    "event_status": "threatened",
+    "facts": [
+      {
+        "statement": "Le principal syndicat de la mine Quebrada Alta a voté une grève à partir du 8 octobre faute d'accord salarial.",
+        "source_ids": [
+          "S1",
+          "S2"
+        ]
+      },
+      {
+        "statement": "L'opérateur indique que les négociations se poursuivent sous médiation gouvernementale.",
+        "source_ids": [
+          "S3"
+        ]
+      }
+    ],
+    "contradictions": [
+      {
+        "description": "S2 annonce un arrêt total de la production en cas de grève ; S3 évoque un fonctionnement partiel assuré par le personnel d'encadrement.",
+        "source_ids": [
+          "S2",
+          "S3"
+        ]
+      }
+    ],
+    "affected_entities": [
+      {
+        "reference_id": "R1",
+        "name": "Mine Quebrada Alta (fictive)",
+        "entity_type": "mine",
+        "mapping_quality": "strong"
+      },
+      {
+        "reference_id": "R4",
+        "name": "Terminal d'exportation de concentrés (fictif)",
+        "entity_type": "terminal_port",
+        "mapping_quality": "moderate"
+      }
+    ]
+  },
+  "confidence": {
+    "evidence_quality": "moderate",
+    "mapping_quality": "strong",
+    "analysis_confidence": 0.6,
+    "main_uncertainties": [
+      "Probabilité que la grève ait réellement lieu",
+      "Niveau de production maintenu pendant la grève"
+    ]
+  },
+  "data_gaps": [
+    {
+      "missing": "Stocks de concentré sur le site minier",
+      "effect_on_assessment": "Des stocks importants retarderaient de plusieurs semaines tout effet sur les expéditions."
+    }
+  ],
+  "assessment_status": "impact_assessed",
+  "headline": "Cuivre : risque de grève sur 1,1 % de l'offre minière, biais haussier limité à cinq jours.",
+  "summary": "Une grève est possible dès le 8 octobre sur une mine qui pèse 1,1 % de l'offre minière mondiale. Les tampons et une production partielle limitent l'effet immédiat ; l'impact le plus net passerait par le marché du concentré et l'écart cash–3 mois si le conflit dure.",
+  "injection_suspected": false
+}

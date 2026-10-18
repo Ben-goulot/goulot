@@ -37,3 +37,6 @@ frontend/dist/
 # Fichiers personnels ou obsolètes, gardés sur le Mac uniquement
 A_LIRE/0_Etat_du_projet.pdf
 _to_delete/
+
+# Aperçu local de Claude Code (chemins de la machine)
+.claude/launch.json

@@ -1,0 +1,37 @@
+{
+ "key": "tri_107131_7fab2f4d86bbfb42ca09ea68",
+ "model": "claude-haiku-5-5",
+ "response": {
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"1.0\",\"relevant\":false,\"event_type\":\"other\",\"event_status\":\"unclear\",\"title_fr\":\"Prix de l'acrylonitrile stables en attendant les contrats\",\"summary_fr\":\"Article sur la stabilité des prix de l'acrylonitrile sans fait perturbateur nouveau ; extrait vide.\",\"place\":\"unknown\",\"country_iso2\":\"unknown\",\"event_date\":\"2026-10-18\",\"matched_node_ids\":[],\"entities\":[],\"future_dates\":[],\"cited_origin\":\"unknown\",\"severity_hint\":0,\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011CgADvxG5V7F3DQRCtZRws",
+  "model": "claude-haiku-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2571,
+   "inference_geo": "global",
+   "input_tokens": 92,
+   "output_tokens": 201,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "batch",
+   "speed": "standard"
+  }
+ }
+}

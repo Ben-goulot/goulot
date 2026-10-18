@@ -143,11 +143,53 @@ PROBE_SOURCES = [
 PROBE_MAX_USD = 0.15
 
 
+def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
+    """(name, meaning, request) for every output schema the app sends, plus fallbacks for the analysis."""
+    from goulot.chain.structure import context_params, structure_params
+    from goulot.cli.schema_probe import enums_to_descriptions, only
+    from goulot.llm.prompts import load_prompt
+    from goulot.llm.validate import schema
+
+    def req(model: str, prompt: str, out_schema: dict[str, Any], **extra: Any) -> dict[str, Any]:
+        return {"model": model, "max_tokens": 64, "system": load_prompt(prompt), **extra,
+                "output_config": {**extra.pop("output_config", {}), "format": {"type": "json_schema",
+                                                                               "schema": out_schema}},
+                "messages": [{"role": "user", "content": "Essai technique : réponds par un objet minimal."}]}
+
+    material = {"name": "acrylonitrile", "cas": TEST_CAS[0], "formula": "C3H3N", "purchased_form": "acrylonitrile"}
+    nodes = [{"node_id": "acrylonitrile", "node_type": "material", "name": "Acrylonitrile"}]
+    impact = schema("impact_assessment_v1")
+    sonnet_high = {"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}}
+    return [
+        ("structure", "chaîne : maillons et liens", {**structure_params(material, PROBE_REPORT, PROBE_SOURCES),
+                                                     "max_tokens": 64}),
+        ("contexte", "chaîne : voies, risques, échéances",
+         {**context_params(material, PROBE_REPORT, PROBE_SOURCES, nodes), "max_tokens": 64}),
+        ("tri", "tri des articles (Haiku)", req("claude-haiku-5-5", "triage_v1", schema("triage_v1"),
+                                                thinking={"type": "disabled"})),
+        ("synthese", "synthèse hebdomadaire", req("claude-sonnet-5-5", "digest_v1", schema("digest_v1"),
+                                                   thinking={"type": "between_tools"},
+                                                   output_config={"effort": "medium"})),
+        # The three partial calls of the impact analysis, exactly as the app sends them (prompt and schema)...
+        ("analyse_comprehension", "analyse 1/3 : compréhension et conclusion",
+         req("claude-sonnet-5-5", "impact_v1", schema("impact_part_comprehension_v1"), **sonnet_high)),
+        ("analyse_impacts", "analyse 2/3 : impacts et signaux à suivre",
+         req("claude-sonnet-5-5", "impact_v1", schema("impact_part_impacts_v1"), **sonnet_high)),
+        ("analyse_hypotheses", "analyse 3/3 : hypothèses de prix",
+         req("claude-sonnet-5-5", "impact_v1", schema("impact_part_hypotheses_v1"), **sonnet_high)),
+        # ...and two narrower fallbacks, in case the impacts part is still too large.
+        ("impacts_seuls", "repli : impacts sans signaux à suivre",
+         req("claude-sonnet-5-5", "impact_v1", only(impact, "event_id", "commodity_impacts"), **sonnet_high)),
+        ("impacts_sans_enum", "repli : impacts seuls, listes en description",
+         req("claude-sonnet-5-5", "impact_v1", enums_to_descriptions(only(impact, "event_id", "commodity_impacts")),
+             **sonnet_high)),
+    ]
+
+
 def probe(settings: Settings) -> None:
-    """Sends the structuring request with each schema variant and a 64-token cap: refusals are free."""
+    """Sends each request of the ladder with a 64-token cap: refusals are free, acceptances cost < 1 cent."""
     import anthropic
 
-    from goulot.chain.structure import context_params, structure_params
     from goulot.llm.budget import CallRecord
     from goulot.llm.pricing import Usage, cost_usd
 
@@ -156,24 +198,16 @@ def probe(settings: Settings) -> None:
         sys.exit("Clé API Anthropic absente : lancez « ./bin/goulot setup ».")
     setup_logging(settings.log_dir)
     budget, _ = _dev_budget(settings)
-    print("Essai à blanc des 2 appels de structuration (schémas réels), réponses limitées à 64 tokens.")
+    ladder = _probe_ladder()
+    print(f"Essai à blanc de {len(ladder)} schémas de sortie, réponses limitées à 64 tokens.")
     print(f"Un schéma refusé ne coûte rien ; un schéma accepté, moins d'un centime ({PROBE_MAX_USD:.2f} $ au plus).")
     print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
     budget.check("dev", PROBE_MAX_USD)
     if input("Lancer ? (o/N) ").strip().lower() != "o":
         sys.exit("Rien n'est lancé.")
     backend = AnthropicBackend(build_anthropic_client(key, load_allowlist(settings.config_dir)))
-    material = {"name": "acrylonitrile", "cas": TEST_CAS[0], "formula": "C3H3N", "purchased_form": "acrylonitrile"}
-    nodes = [{"node_id": "acrylonitrile", "node_type": "material", "name": "Acrylonitrile"},
-             {"node_id": "cn_acrylonitrile", "node_type": "country", "name": "Chine"}]
-    ladder = [
-        ("structure", "maillons et liens", structure_params(material, PROBE_REPORT, PROBE_SOURCES)),
-        ("contexte", "voies, substituts, risques, échéances",
-         context_params(material, PROBE_REPORT, PROBE_SOURCES, nodes)),
-    ]
     total = 0.0
-    for name, meaning, base in ladder:
-        params = {**base, "max_tokens": 64}
+    for name, meaning, params in ladder:
         started = time.monotonic()
         try:
             response = backend.create(f"probe_{name}", params)
@@ -196,8 +230,70 @@ def probe(settings: Settings) -> None:
     print("Copiez tout ce résultat à Claude.")
 
 
+WATCH_MAX_USD = 1.0  # the phase 3 test budget is 3 $ in all; one scenario run stays well under 1 $
+
+
+def record_watch(settings: Settings, args: argparse.Namespace) -> None:
+    """Real triage and analysis (Batch) of the fixed scenario, answers recorded for the replay tests."""
+    from goulot.cli import watch_scenario
+    from goulot.llm.batch import AnthropicBatchBackend, RecordingBatchBackend, ResumingBatchBackend
+    from goulot.llm.budget import CallRecord
+    from goulot.llm.pricing import Usage
+    from goulot.vault.keys import Vault
+
+    key = get_secret("anthropic")
+    if not key:
+        sys.exit("Clé API Anthropic absente : lancez « ./bin/goulot setup ».")
+    if not (FIXTURES / watch_scenario.CAS / "summary.json").is_file():
+        sys.exit("La chaîne de test 107-13-1 n'est pas enregistrée : « ./bin/goulot dev record --cas 107-13-1 ».")
+    if watch_scenario.recorded() and not args.force:
+        sys.exit("Scénario déjà enregistré : ajoutez --force pour recommencer.")
+    setup_logging(settings.log_dir)
+    budget, _ = _dev_budget(settings)
+    print("Enregistrement du scénario de veille (articles fictifs sur l'acrylonitrile) : tri par Haiku 5.5 et analyse")
+    print("par Sonnet 5.5 en 3 appels partiels, en traitement différé (moitié prix).")
+    print(f"Devis : environ 0,10 à 0,30 $, {WATCH_MAX_USD:.2f} $ au plus.")
+    print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
+    budget.check("dev", WATCH_MAX_USD)
+    if input("Lancer ? (o/N) ").strip().lower() != "o":
+        sys.exit("Rien n'est lancé.")
+    run_home = settings.home / "dev" / "watch"
+    if args.force and run_home.exists():
+        import shutil
+
+        shutil.rmtree(run_home)
+    if args.force:  # triage requests do not change: their answers are reused (and not paid again)
+        for old in [*watch_scenario.RECORDINGS.glob("ana_*.json"), watch_scenario.RECORDINGS / "summary.json"]:
+            old.unlink(missing_ok=True)
+    ensure_private_dir(run_home)
+    db = Database(run_home / "scenario.sqlite")
+    db.migrate()
+    with db.transaction() as conn:
+        conn.execute("DELETE FROM llm_calls")  # the scenario's own copy; the test budget lives in record.sqlite
+    live = AnthropicBatchBackend(build_anthropic_client(key, load_allowlist(settings.config_dir)))
+    backend = ResumingBatchBackend(RecordingBatchBackend(live, watch_scenario.RECORDINGS), watch_scenario.RECORDINGS)
+    started = time.monotonic()
+
+    def poll() -> None:
+        print(f"  … traitement différé en cours ({time.monotonic() - started:.0f} s)", flush=True)
+        time.sleep(20)
+        if time.monotonic() - started > 3600:
+            sys.exit("Plus d'une heure d'attente : relancez la même commande plus tard, rien ne sera repayé.")
+
+    scenario_budget = Budget(db, SystemClock())
+    result = watch_scenario.run(db, scenario_budget, Vault(db), backend, poll=poll)
+    spent = float(result["ai_cost_usd"])  # triage and analysis only: the chain is replayed, already paid
+    budget.record(CallRecord("dev", "watch_scenario", "claude-sonnet-5-5", "batch", Usage(), spent))
+    watch_scenario.save_summary(result)
+    print(f"\nÉvénements : {len(result['events'])} ; verdict : {result['verdict']}.")
+    print(f"Coût réel : {spent:.3f} $. Budget de test : {budget.spent('dev'):.2f} $ sur {budget.cap('dev'):.2f} $.")
+    print("Enregistré dans tests/fixtures/llm/watch_107-13-1. Copiez ce résultat à Claude.")
+
+
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
     if args.dev_action == "record":
         record(settings, args)
     elif args.dev_action == "probe":
         probe(settings)
+    elif args.dev_action == "record-watch":
+        record_watch(settings, args)

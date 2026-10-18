@@ -2,7 +2,7 @@ import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } fro
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
-import { COLUMNS, layout } from "./layout";
+import { HEADER_Y, layout } from "./layout";
 import { BASIS, clip, CONFIDENCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
 
 type Draft = {
@@ -77,8 +77,18 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
 
   const flow = useMemo(() => {
     if (!chain) return { nodes: [] as Node[], edges: [] as Edge[] };
-    const pos = layout(chain.nodes);
-    const nodes: Node[] = chain.nodes.map((n) => ({
+    const { positions: pos, headers } = layout(chain.nodes);
+    const titles: Node[] = headers.map((h) => ({
+      id: `col:${h.label}`,
+      position: { x: h.x, y: HEADER_Y },
+      data: { label: h.label },
+      className: "col-header",
+      draggable: false,
+      selectable: false,
+      connectable: false,
+      focusable: false,
+    }));
+    const nodes: Node[] = [...titles, ...chain.nodes.map((n) => ({
       id: n.node_key,
       position: pos.get(n.node_key) ?? { x: 0, y: 0 },
       data: {
@@ -98,7 +108,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
       sourcePosition: "right" as Node["sourcePosition"],
       targetPosition: "left" as Node["targetPosition"],
       draggable: false,
-    }));
+    }))];
     const edges: Edge[] = chain.edges.map((e) => ({
       id: String(e.id),
       source: e.from_key,
@@ -168,15 +178,11 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
       )}
       <div className="chain-layout">
         <div className="chain-graph">
-          <div className="columns">
-            {COLUMNS.map((c) => (
-              <span key={c}>{c}</span>
-            ))}
-          </div>
           <ReactFlow
             nodes={flow.nodes}
             edges={flow.edges}
             onNodeClick={(_, n) => {
+              if (n.id.startsWith("col:")) return;
               setSelected(n.id);
               setDraft(null);
             }}

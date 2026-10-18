@@ -1,0 +1,37 @@
+{
+ "key": "tri_107131_f68c582416b1ec9d638bf2aa",
+ "model": "claude-haiku-5-5",
+ "response": {
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"1.0\",\"relevant\":false,\"event_type\":\"other\",\"event_status\":\"unclear\",\"title_fr\":\"Retour du tricot acrylique pour 2027\",\"summary_fr\":\"Article de mode sur le retour des tricots acryliques ; aucun événement perturbant la chaîne d'approvisionnement.\",\"place\":\"unknown\",\"country_iso2\":\"unknown\",\"event_date\":\"2026-10-18\",\"matched_node_ids\":[],\"entities\":[],\"future_dates\":[],\"cited_origin\":\"unknown\",\"severity_hint\":0,\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011CgADxpnvNtJCX4REjTVk6",
+  "model": "claude-haiku-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 2571,
+   "inference_geo": "global",
+   "input_tokens": 94,
+   "output_tokens": 194,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "batch",
+   "speed": "standard"
+  }
+ }
+}

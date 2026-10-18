@@ -93,6 +93,16 @@ def check_firewall() -> Check:
     return Check(WARN, "Pare-feu macOS", "état illisible")
 
 
+def check_ledger(db: Database) -> Check:
+    from goulot.ledger.chain import verify
+
+    with db.connect() as conn:
+        result = verify(conn)
+    if result.ok:
+        return Check(OK, "Registre des conseils", f"chaîne d'empreintes intacte ({result.entries} entrée(s))")
+    return Check(FAIL, "Registre des conseils", f"altéré à l'entrée n° {result.at_seq} : {result.problem}")
+
+
 def run_checks(settings: Settings) -> list[Check]:
     checks: list[Check] = []
     ok_py = sys.version_info >= (3, 14)
@@ -128,6 +138,8 @@ def run_checks(settings: Settings) -> list[Check]:
     else:
         checks.append(Check(OK, "Base", f"intègre, journal {journal.upper()}, migrations à jour"))
     checks.append(check_permissions(settings))
+    if not pending:
+        checks.append(check_ledger(db))
 
     checks.append(
         Check(OK, "Clé Anthropic", "configurée")

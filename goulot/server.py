@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import errno
 import logging
+import os
 import socket
+from datetime import UTC, datetime, timedelta
 
 import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -12,6 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from goulot.api.app import create_app
 from goulot.api.context import AppContext, build_context
 from goulot.db.backup import backup, last_backup_age
+from goulot.pipeline import cycle
 from goulot.settings import LOOPBACK_V6, Settings, validate_bind_hosts
 
 log = logging.getLogger("goulot.server")
@@ -62,6 +65,13 @@ def run(settings: Settings) -> None:
     app = create_app(ctx)
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(_backup_if_due, "interval", hours=1, args=[ctx], id="daily_backup", max_instances=1)
+    # Watch cycle: at start-up (catch-up after the Mac slept), then every 3 hours. GOULOT_WATCH=off (development
+    # previews only) keeps a server from collecting or calling the AI.
+    if os.environ.get("GOULOT_WATCH") != "off":
+        scheduler.add_job(cycle.run, "interval", hours=3, args=[ctx], id="watch_cycle", max_instances=1,
+                          coalesce=True, next_run_time=datetime.now(UTC) + timedelta(seconds=30))
+    else:
+        log.warning("watch cycle disabled (GOULOT_WATCH=off)")
     scheduler.start()
     _backup_if_due(ctx)
     config = uvicorn.Config(

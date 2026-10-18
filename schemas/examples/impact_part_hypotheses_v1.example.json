@@ -1,0 +1,33 @@
+{
+  "schema_version": "hypotheses-1.0",
+  "event_id": "EVT-2026-10-03-0142",
+  "hypotheses": [
+    {
+      "hypothesis_id": "H1",
+      "instrument_id": "LME_CU_3M",
+      "metric": "outright_price",
+      "direction": "up",
+      "horizon": "5d",
+      "probability": 0.24,
+      "move_p10": -2.0,
+      "move_p90": 3.5,
+      "move_unit": "percent",
+      "rationale": "Risque sur 1,1 % de l'offre minière, déjà en partie intégré (+0,8 % depuis la première source) ; probabilité modérément supérieure au taux de base de 0,16.",
+      "invalidation": "Accord salarial signé avant le 8 octobre, ou expéditions normales confirmées par l'AIS au terminal."
+    },
+    {
+      "hypothesis_id": "H2",
+      "instrument_id": "LME_CU_CASH_3M",
+      "metric": "calendar_spread",
+      "direction": "up",
+      "horizon": "20d",
+      "probability": 0.3,
+      "move_p10": -15,
+      "move_p90": 60,
+      "move_unit": "price_units",
+      "rationale": "Si la grève dure, la tension sur le disponible s'exprime d'abord par un écart cash–3 mois plus élevé ; taux de base 0,17.",
+      "invalidation": "Hausse des stocks LME supérieure à 20 kt sur deux semaines."
+    }
+  ],
+  "injection_suspected": false
+}
