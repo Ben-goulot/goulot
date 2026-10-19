@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RANK_LABEL, RESULT_LABEL, signed, verdictClass, type Verdict } from "./types";
+import { RANK_LABEL, RESULT_LABEL, signed, verdictClass, type Verdict, scale } from "./types";
 
 const verdict = (v: Verdict["verdict"]) => ({ verdict: v }) as Verdict;
 
@@ -18,5 +18,17 @@ describe("watch display helpers", () => {
   it("names every series rank and outcome in French", () => {
     expect(Object.keys(RANK_LABEL)).toHaveLength(6);
     expect(RESULT_LABEL.unresolved).toBe("non résolu");
+  });
+});
+
+describe("scale of the comparable cases card", () => {
+  it("always shows zero and keeps the order of the values", () => {
+    const at = scale([4, 10, -2]);
+    expect(at(-2)).toBeLessThan(at(0));
+    expect(at(0)).toBeLessThan(at(4));
+    expect(at(10)).toBeLessThan(1);
+    expect(at(-2)).toBeGreaterThan(0);
+    const positive = scale([3, 5]);
+    expect(positive(0)).toBeGreaterThan(0); // zero is inside the axis even when every case rose
   });
 });

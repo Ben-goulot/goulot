@@ -28,8 +28,6 @@ from goulot.vault.tokens import VaultTokenService
 
 LATER = {
     "update": "Mises à jour automatiques : disponibles en phase 5.",
-    "history": "Historique des prix : disponible en phase 3.",
-    "cases": "Bibliothèque de cas : disponible en phase 3.",
     "export": "Export de conformité : disponible en phase 6.",
 }
 CLEAR_SCREEN = "\033[2J\033[3J\033[H"
@@ -355,6 +353,14 @@ def build_parser() -> argparse.ArgumentParser:
     ledger = sub.add_parser("ledger", help="registre des conseils")
     lsub = ledger.add_subparsers(dest="ledger_action", required=True)
     lsub.add_parser("verify", help="contrôle la chaîne d'empreintes du registre")
+    history = sub.add_parser("history", help="historique des prix")
+    hsub = history.add_subparsers(dest="history_action", required=True)
+    backfill = hsub.add_parser("backfill", help="télécharge maintenant tout l'historique des séries d'une matière")
+    backfill.add_argument("--cas", required=True, help="numéro CAS d'une matière déjà ajoutée et validée")
+    cases = sub.add_parser("cases", help="bibliothèque de cas comparables")
+    csub = cases.add_subparsers(dest="cases_action", required=True)
+    build = csub.add_parser("build", help="prépare les cas passés d'une matière validée (devis, puis confirmation)")
+    build.add_argument("--cas", required=True, help="numéro CAS d'une matière déjà ajoutée et validée")
     dev = sub.add_parser("dev", help="commandes de développement (dans votre Terminal)")
     dsub = dev.add_subparsers(dest="dev_action", required=True)
     rec = dsub.add_parser("record", help="reconstruction réelle d'un CAS de test, réponses IA enregistrées")
@@ -363,7 +369,12 @@ def build_parser() -> argparse.ArgumentParser:
     rw = dsub.add_parser("record-watch", help="enregistre le tri et l'analyse du scénario de veille (moins de 1 $)")
     rw.add_argument("--force", action="store_true",
                     help="recommence : les réponses de tri inchangées sont reprises sans être repayées")
-    dsub.add_parser("probe", help="essai à blanc des variantes du schéma de structuration (moins de 0,15 $)")
+    pr = dsub.add_parser("probe", help="essai à blanc des schémas de sortie (moins de 0,15 $)")
+    pr.add_argument("--only", help="noms séparés par des virgules, par exemple « cas »")
+    rc = dsub.add_parser("record-cases", help="prépare les cas comparables d'un CAS de test, réponses enregistrées")
+    rc.add_argument("--cas", required=True, help="107-13-1, 554-13-2 ou 7440-55-3")
+    rc.add_argument("--force", action="store_true", help="repart de zéro (sinon : reprise après un échec)")
+    dsub.add_parser("check-sources", help="interroge depuis le Mac les sources injoignables du bac à sable (sans IA)")
     for later in ("keygen", "release", "bootstrap"):
         p = dsub.add_parser(later, help="disponible en phase 5")
         p.add_argument("rest", nargs=argparse.REMAINDER)
@@ -371,6 +382,69 @@ def build_parser() -> argparse.ArgumentParser:
         p = sub.add_parser(name, help=message)
         p.add_argument("rest", nargs=argparse.REMAINDER)
     return parser
+
+
+def cmd_history(settings: Settings, args: argparse.Namespace) -> None:
+    from goulot.chain.identify import normalize_cas
+    from goulot.net.allowlist import load_allowlist
+    from goulot.net.client import build_client
+    from goulot.prices.collect import backfill
+    from goulot.security.secrets import get_secret
+
+    cas = normalize_cas(args.cas)
+    if cas is None:
+        sys.exit("Numéro CAS invalide.")
+    db = _db(settings)
+    with db.connect() as conn:
+        row = conn.execute("SELECT id, name, status FROM materials WHERE cas = ?", (cas,)).fetchone()
+    if row is None or row["status"] != "validated":
+        sys.exit("Aucune matière validée avec ce numéro CAS : ajoutez-la et validez sa chaîne dans l'app.")
+    print(f"Historique des prix de « {row['name']} » : cela peut prendre quelques minutes, sans coût d'IA.")
+    written = backfill(db, build_client(load_allowlist(settings.config_dir)), get_secret, row["id"], print)
+    print(f"Terminé : {sum(written.values())} points enregistrés sur {len(written)} série(s).")
+
+
+def cmd_cases(settings: Settings, args: argparse.Namespace) -> None:
+    from goulot.api.context import MissingAPIKey, build_context
+    from goulot.chain.identify import normalize_cas
+    from goulot.history import library
+
+    cas = normalize_cas(args.cas)
+    if cas is None:
+        sys.exit("Numéro CAS invalide.")
+    _db(settings)  # refuses an absent database
+    ctx = build_context(settings)
+    with ctx.db.connect() as conn:
+        row = conn.execute("SELECT id, name, status FROM materials WHERE cas = ?", (cas,)).fetchone()
+        running = row is not None and conn.execute(
+            "SELECT 1 FROM jobs WHERE material_id = ? AND kind = 'cases' AND state = 'running'", (row["id"],)
+        ).fetchone()
+    if row is None or row["status"] != "validated":
+        sys.exit("Aucune matière validée avec ce numéro CAS : ajoutez-la et validez sa chaîne dans l'app.")
+    if running:
+        sys.exit("Une préparation de cas est déjà en cours pour cette matière.")
+    quote = library.cases_quote()
+    print(f"Cas comparables de « {row['name']} » : recherche web ({quote.searches_max} recherches au plus), puis "
+          "structuration ; les cas arrivent en brouillon, à vérifier dans l'app (écran « Bibliothèque de cas »).")
+    print(f"Devis : environ {quote.estimate_usd:.2f} $, {quote.max_usd:.2f} $ au plus, sur le plafond des "
+          f"reconstructions ({ctx.budget.remaining('reconstruction'):.2f} $ restants ce mois-ci).")
+    if ctx.budget.remaining("reconstruction") < quote.max_usd:
+        sys.exit("Plafond mensuel des reconstructions insuffisant pour ce devis : rien n'est lancé.")
+    if input("Lancer ? (o/N) ").strip().lower() != "o":
+        sys.exit("Rien n'est lancé.")
+    try:
+        backend = ctx.llm_backend()
+    except MissingAPIKey as exc:
+        sys.exit(str(exc))
+    http = ctx.http_client()
+    try:
+        job_id = library.start_job(ctx.db, row["id"])
+        cost = library.prepare(library.CaseDeps(ctx.db, ctx.budget, backend, http), row["id"], job_id)
+    finally:
+        http.close()
+    with ctx.db.connect() as conn:
+        message = conn.execute("SELECT message FROM jobs WHERE id = ?", (job_id,)).fetchone()[0]
+    print(f"{message} Coût réel : {cost:.2f} $.")
 
 
 def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
@@ -385,7 +459,7 @@ def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
 
 
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
-    if args.dev_action not in ("record", "probe", "record-watch"):
+    if args.dev_action not in ("record", "probe", "record-watch", "check-sources", "record-cases"):
         print("Signature et publication des mises à jour : disponibles en phase 5.")
         return
     from goulot.cli.dev import cmd_dev as run_dev
@@ -412,6 +486,8 @@ def main(argv: list[str] | None = None) -> None:
         "vault": cmd_vault,
         "dev": cmd_dev,
         "ledger": cmd_ledger,
+        "history": cmd_history,
+        "cases": cmd_cases,
     }
     try:
         handlers[args.command](settings, args)

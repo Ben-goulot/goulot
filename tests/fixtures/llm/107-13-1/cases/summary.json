@@ -1,0 +1,17 @@
+{
+ "today": "2026-10-19",
+ "cases": 9,
+ "cost_usd": 0.5468,
+ "with_anomalies": 3,
+ "case_ids": [
+  "2016_green_lake_force_majeure_propylene",
+  "2017_texas_ouragan_harvey",
+  "2019_seal_sands_panne_fermeture",
+  "2020_zhoushan_demarrage_zpc",
+  "2021_golfe_vague_froid_uri",
+  "2021_geleen_rejet_anqore",
+  "2025_waggaman_cornerstone_cocon",
+  "2026_ormuz_perturbation",
+  "2026_zpc_panne_unite_acn"
+ ]
+}

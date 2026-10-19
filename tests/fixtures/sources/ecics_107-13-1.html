@@ -1,0 +1,220 @@
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html>
+	<head>
+		<link type="text/css" rel="stylesheet" href="https://ec.europa.eu/taxation_customs/dds2/ecics/europa/dds2-ecics.css">
+	</head>
+	
+	
+
+	<body style="background-color: #FFFFFF;" class="yui-skin-sam">
+		
+
+			
+			
+			
+			
+
+			
+			
+
+			
+			
+			
+			
+				
+                <div class="form-browser-btn" align="right">
+                	<button 
+							type="button" 
+							id="downloadSearch" 
+							class="ecl-button ecl-button--primary form-button"
+							style="display: flex;align-items: center; justify-content: center"   										
+							value="DownloadResult"
+							onclick="downloadWithFetch('ecics_export_management.jsp?message=extractSearch&Cus=&offset=0&NomenclatureSystem=&Screen=0&Inchi=&Characteristic=&Lang=en&MaxSize=1000&viewVal=&Name=&Cas=107-13-1&sortOrder=1&Expand=false&LangNm=&CnCode=&EcCode=&UnCode=&Inchikey=')">
+						<span class="ecl-button__label btn-text" data-ecl-label="true" style="width: 100%;">Download result</span>
+						<div class="spinner"></div>
+					</button>
+					<a style="display:none;">Download result</a>
+				</div>
+			
+			
+
+			<div class="paginator" style="width: 100%; margin-top: 10px;" align="right">
+				<div style="display: inline">
+					
+					&nbsp;1&nbsp;-&nbsp;1&nbsp;/&nbsp;1
+					
+				</div>
+			</div>
+			<br/>
+		<div align="left">
+			
+		</div>
+
+		
+
+			<table id="tblData" class="ecl-table ecl-table--zebra table-result"
+				cellpadding="">
+				
+					<thead class="ecl-table__head">
+						<tr class="columnHeader ecl-table__row">
+							<th width="14%" class="ecl-table__header">CUS</th>
+							<th width="13%" class="ecl-table__header">CN code</th>
+							<th width="12%" class="ecl-table__header">CAS RN</th>
+							<th width="12%" class="ecl-table__header">EC number</th>
+							<th width="15%" class="ecl-table__header">UN number</th>
+							<th width="12%" class="ecl-table__header">Nomen.</th>
+							<th width="22%" class="ecl-table__header">Name</th>
+						</tr>
+					</thead>
+					<tbody class="ecl-table__body">
+						
+							
+							<input type="hidden" id="totalRecords" value="1">
+							
+							<input type="hidden" id="lastPageOffset"
+								value="1">
+						
+						
+							
+							
+							
+							
+							
+							
+							
+
+							
+							<tr class="ecl-table__row tariff_ecics-inner-table"
+								id="0010239-6">
+								<td
+									data-ecl-table-header="CUS"
+									class="ecl-table__cell ellipsis" id="0010239-6">
+									<span class='unvisited'>
+										0010239-6
+									</span>
+								</td>
+								
+								<td data-ecl-table-header="CN Code"
+									class="ecl-table__cell ellipsis" id="29261000">
+									<span class="unvisited">
+										<a style="text-decoration: none;" href='http://ec.europa.eu/taxation_customs/dds2/taric/goods_description.jsp?Lang=en&amp;LangDescr=en&amp;SimDate=20261018&amp;Taric=29261000'>29261000</a>
+									</span>
+								</td>
+								
+								<td data-ecl-table-header="CAS RN"
+									class="ecl-table__cell ellipsis" id="107-13-1">
+									<span class="unvisited">
+										107-13-1
+									</span>
+								</td>
+								<td data-ecl-table-header="EC number"
+									class="ecl-table__cell ellipsis" id="203-466-5">
+									<span class="unvisited">
+										203-466-5
+									</span>
+								</td>
+								<td data-ecl-table-header="UN number"
+									class="ecl-table__cell ellipsis" id="1093">
+									<span class="unvisited">
+										1093
+									</span>
+								</td>
+								<td data-ecl-table-header="Nomen."
+									class="ecl-table__cell ellipsis" id="IUPAC">
+									<span class="unvisited">
+										IUPAC
+									</span>
+								</td>
+								<td data-ecl-table-header="Name"
+									class="ecl-table__cell ellipsis" id="acrylonitrile">
+									<span class="unvisited">
+										<a style="text-decoration: none;" href='javascript:openDetailsNewPage("0010239-6","")'>acrylonitrile</a>
+									</span>
+								</td>
+							</tr>
+
+							
+						
+						
+						
+
+						<input type="hidden" id="totalRecordsShown" value="1">
+						<input type="hidden" id="firstRecordIndex"
+							value="-24">
+						<input type="hidden" id="lastRecordIndex" value="-24">
+					</tbody>
+				
+			</table>
+			<tr>
+				<td colspan="7">
+					<div id="overlayDetails" class="details"
+						style="display: none; padding-bottom: 50px;"></div>
+				</td>
+			</tr>
+		
+		<br />
+
+		
+
+		<div class="paginator" style="width: 100%" align="right">
+			<div style="display: inline">
+				
+				&nbsp;1&nbsp;-&nbsp;1&nbsp;/&nbsp;1
+				
+				
+			</div>
+		</div>
+	
+</body>
+</html>

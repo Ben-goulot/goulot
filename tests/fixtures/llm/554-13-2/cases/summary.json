@@ -1,0 +1,24 @@
+{
+ "today": "2026-10-19",
+ "cases": 16,
+ "cost_usd": 0.592,
+ "with_anomalies": 6,
+ "case_ids": [
+  "2013_mt_cattlin_arret_mine",
+  "2018_chili_accord_corfo_sqm",
+  "2019_chine_subventions_ve_reduction",
+  "2020_chine_covid_demande",
+  "2022_sichuan_rationnement_electrique",
+  "2022_zimbabwe_interdiction_minerai_brut",
+  "2023_chine_fin_subventions_ve",
+  "2023_chili_strategie_nationale_lithium",
+  "2024_australie_mises_en_veille",
+  "2025_albemarle_chengdu_qinzhou",
+  "2025_zimbabwe_interdiction_concentres_2027",
+  "2025_yichun_revue_mines_lepidolite",
+  "2025_yichun_jianxiawo_suspension",
+  "2026_kemerton_dernier_train",
+  "2026_zimbabwe_suspension_exports",
+  "2026_chine_suspension_acide_sulfurique"
+ ]
+}

@@ -1,8 +1,8 @@
 """Step 1: identify a substance from a name or a CAS number (docs/SPEC.md, section 3).
 
 PubChem (PUG REST) gives the CAS, the name, the formula and the synonyms; Wikidata (property P231) adds the
-French label and confirms the CAS. Customs codes: ECICS has no API and its full download is not wired yet, so
-the HS codes proposed by the structuring call are kept and marked « à vérifier » (fallback of section 3).
+French label and confirms the CAS. Customs codes come from ECICS (`ecics.py`); without an answer from ECICS, the
+HS codes proposed by the structuring call are kept and marked « à vérifier » (fallback of section 3).
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from urllib.parse import quote
 
 import httpx2
 
+from goulot.chain import ecics
 from goulot.net.client import fetch
 
 log = logging.getLogger("goulot.chain.identify")
@@ -39,11 +40,12 @@ class Identity:
     synonyms: list[str] = field(default_factory=list)
     sources: list[dict[str, str]] = field(default_factory=list)  # {name, url}: built by the code only
     name_fr: str = ""
+    cn_codes: list[str] = field(default_factory=list)  # 8-digit CN codes from ECICS
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "cas": self.cas, "name": self.name, "name_fr": self.name_fr, "formula": self.formula,
-            "synonyms": self.synonyms, "sources": self.sources,
+            "synonyms": self.synonyms, "sources": self.sources, "cn_codes": self.cn_codes,
         }
 
 
@@ -138,4 +140,8 @@ def identify(client: httpx2.Client, query: str) -> Identity:
         qid, label = wd
         identity.name_fr = label
         identity.sources.append({"name": "Wikidata", "url": f"https://www.wikidata.org/wiki/{qid}"})
+    codes = ecics.lookup(client, cas)
+    if codes:
+        identity.cn_codes = [c.cn8 for c in codes]
+        identity.sources.append({"name": "ECICS", "url": ecics.page_url(cas)})
     return identity

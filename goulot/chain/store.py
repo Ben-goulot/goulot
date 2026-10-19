@@ -33,6 +33,15 @@ def _j(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def official_hs_codes(cn_codes: list[str]) -> list[dict[str, Any]]:
+    """HS codes (6 digits) from the ECICS CN codes, verified; the CN code is kept for Eurostat Comext."""
+    out: list[dict[str, Any]] = []
+    for cn8 in cn_codes:
+        if isinstance(cn8, str) and cn8.isdigit() and len(cn8) == 8 and all(h["code"] != cn8[:6] for h in out):
+            out.append({"code": cn8[:6], "cn8": cn8, "origin": "ecics", "verified": True})
+    return out
+
+
 def create_material(conn: sqlite3.Connection, identity: dict[str, Any]) -> str:
     row = conn.execute("SELECT id FROM materials WHERE cas = ?", (identity["cas"],)).fetchone()
     if row:
@@ -41,9 +50,10 @@ def create_material(conn: sqlite3.Connection, identity: dict[str, Any]) -> str:
     now = utcnow()
     conn.execute(
         "INSERT INTO materials (id, name, cas, formula, synonyms, hs_codes, identity_sources, status, created_at, "
-        "updated_at) VALUES (?, ?, ?, ?, ?, '[]', ?, 'draft', ?, ?)",
+        "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)",
         (material_id, identity.get("name_fr") or identity["name"], identity["cas"], identity.get("formula", ""),
-         _j(identity.get("synonyms", [])), _j(identity.get("sources", [])), now, now),
+         _j(identity.get("synonyms", [])), _j(official_hs_codes(identity.get("cn_codes", []))),
+         _j(identity.get("sources", [])), now, now),
     )
     return material_id
 
@@ -172,8 +182,11 @@ def save_chain(
         "INSERT INTO chain_reports (material_id, report, injection_suspected, created_at) VALUES (?, ?, ?, ?)",
         (material_id, report, int(bool(chain["injection_suspected"])), now),
     )
-    hs = [{"code": c, "origin": "ai", "verified": False} for c in chain["material"]["hs_code_candidates"]
-          if isinstance(c, str) and c.isdigit() and len(c) == 6]
+    known = json.loads(conn.execute("SELECT hs_codes FROM materials WHERE id = ?", (material_id,)).fetchone()[0])
+    official = [h for h in known if h.get("origin") == "ecics"]
+    hs = official + [{"code": c, "origin": "ai", "verified": False} for c in dict.fromkeys(
+        chain["material"]["hs_code_candidates"]) if isinstance(c, str) and c.isdigit() and len(c) == 6
+        and all(h["code"] != c for h in official)]
     conn.execute("UPDATE materials SET hs_codes = ?, status = 'review', updated_at = ? WHERE id = ?",
                  (_j(hs), now, material_id))
 

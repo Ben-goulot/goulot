@@ -10,14 +10,17 @@ classes:
   unknown: 0.3             # tout domaine absent des listes, réseaux sociaux compris
 
 official:
-  suffixes: [".gov", ".gouv.fr", ".gov.cn", ".gov.uk", ".europa.eu", ".gob.cl", ".gob.mx", ".go.jp", ".go.kr", ".gc.ca"]
-  domains: [imf.org, worldbank.org, iea.org, gdacs.org, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn]
+  suffixes: [".gov", ".gouv.fr", ".gov.cn", ".gov.uk", ".europa.eu", ".gob.cl", ".gob.mx", ".go.jp", ".go.kr", ".gc.ca",
+             ".gov.au", ".gob.ar", ".gov.br"]
+  domains: [imf.org, worldbank.org, iea.org, gdacs.org, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn,
+            onderzoeksraad.nl]  # Onderzoeksraad voor Veiligheid : bureau néerlandais d'enquête sur les accidents
   # Les domaines des producteurs d'une chaîne validée s'ajoutent dans la base locale, après accord de l'utilisateur.
 
 agency_specialized:
   domains: [reuters.com, apnews.com, afp.com, bloomberg.com, ft.com, wsj.com, asia.nikkei.com, caixinglobal.com,
             argusmedia.com, icis.com, spglobal.com, fastmarkets.com, metal.com, mysteel.net, mining.com,
-            lloydslist.com, tradewindsnews.com, chemweek.com, cen.acs.org]
+            lloydslist.com, tradewindsnews.com, chemweek.com, cen.acs.org,
+            crugroup.com, benchmarkminerals.com, roskill.com]  # analystes matières premières (ajoutés le 19 octobre 2026)
 
 general_press:
   domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,

@@ -1,0 +1,206 @@
+[
+ {
+  "ref": "lead1",
+  "day": "2023-10-23",
+  "countries": [
+   "IN"
+  ],
+  "title": "Tropical Cyclone HAMOON-23",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001029&eventtype=TC"
+ },
+ {
+  "ref": "lead2",
+  "day": "2023-12-18",
+  "countries": [
+   "CN"
+  ],
+  "title": "Earthquake in China",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1406601&eventtype=EQ"
+ },
+ {
+  "ref": "lead3",
+  "day": "2024-07-19",
+  "countries": [
+   "CN",
+   "JP"
+  ],
+  "title": "Tropical Cyclone GAEMI-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001072&eventtype=TC"
+ },
+ {
+  "ref": "lead4",
+  "day": "2024-08-12",
+  "countries": [
+   "JP"
+  ],
+  "title": "Tropical Cyclone AMPIL-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001082&eventtype=TC"
+ },
+ {
+  "ref": "lead5",
+  "day": "2024-09-01",
+  "countries": [
+   "CN"
+  ],
+  "title": "Tropical Cyclone YAGI-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001090&eventtype=TC"
+ },
+ {
+  "ref": "lead6",
+  "day": "2024-10-20",
+  "countries": [
+   "IN"
+  ],
+  "title": "Flood in India",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1102974&eventtype=FL"
+ },
+ {
+  "ref": "lead7",
+  "day": "2024-10-23",
+  "countries": [
+   "IN"
+  ],
+  "title": "Tropical Cyclone DANA-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001117&eventtype=TC"
+ },
+ {
+  "ref": "lead8",
+  "day": "2024-10-25",
+  "countries": [
+   "CN",
+   "JP"
+  ],
+  "title": "Tropical Cyclone KONG-REY-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001118&eventtype=TC"
+ },
+ {
+  "ref": "lead9",
+  "day": "2024-11-09",
+  "countries": [
+   "CN"
+  ],
+  "title": "Tropical Cyclone MAN-YI-24",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001124&eventtype=TC"
+ },
+ {
+  "ref": "lead10",
+  "day": "2025-01-07",
+  "countries": [
+   "CN"
+  ],
+  "title": "Earthquake in China",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1461014&eventtype=EQ"
+ },
+ {
+  "ref": "lead11",
+  "day": "2025-05-11",
+  "countries": [
+   "CN"
+  ],
+  "title": "Earthquake in China",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1481374&eventtype=EQ"
+ },
+ {
+  "ref": "lead12",
+  "day": "2025-08-22",
+  "countries": [
+   "CN"
+  ],
+  "title": "Tropical Cyclone KAJIKI-25",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001199&eventtype=TC"
+ },
+ {
+  "ref": "lead13",
+  "day": "2025-09-18",
+  "countries": [
+   "CN"
+  ],
+  "title": "Tropical Cyclone RAGASA-25",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001211&eventtype=TC"
+ },
+ {
+  "ref": "lead14",
+  "day": "2025-09-23",
+  "countries": [
+   "CN"
+  ],
+  "title": "Flood in China",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1103514&eventtype=FL"
+ },
+ {
+  "ref": "lead15",
+  "day": "2025-10-01",
+  "countries": [
+   "CN"
+  ],
+  "title": "Tropical Cyclone MATMO-25",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001219&eventtype=TC"
+ },
+ {
+  "ref": "lead16",
+  "day": "2025-10-21",
+  "countries": [
+   "CA"
+  ],
+  "title": "Tropical Cyclone MELISSA-25",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001230&eventtype=TC"
+ },
+ {
+  "ref": "lead17",
+  "day": "2025-11-04",
+  "countries": [
+   "CN",
+   "JP"
+  ],
+  "title": "Tropical Cyclone FUNG-WONG-25",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001234&eventtype=TC"
+ },
+ {
+  "ref": "lead18",
+  "day": "2026-07-01",
+  "countries": [
+   "CN",
+   "JP"
+  ],
+  "title": "Tropical Cyclone BAVI-26",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001279&eventtype=TC"
+ },
+ {
+  "ref": "lead19",
+  "day": "2026-07-25",
+  "countries": [
+   "CN"
+  ],
+  "title": "Flood in China",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1104051&eventtype=FL"
+ },
+ {
+  "ref": "lead20",
+  "day": "2026-10-14",
+  "countries": [
+   "JP"
+  ],
+  "title": "Tropical Cyclone CHAMPI-26",
+  "alert": "Red",
+  "url": "https://www.gdacs.org/report.aspx?eventid=1001338&eventtype=TC"
+ }
+]

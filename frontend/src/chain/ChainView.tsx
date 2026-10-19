@@ -356,9 +356,16 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                   </ul>
                 </>
               )}
-              {chain.material.hs_codes.length > 0 && (
+              {chain.material.hs_codes.some((h) => h.verified) && (
                 <p className="muted">
-                  Codes douaniers proposés : {chain.material.hs_codes.map((h) => h.code).join(", ")} (à vérifier).
+                  Codes douaniers (ECICS, inventaire douanier européen) :{" "}
+                  {chain.material.hs_codes.filter((h) => h.verified).map((h) => h.cn8 ?? h.code).join(", ")}.
+                </p>
+              )}
+              {chain.material.hs_codes.some((h) => !h.verified) && (
+                <p className="muted">
+                  Codes douaniers proposés par la reconstruction :{" "}
+                  {chain.material.hs_codes.filter((h) => !h.verified).map((h) => h.code).join(", ")} (à vérifier).
                 </p>
               )}
               {chain.material.status === "review" && (

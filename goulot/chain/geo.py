@@ -1,8 +1,8 @@
 """Country from coordinates, offline, with the embedded Natural Earth borders (docs/SPEC.md, section 3).
 
 `goulot/data/countries.json`: [{"iso2": "FR", "bbox": [minlon, minlat, maxlon, maxlat], "polygons": [[[lon, lat],
-…]]}] (outer rings only), reduced from Natural Earth admin 0 (public domain). Without that file the check is
-skipped and the Chaîne screen says so.
+…]]}] (outer rings only, 3 decimals), reduced from Natural Earth admin 0 at 1:50m, version 5.1.2 (public domain).
+Without that file the check is skipped and the Chaîne screen says so.
 """
 
 from __future__ import annotations
@@ -53,6 +53,15 @@ def country_at(lat: float, lon: float, borders: list[dict[str, Any]] | None = No
     return None
 
 
+NEAR_BORDER_DEG = 0.15  # about 15 km: the 1:50m borders are approximate, a site close to a border is not moved
+
+
+def _near(lat: float, lon: float, iso2: str, borders: list[dict[str, Any]] | None) -> bool:
+    d = NEAR_BORDER_DEG
+    return any(country_at(lat + dy, lon + dx, borders) == iso2
+               for dx in (-d, 0.0, d) for dy in (-d, 0.0, d) if dx or dy)
+
+
 def check_coordinates(chain: dict[str, Any], borders: list[dict[str, Any]] | None = None) -> int:
     """Coordinates inside another country than `country_iso2` are dropped (lat and lon set to null).
     A point at sea (ports, straits) is kept. Returns the number of nodes corrected."""
@@ -61,7 +70,8 @@ def check_coordinates(chain: dict[str, Any], borders: list[dict[str, Any]] | Non
         if n["lat"] is None or n["country_iso2"] == "unknown" or n["node_type"] == "chokepoint":
             continue
         found = country_at(n["lat"], n["lon"], borders)
-        if found is not None and found != n["country_iso2"]:
+        if found is not None and found != n["country_iso2"] and not _near(n["lat"], n["lon"], n["country_iso2"],
+                                                                           borders):
             n["lat"] = n["lon"] = None
             n["confidence"] = "low"
             n.setdefault("anomalies", []).append(

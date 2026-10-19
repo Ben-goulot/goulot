@@ -40,3 +40,9 @@ _to_delete/
 
 # Aperçu local de Claude Code (chemins de la machine)
 .claude/launch.json
+# Answers of `goulot dev check-sources` (public pages, development only)
+.samples/
+# Outputs of a stray `tsc -b` (the build uses `tsc --noEmit`): Vite would serve them instead of the sources
+frontend/src/**/*.js
+frontend/vite.config.js
+frontend/*.tsbuildinfo

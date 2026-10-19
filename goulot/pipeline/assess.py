@@ -20,6 +20,7 @@ from typing import Any
 from goulot.chain import store
 from goulot.chain.delays import delays_to_material
 from goulot.db.connection import Database, utcnow
+from goulot.history import similarity
 from goulot.ledger import outcomes
 from goulot.llm import batch
 from goulot.llm.backend import MessageBackend
@@ -91,7 +92,9 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
         prepared = []
         for e in events:
             contexts, _, _ = prices.market(conn, e["material_id"], date.fromisoformat(e["first_seen_at"][:10]))
-            prepared.append((e, analysis.build_dossier(conn, e, now, instruments=contexts)))
+            found = similarity.analogues(conn, e["material_id"], similarity.target_for_event(conn, e))
+            entries = similarity.dossier_entries(found, [c["instrument_id"] for c in contexts])
+            prepared.append((e, analysis.build_dossier(conn, e, now, instruments=contexts, analogues=entries)))
     for event, dossier in prepared:
         urgent = event["severity_hint"] >= analysis.URGENT_SEVERITY
         if urgent and std is not None:

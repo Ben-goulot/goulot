@@ -140,7 +140,10 @@ def test_daily_collection_and_silence(ctx: AppContext) -> None:
     secret = {"eia": "e" * 20}.get
     written = collect.run(ctx.db, client(handler, seen), secret, NOW)
     assert written["eia:RBRTE"] == 1 and written["us_census_trade:292610"] == 1
-    assert collect.run(ctx.db, client(handler, seen), secret, NOW + timedelta(hours=3)) == {}  # not due yet
+    again = collect.run(ctx.db, client(handler, seen), secret, NOW + timedelta(hours=3))
+    assert {k for k in again if k not in collect.SHARED_SOURCES} == set()  # not due yet
+    # The exchange quote proposed for the propylene input fills its history in batches: still due meanwhile.
+    assert set(again) <= {ex.source for ex in collect.EXCHANGES}
     with ctx.db.connect() as conn:
         assert "eia:RBRTE" in prices.silent_instruments(conn, date(2026, 10, 25))
         assert "us_census_trade:292610" not in prices.silent_instruments(conn, date(2026, 9, 1))

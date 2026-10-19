@@ -71,7 +71,85 @@ export type Sheet = {
   links: { instrument_id: string; name: string; role: string; rank: number; validated: boolean; proposed_by: string }[];
   upcoming: { date: string; what: string; source: string }[];
   sites: { name: string; lat: number; lon: number; type: string }[];
+  margin: { trend: "up" | "down" | "flat"; change_pct_20: number; series: SeriesPayload | null } | null;
 };
+
+export type CaseSource = { ref: string; url: string; title: string; publisher: string; page_age: string; reliability: number };
+
+export type CaseReaction = {
+  instrument_id: string;
+  name: string;
+  frequency: string;
+  base_day: string;
+  raw: Record<string, number | null>;
+  own: Record<string, number | null>;
+  beta: number | null;
+  factor: string | null;
+  notes: string[];
+};
+
+export type PastCase = {
+  id: number;
+  case_id: string;
+  title: string;
+  event_type: string;
+  first_report_date: string;
+  end_date: string;
+  place: string;
+  country_iso2: string;
+  node_type: string;
+  affected: string[];
+  capacity_share_pct: number | null;
+  capacity_share_basis: string;
+  direction: "tightening" | "loosening" | "ambiguous";
+  duration_days: number | null;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+  status: "draft" | "verified" | "rejected";
+  anomalies: string[];
+  sources: CaseSource[];
+  overlap: boolean;
+  reactions: CaseReaction[];
+};
+
+export type CaseLibrary = {
+  material: { id: string; name: string; cas: string };
+  cases: PastCase[];
+  summaries: {
+    instrument_id: string;
+    name: string;
+    horizon: number;
+    n: number;
+    median: number | null;
+    low: number | null;
+    high: number | null;
+    years: number[];
+    excluded_overlap: number;
+  }[];
+  job: { id: string; state: string; step: number; message: string; cost_usd: number } | null;
+};
+
+export type ComparableRow = PastCase & { points: number; state: "kept" | "overlap" | "draft"; own_20: number | null };
+
+export type Comparables = {
+  event: { id: string; title: string; type: string; first_seen: string };
+  summary: string;
+  instrument_id: string | null;
+  rows: ComparableRow[];
+  band: { low: number; high: number; median: number } | null;
+  estimate: { low: number; high: number; unit: string } | null;
+  estimate_outside: boolean;
+  threshold: number;
+  as_of: string;
+};
+
+/** x position (0 to 1) of each value on a common scale that always shows zero. */
+export function scale(values: number[]): (v: number) => number {
+  const lo = Math.min(0, ...values);
+  const hi = Math.max(0, ...values);
+  const pad = Math.max(1, (hi - lo) * 0.1);
+  return (v: number) => (v - (lo - pad)) / (hi - lo + 2 * pad);
+}
 
 export type LedgerAdvice = {
   seq: number;
@@ -140,3 +218,22 @@ export function signed(n: number | null | undefined, digits = 1): string {
   const s = n.toFixed(digits).replace(".", ",");
   return n > 0 ? `+${s}` : s;
 }
+
+export const EVENT_TYPE_LABEL: Record<string, string> = {
+  labor_action: "grève",
+  armed_conflict: "conflit armé",
+  civil_unrest: "troubles civils",
+  extreme_weather: "météo extrême",
+  natural_disaster: "catastrophe naturelle",
+  industrial_outage: "arrêt industriel",
+  maritime_disruption: "perturbation maritime",
+  infrastructure_failure: "défaillance d'infrastructure",
+  sanctions_trade_policy: "sanction ou mesure commerciale",
+  export_restriction: "restriction d'exportation",
+  regulatory_change: "changement réglementaire",
+  cyber_incident: "cyberattaque",
+  health_biosecurity: "crise sanitaire",
+  other: "autre",
+};
+
+export const CONFIDENCE_LABEL: Record<string, string> = { high: "élevée", medium: "moyenne", low: "faible" };

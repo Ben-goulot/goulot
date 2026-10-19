@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from goulot import __version__
+from goulot.api.case_routes import build_router as build_case_router
 from goulot.api.chain_routes import build_router
 from goulot.api.context import AppContext
 from goulot.api.middleware import SecurityMiddleware
@@ -257,6 +258,7 @@ def create_app(ctx: AppContext) -> FastAPI:
 
     app.include_router(build_router(ctx))
     app.include_router(build_watch_router(ctx))
+    app.include_router(build_case_router(ctx))
 
     # --- frontend (static, no data) --------------------------------------------------------------------
     dist = ctx.settings.frontend_dist

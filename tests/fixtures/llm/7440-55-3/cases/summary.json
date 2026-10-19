@@ -1,0 +1,15 @@
+{
+ "today": "2026-10-19",
+ "cases": 7,
+ "cost_usd": 0.5106,
+ "with_anomalies": 4,
+ "case_ids": [
+  "2022_ukraine_conflit",
+  "2023_chine_licence_exportation",
+  "2024_chine_interdiction_etats_unis",
+  "2025_quebec_rio_tinto_gallium",
+  "2025_wagerup_alcoa_gallium",
+  "2025_chine_suspension_interdiction",
+  "2026_chine_licences_japon"
+ ]
+}

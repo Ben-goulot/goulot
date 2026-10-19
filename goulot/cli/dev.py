@@ -122,6 +122,91 @@ def record(settings: Settings, args: argparse.Namespace) -> None:
     print(f"Enregistré dans {Path(out).relative_to(REPO_ROOT)}. Dites à Claude que c'est fait.")
 
 
+CASES_DIR = "cases"
+MIN_CASES = 7  # phase 3 criterion was 10 per test CAS; lowered on 2026-10-19 with the user (gallium: 7 events)
+
+
+def cases_recorded(cas: str) -> bool:
+    return (FIXTURES / cas / CASES_DIR / "summary.json").is_file()
+
+
+def record_cases(settings: Settings, args: argparse.Namespace) -> None:
+    """Real case preparation for one test CAS (its recorded chain), answers in tests/fixtures/llm/<CAS>/cases/."""
+    from datetime import date
+
+    from goulot.history import leads, library
+
+    cas = args.cas.strip()
+    if cas not in TEST_CAS:
+        sys.exit(f"Seuls les 3 CAS de test sont acceptés ({', '.join(TEST_CAS)}) : les cas de vos matières se "
+                 "préparent dans l'app, sans enregistrement dans le dépôt.")
+    out = FIXTURES / cas / CASES_DIR
+    if cases_recorded(cas) and not args.force:
+        sys.exit(f"Déjà enregistré dans {out.relative_to(REPO_ROOT)} : ajoutez --force pour recommencer.")
+    key = get_secret("anthropic")
+    if not key:
+        sys.exit("Clé API Anthropic absente : lancez « ./bin/goulot setup ».")
+    setup_logging(settings.log_dir)
+    budget, db = _dev_budget(settings)
+    with db.connect() as conn:
+        row = conn.execute("SELECT id FROM materials WHERE cas = ?", (cas,)).fetchone()
+        has_chain = row is not None and conn.execute(
+            "SELECT 1 FROM chain_nodes WHERE material_id = ? LIMIT 1", (row["id"],)).fetchone() is not None
+    if not has_chain:
+        sys.exit(f"La chaîne de test {cas} n'est pas dans la base de test : « ./bin/goulot dev record --cas {cas} ».")
+    quote = library.cases_quote()
+    print(f"Préparation des cas comparables de {cas} : recherche web (10 recherches au plus) puis structuration.")
+    print(f"Devis : environ {quote.estimate_usd:.2f} $, {quote.max_usd:.2f} $ au plus "
+          f"(critère : moins de {MAX_COST_PER_MATERIAL:.0f} $).")
+    print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
+    if budget.remaining("dev") < quote.max_usd:
+        sys.exit("Budget de test insuffisant pour ce devis : rien n'est lancé.")
+    if input("Lancer ? (o/N) ").strip().lower() != "o":
+        sys.exit("Rien n'est lancé.")
+    out.mkdir(parents=True, exist_ok=True)
+    if args.force:
+        for old in out.glob("*.json"):
+            old.unlink()
+    today = date.today()
+    allowlist = load_allowlist(settings.config_dir)
+    http = build_client(allowlist)
+
+    def keep(found: list[leads.Lead]) -> None:
+        (out / "leads.json").write_text(json.dumps([lead.as_dict() for lead in found], ensure_ascii=False,
+                                                   indent=1) + "\n", encoding="utf-8")
+
+    try:
+        with db.transaction() as conn:
+            conn.execute("DELETE FROM case_sources WHERE case_row IN (SELECT id FROM historical_events WHERE "
+                         "material_id = ?)", (row["id"],))
+            conn.execute("DELETE FROM historical_events WHERE material_id = ?", (row["id"],))
+        recorded = None
+        if (out / "leads.json").is_file():  # resume: the same leads as the paid research
+            recorded = [leads.Lead.from_dict(d) for d in json.loads((out / "leads.json").read_text("utf-8"))]
+        backend = ResumingBackend(RecordingBackend(AnthropicBackend(build_anthropic_client(key, allowlist)), out), out)
+        job_id = library.start_job(db, row["id"])
+        print("Préparation en cours (quelques minutes)…")
+        cost = library.prepare(library.CaseDeps(db, budget, backend, http, recorded, keep), row["id"], job_id,
+                               budget_name="dev", today=today)
+    finally:
+        http.close()
+    with db.connect() as conn:
+        job = conn.execute("SELECT state, message FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        found = library.cases(conn, row["id"])
+    print(f"\nRésultat : {job['message']}")
+    print(f"Coût réel : {cost:.2f} $. Budget de test : {budget.spent('dev'):.2f} $ sur {budget.cap('dev'):.2f} $.")
+    if job["state"] != "done":
+        sys.exit("Échec. Les réponses déjà payées sont gardées : la même commande, sans --force, reprend là où "
+                 "ça s'est arrêté. Copiez ce message à Claude.")
+    summary = {"today": today.isoformat(), "cases": len(found), "cost_usd": round(cost, 4),
+               "with_anomalies": sum(1 for c in found if c["anomalies"]),
+               "case_ids": [c["case_id"] for c in found]}
+    (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"Cas préparés : {len(found)} (au moins {MIN_CASES} attendus), dont {summary['with_anomalies']} avec une "
+          "remarque du contrôle.")
+    print(f"Enregistré dans {out.relative_to(REPO_ROOT)}. Copiez ce résultat à Claude.")
+
+
 def _dev_budget(settings: Settings) -> tuple[Budget, Database]:
     dev_home = settings.home / "dev"
     ensure_private_dir(dev_home)
@@ -167,6 +252,9 @@ def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
          {**context_params(material, PROBE_REPORT, PROBE_SOURCES, nodes), "max_tokens": 64}),
         ("tri", "tri des articles (Haiku)", req("claude-haiku-5-5", "triage_v1", schema("triage_v1"),
                                                 thinking={"type": "disabled"})),
+        ("cas", "cas comparables : structuration",
+         req("claude-sonnet-5-5", "case_structure_v1", schema("historical_case_v1"),
+             thinking={"type": "adaptive"}, output_config={"effort": "medium"})),
         ("synthese", "synthèse hebdomadaire", req("claude-sonnet-5-5", "digest_v1", schema("digest_v1"),
                                                    thinking={"type": "between_tools"},
                                                    output_config={"effort": "medium"})),
@@ -186,7 +274,7 @@ def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
     ]
 
 
-def probe(settings: Settings) -> None:
+def probe(settings: Settings, only: str | None = None) -> None:
     """Sends each request of the ladder with a 64-token cap: refusals are free, acceptances cost < 1 cent."""
     import anthropic
 
@@ -199,6 +287,12 @@ def probe(settings: Settings) -> None:
     setup_logging(settings.log_dir)
     budget, _ = _dev_budget(settings)
     ladder = _probe_ladder()
+    if only:
+        wanted = {name.strip() for name in only.split(",")}
+        unknown = wanted - {name for name, _, _ in ladder}
+        if unknown:
+            sys.exit(f"Schémas inconnus : {', '.join(sorted(unknown))}.")
+        ladder = [step for step in ladder if step[0] in wanted]
     print(f"Essai à blanc de {len(ladder)} schémas de sortie, réponses limitées à 64 tokens.")
     print(f"Un schéma refusé ne coûte rien ; un schéma accepté, moins d'un centime ({PROBE_MAX_USD:.2f} $ au plus).")
     print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
@@ -294,6 +388,14 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
     if args.dev_action == "record":
         record(settings, args)
     elif args.dev_action == "probe":
-        probe(settings)
+        probe(settings, getattr(args, "only", None))
     elif args.dev_action == "record-watch":
         record_watch(settings, args)
+    elif args.dev_action == "record-cases":
+        record_cases(settings, args)
+    elif args.dev_action == "check-sources":
+        from goulot.cli import check_sources
+
+        print("Interrogation des sources depuis votre Mac (sans IA, sans clé) ; réponses gardées dans .samples/.")
+        check_sources.run(settings)
+        print("Terminé. Copiez ce résultat à Claude.")

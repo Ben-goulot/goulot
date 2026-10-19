@@ -12,6 +12,7 @@ import sqlite3
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from goulot.chain import research, structure
 from goulot.llm.pricing import Usage, cost_usd, web_search_price
@@ -62,22 +63,25 @@ def reconstruction_quote() -> Quote:
     )
 
 
-def save_quote(conn: sqlite3.Connection, material_id: str, quote: Quote, now: datetime) -> str:
+def save_quote(conn: sqlite3.Connection, material_id: str, quote: Any, now: datetime, kind: str = "reconstruction"
+               ) -> str:
+    """`quote`: a dataclass with `estimate_usd` and `max_usd` (reconstruction or case preparation)."""
     quote_id = str(uuid.uuid4())
     conn.execute(
         "INSERT INTO quotes (id, material_id, kind, estimate_usd, max_usd, detail, created_at, expires_at) "
-        "VALUES (?, ?, 'reconstruction', ?, ?, ?, ?, ?)",
-        (quote_id, material_id, quote.estimate_usd, quote.max_usd, json.dumps(asdict(quote)),
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (quote_id, material_id, kind, quote.estimate_usd, quote.max_usd, json.dumps(asdict(quote)),
          now.isoformat(timespec="seconds"), (now + QUOTE_TTL).isoformat(timespec="seconds")),
     )
     return quote_id
 
 
-def confirm_quote(conn: sqlite3.Connection, quote_id: str, material_id: str, now: datetime) -> float | None:
-    """Marks the quote confirmed; returns its maximum, or None if unknown, expired or already used."""
+def confirm_quote(conn: sqlite3.Connection, quote_id: str, material_id: str, now: datetime,
+                  kind: str = "reconstruction") -> float | None:
+    """Marks the quote confirmed; returns its maximum, or None if unknown, of another kind, expired or used."""
     row = conn.execute(
-        "SELECT max_usd, expires_at, confirmed_at FROM quotes WHERE id = ? AND material_id = ?", (quote_id, material_id)
-    ).fetchone()
+        "SELECT max_usd, expires_at, confirmed_at FROM quotes WHERE id = ? AND material_id = ? AND kind = ?",
+        (quote_id, material_id, kind)).fetchone()
     if row is None or row["confirmed_at"] or datetime.fromisoformat(row["expires_at"]) < now.astimezone(UTC):
         return None
     conn.execute("UPDATE quotes SET confirmed_at = ? WHERE id = ?", (now.isoformat(timespec="seconds"), quote_id))

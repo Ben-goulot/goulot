@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+from pathlib import Path
 from typing import Any
 
 from goulot.settings import REPO_ROOT
@@ -123,4 +124,7 @@ IDENTITY_ROUTES: dict[str, Any] = {
     },
     "/sparql": {"results": {"bindings": [{"item": {"value": "http://www.wikidata.org/entity/Q407629"},
                                           "itemLabel": {"value": "acrylonitrile"}}]}},
+    # Real ECICS answer for the test CAS, recorded on 18 October 2026.
+    "/taxation_customs/dds2/ecics/chemicalsubstance_list.jsp": (
+        Path(__file__).parent / "fixtures" / "sources" / "ecics_107-13-1.html").read_text(encoding="utf-8"),
 }

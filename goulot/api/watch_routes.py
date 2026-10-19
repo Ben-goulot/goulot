@@ -20,6 +20,7 @@ from goulot.ledger import chain, outcomes
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS
+from goulot.prices import margin
 from goulot.prices import store as prices
 from goulot.security.secrets import get_secret
 
@@ -149,6 +150,8 @@ def build_router(ctx: AppContext) -> APIRouter:
                                   (material_id,)).fetchone()
             card = json.loads(latest[0]) if latest else None
             best = prices.best_series(conn, material_id)
+            margin_series = margin.for_material(conn, material_id)
+            margin_trend = margin.trend(margin_series)
             series_links = [{"instrument_id": r["instrument_id"], "name": r["name"], "role": r["role"],
                              "rank": r["rank"], "validated": bool(r["validated"]), "proposed_by": r["proposed_by"]}
                             for r in prices.links(conn, material_id)]
@@ -168,6 +171,8 @@ def build_router(ctx: AppContext) -> APIRouter:
                          "triggers": card.get("monitoring_triggers", []),
                          "confidence": card.get("confidence", {}).get("analysis_confidence")} if card else None,
             "series": _series_payload(best, 6), "links": series_links, "upcoming": upcoming, "sites": sites,
+            "margin": {"trend": margin_trend[0], "change_pct_20": margin_trend[1],
+                       "series": _series_payload(margin_series, 6)} if margin_trend else None,
         }
 
     @router.post("/materials/{material_id}/links")

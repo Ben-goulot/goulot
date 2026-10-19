@@ -122,3 +122,28 @@ button:disabled { opacity: 0.55; cursor: default; }
 .credit { margin: 4px 0 0; font-size: 0.72rem; color: var(--text-2); }
 .content.wide .watchlist td { white-space: nowrap; }
 .watchlist td:first-child { white-space: normal; }
+
+/* Comparable cases card and case library (design/README.md, « Cas comparables »). */
+.small { font-size: 0.85rem; }
+.notice { margin: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--neutral-border); color: var(--neutral); }
+.comparables-body { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.comparables-chart { display: block; flex: 1.5 1 420px; min-width: 0; width: 100%; height: auto; }
+.comparables-body > div { flex: 1 1 260px; min-width: 0; }
+.comparables .headline { font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
+.comparables-chart .band { fill: var(--accent); fill-opacity: 0.1; }
+.comparables-chart .zero { stroke: var(--neutral-border); stroke-width: 1; stroke-dasharray: 3 3; }
+.comparables-chart .axis { stroke: var(--border); stroke-width: 1; }
+.comparables-chart .tick { fill: var(--text-2); font-size: 11px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.comparables-chart .median { stroke: var(--accent); stroke-width: 2; }
+.comparables-chart .estimate line { stroke: #ff8a4c; stroke-width: 2; }
+.comparables-chart .estimate text { fill: #ff8a4c; font-size: 11px; }
+.comparables-chart .dot.kept { fill: var(--accent); }
+.comparables-chart .dot.overlap { fill: none; stroke: var(--text-2); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.comparables-chart .dot.draft { fill: none; stroke: var(--amber); stroke-width: 1.5; }
+.case-rows { display: flex; flex-direction: column; gap: 6px; }
+.case-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline;
+  padding: 8px 10px; border-radius: 8px; border: 1px solid #1e2631; background: #0f131a; }
+.case-row.overlap, .case-row.draft { opacity: 0.75; }
+.cases > li.case { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.cases > li.case.rejected { opacity: 0.6; }
+.cases > li.case p { margin: 4px 0; }

@@ -3,6 +3,7 @@ import { api, ApiError, exchange, hasVaultToken, loadSession, setVaultToken, typ
 import { assertionToJson, creationOptions, parseFragment, registrationToJson, requestOptions } from "./webauthn";
 import { AddMaterial } from "./chain/AddMaterial";
 import { ChainView } from "./chain/ChainView";
+import { CaseLibrary } from "./watch/CaseLibrary";
 import { Markets } from "./watch/Markets";
 import { Reliability } from "./watch/Reliability";
 import { Sheet } from "./watch/Sheet";
@@ -12,9 +13,17 @@ const POLL_MS = 60_000;
 const HIDDEN_LOCK_MS = 5 * 60_000;
 
 type Passkey = { id: string; label: string; created_at: string; last_used_at: string | null };
-type Page = "accueil" | "coffre" | "ajout" | "fiabilite" | `chaine/${string}` | `matiere/${string}` | `fiabilite/${string}`;
+type Page =
+  | "accueil"
+  | "coffre"
+  | "ajout"
+  | "fiabilite"
+  | `chaine/${string}`
+  | `matiere/${string}`
+  | `fiabilite/${string}`
+  | `cas/${string}`;
 
-const WITH_ID = /^\/(chaine|matiere|fiabilite)\/([0-9a-f-]{36})$/;
+const WITH_ID = /^\/(chaine|matiere|fiabilite|cas)\/([0-9a-f-]{36})$/;
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
@@ -134,7 +143,7 @@ export default function App() {
         <span className="brand">Goulot</span>
         <nav>
           <button
-            className={page === "accueil" || page.startsWith("chaine") || page.startsWith("matiere") ? "tab active" : "tab"}
+            className={page === "accueil" || page.startsWith("chaine") || page.startsWith("matiere") || page.startsWith("cas/") ? "tab active" : "tab"}
             onClick={() => go("accueil")}
           >
             Marchés
@@ -164,9 +173,11 @@ export default function App() {
             materialId={page.slice(8)}
             onChain={() => go(`chaine/${page.slice(8)}`)}
             onReliability={() => go(`fiabilite/${page.slice(8)}`)}
+            onCases={() => go(`cas/${page.slice(8)}`)}
             onBack={() => go("accueil")}
           />
         )}
+        {page.startsWith("cas/") && <CaseLibrary materialId={page.slice(4)} onBack={() => go(`matiere/${page.slice(4)}`)} />}
         {page.startsWith("fiabilite") && <Reliability materialId={page.length > 10 ? page.slice(10) : null} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}

@@ -128,7 +128,7 @@ Vérifie chaque paramètre dans la documentation officielle à jour avant de cod
 | Reconstruction, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 20`, `allowed_callers: ["direct"]` (sinon aucune citation), prompt `prompts/chain_research_v1.md` | standard, en streaming |
 | Reconstruction, étape 2 : structuration des maillons et liens | `claude-sonnet-5-5` | prompt `prompts/chain_structure_v2.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "medium"`, `output_config.format` avec `schemas/supply_chain_core_v1.json` | standard |
 | Reconstruction, étape 3 : voies, substituts, risques, échéances | `claude-sonnet-5-5` | prompt `prompts/chain_context_v1.md`, mêmes réglages, `schemas/supply_chain_context_v1.json` ; facultatif : un échec garde la chaîne | standard |
-| Cas comparables, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 10`, prompt `prompts/case_research_v1.md` | standard, en streaming |
+| Cas comparables, étape 1 : recherche | `claude-sonnet-5-5` | outil `web_search_20260318`, `max_uses: 10`, `allowed_callers: ["direct"]`, prompt `prompts/case_research_v2.md` | standard, en streaming |
 | Cas comparables, étape 2 : structuration | `claude-sonnet-5-5` | prompt `prompts/case_structure_v1.md`, `thinking: {"type": "adaptive"}`, `output_config.effort: "medium"`, `output_config.format` avec `schemas/historical_case_v1.json` | standard |
 | Synthèse hebdomadaire | `claude-sonnet-5-5` | prompt `prompts/digest_v1.md`, `thinking: {"type": "between_tools"}` (sans outil, donc sans réflexion), `output_config.effort: "medium"`, `output_config.format` avec `schemas/digest_v1.json` | Batch |
 
@@ -162,6 +162,7 @@ Depuis la copie de travail pendant la construction ; ensuite par le lanceur `gou
 - `goulot ledger verify` (chaîne d'empreintes du registre) ; `goulot export --template article24 --cas <CAS>…` (rapport de conformité, aussi depuis l'écran Conformité).
 - `goulot dev keygen`, `dev release`, `dev bootstrap` : clé de signature, publication, première installation (`docs/UPDATES.md`).
 - `goulot dev record --cas <CAS>` : reconstruction réelle d'un des 3 CAS de test, réponses IA enregistrées dans `tests/fixtures/llm/` (jamais pour les CAS de l'utilisateur).
+- `goulot dev record-cases --cas <CAS>` : préparation réelle des cas comparables d'un CAS de test, réponses dans `tests/fixtures/llm/<CAS>/cases/` ; `goulot dev record-watch` : scénario de veille figé ; `goulot dev probe [--only nom,…]` : essai à blanc des schémas de sortie ; `goulot dev check-sources` : interroge depuis le Mac, sans IA, les sources injoignables du bac à sable et garde leurs réponses dans `.samples/` (ignoré par git). Toutes lancées par l'utilisateur dans son Terminal.
 - Développement : `uv run pytest`, `uv run ruff check .`, `uv run mypy goulot`, `uv run python schemas/check_schemas.py`, `npm --prefix frontend run dev`, `build` ou `test`.
 
 ## Plan de construction
@@ -188,7 +189,7 @@ Critères : le rejeu d'un jeu figé d'articles (`tests/fixtures/`, réponses IA 
 
 **Phase 3 (suite) — historique et cas comparables.** Sources de prix officielles de `config/sources.example.yaml` dans l'ordre de la section 6 de `docs/SPEC.md` ; `instrument_links` proposés par la reconstruction et validés par l'utilisateur ; téléchargement de l'historique ; marge ; pression de prix et ses résultats au registre ; bibliothèque de cas (pistes des bases publiques eMARS, GDACS et ReliefWeb, préparation par l'IA en deux appels, devis, vérification par l'utilisateur) ; réactions calculées ; ressemblance ; `<analogues>` dans le dossier d'analyse ; écrans « Cas comparables » et « Bibliothèque de cas ».
 
-Critères : les jeux de `tests/fixtures/history/` donnent les variations propres, médianes et exclusions attendues ; un brouillon IA n'entre ni dans une médiane ni dans un dossier ; une matière sans série reçoit une pression de prix sans pourcentage ; pour les 3 CAS de test, l'historique de leurs séries est téléchargé et au moins 10 cas sont préparés pour un coût affiché sous 3 $ par matière ; tests au vert.
+Critères : les jeux de `tests/fixtures/history/` donnent les variations propres, médianes et exclusions attendues ; un brouillon IA n'entre ni dans une médiane ni dans un dossier ; une matière sans série reçoit une pression de prix sans pourcentage ; pour les 3 CAS de test, l'historique de leurs séries est téléchargé et au moins 10 cas sont préparés pour un coût affiché sous 3 $ par matière (exception validée le 19 octobre 2026 : 9 cas pour l'acrylonitrile, 7 pour le gallium, voir `docs/DECISIONS.md`) ; tests au vert.
 
 ### Phase 4 — Ma chaîne et coffre
 

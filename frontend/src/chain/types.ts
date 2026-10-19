@@ -15,7 +15,7 @@ export type Material = {
   cas: string;
   formula: string;
   synonyms: string[];
-  hs_codes: { code: string; origin: string; verified: boolean }[];
+  hs_codes: { code: string; cn8?: string; origin: string; verified: boolean }[];
   identity_sources: { name: string; url: string }[];
   status: "draft" | "reconstructing" | "review" | "validated" | "archived";
 };

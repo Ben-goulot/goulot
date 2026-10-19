@@ -144,7 +144,7 @@ sources:
     frequency: daily
     history: archives annuelles depuis le lancement de chaque contrat
     use: Dalian, cours de clôture et de compensation quotidiens ; polyéthylène (LLDPE), PVC, polypropylène, éthylène glycol, styrène, GPL, benzène (depuis le 8 juillet 2025)
-    notes: pages publiques et fichiers de téléchargement de la bourse, appelés par le client maison, sans akshare ; HTTPS à confirmer en phase 1 pour les pages et les fichiers, sinon source désactivée (aucune exception à la règle HTTPS) ; licence de redistribution à vérifier avant toute vente
+    notes: "non branchée : le 19 octobre 2026, le site ne répondait pas depuis le Mac (délai de connexion dépassé), ni depuis le bac à sable ; à retester ; licence de redistribution à vérifier avant toute vente"
   - id: czce
     enabled: true
     family: price
@@ -153,7 +153,7 @@ sources:
     frequency: daily
     history: archives annuelles
     use: Zhengzhou ; méthanol, PTA, paraxylène, propylène (depuis le 22 juillet 2025), urée, soude caustique, carbonate de sodium, PET bouteille, fibre polyester, verre
-    notes: mêmes conditions que dce ; le 15 octobre 2026, la page d'accueil a répondu HTTP 412 à une requête automatisée, à retester depuis le Mac
+    notes: "branchée (goulot/prices/czce.py) : fichier quotidien public /cn/DFSStaticFiles/Future/<AAAA>/<AAAAMMJJ>/FutureDataDaily.txt, vérifié depuis le Mac le 19 octobre 2026 ; la page d'accueil répond HTTP 412 aux requêtes automatisées ; licence de redistribution à vérifier avant toute vente"
   - id: shfe_ine
     enabled: true
     extra_hosts: [www.ine.cn]
@@ -162,7 +162,7 @@ sources:
     auth: none
     frequency: daily
     use: "Shanghai ; caoutchouc naturel, caoutchouc butadiène, bitume, fioul ; plateforme INE (www.ine.cn) : pétrole brut SC, fioul à basse teneur en soufre"
-    notes: "mêmes conditions que dce ; vérifié : rapports quotidiens sous /reports/tradedata/dailyandweeklydata/"
+    notes: "branchée (goulot/prices/shfe.py) : fichier JSON quotidien /data/tradedata/future/dailydata/kx<AAAAMMJJ>.dat, vérifié depuis le Mac le 19 octobre 2026 ; licence de redistribution à vérifier avant toute vente"
   - id: gfex
     enabled: false
     family: price
@@ -170,7 +170,7 @@ sources:
     auth: none
     frequency: daily
     use: Guangzhou ; carbonate de lithium, silicium industriel, polysilicium
-    notes: désactivée le 15 octobre 2026 ; le certificat HTTPS présenté couvre d'autres domaines (CDN), le client le refuse ; à retester depuis le Mac, sans aucune exception à la vérification des certificats
+    notes: "désactivée : le 19 octobre 2026, depuis le Mac aussi, le certificat présenté est celui de *.cdn.myqcloud.com ; aucune exception à la vérification des certificats ; à retester"
   - id: nbs_china_prices
     enabled: true
     family: price

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
+import { Comparables } from "./Comparables";
 import { EventMap } from "./EventMap";
 import { Pressure } from "./Markets";
 import { PriceChart, type ChartMark } from "./PriceChart";
@@ -21,7 +22,13 @@ const ROLES = [
   ["input", "série d'un intrant"],
 ];
 
-export function Sheet(props: { materialId: string; onChain: () => void; onReliability: () => void; onBack: () => void }) {
+export function Sheet(props: {
+  materialId: string;
+  onChain: () => void;
+  onReliability: () => void;
+  onCases: () => void;
+  onBack: () => void;
+}) {
   const [data, setData] = useState<SheetData | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -91,6 +98,16 @@ export function Sheet(props: { materialId: string; onChain: () => void; onReliab
             <PriceChart series={data.series} marks={marks} />
           ) : (
             <p className="muted">Ajoute ou valide une série ci-dessous ; sans série, la pression de prix reste affichée, sans pourcentage.</p>
+          )}
+          {data.margin && (
+            <p className="muted">
+              Marge sur les intrants (indice) :{" "}
+              <span className={data.margin.trend === "up" ? "up" : data.margin.trend === "down" ? "down" : ""}>
+                {data.margin.trend === "up" ? "s'élargit" : data.margin.trend === "down" ? "se resserre" : "stable"} ({signed(data.margin.change_pct_20)} % sur
+                20 séances)
+              </span>
+              {data.margin.trend === "up" ? " : tension propre à la matière." : data.margin.trend === "flat" ? " : une hausse serait une poussée des coûts." : "."}
+            </p>
           )}
         </section>
 
@@ -189,6 +206,8 @@ export function Sheet(props: { materialId: string; onChain: () => void; onReliab
           <EventMap events={data.events} sites={data.sites} selected={selected} onSelect={setSelected} />
         </section>
       </div>
+
+      <Comparables eventId={selected ?? data.events.find((e) => e.status === "ongoing")?.id ?? data.events[0]?.id ?? null} onLibrary={props.onCases} />
 
       <section className="panel">
         <p className="eyebrow">Séries de prix liées</p>
