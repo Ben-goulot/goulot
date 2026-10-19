@@ -401,7 +401,17 @@ def cmd_history(settings: Settings, args: argparse.Namespace) -> None:
         sys.exit("Aucune matière validée avec ce numéro CAS : ajoutez-la et validez sa chaîne dans l'app.")
     print(f"Historique des prix de « {row['name']} » : cela peut prendre quelques minutes, sans coût d'IA.")
     written = backfill(db, build_client(load_allowlist(settings.config_dir)), get_secret, row["id"], print)
-    print(f"Terminé : {sum(written.values())} points enregistrés sur {len(written)} série(s).")
+    print(f"Terminé : {sum(written.values())} points enregistrés sur {len(written)} source(s).")
+    with db.connect() as conn:
+        missing = [r[0] for r in conn.execute(
+            "SELECT DISTINCT i.source FROM instruments i JOIN instrument_links l ON l.instrument_id = i.id "
+            "WHERE l.material_id = ? AND i.last_point_at IS NULL", (row["id"],))]
+    keyed = {"eia": ("eia", "EIA"), "us_census_trade": ("census", "Census"), "bls_ppi": ("bls", "BLS"),
+             "fred": ("fred", "FRED")}
+    without = sorted(keyed[s][1] for s in missing if s in keyed and not get_secret(keyed[s][0]))
+    if without:
+        print(f"Sans clé, pas de données pour : {', '.join(without)} (facultatif ; « ./bin/goulot setup » "
+              "pour en ajouter).")
 
 
 def cmd_cases(settings: Settings, args: argparse.Namespace) -> None:

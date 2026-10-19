@@ -9,6 +9,7 @@ the market noise they are compared with. Days already read, days without trading
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -54,10 +55,21 @@ class Exchange:
     def by_cas(self, cas: str) -> Product | None:
         return next((p for p in self.products if p.cas == cas), None)  # the first product listed wins
 
-    def match_node(self, node_key: str, product: str) -> Product | None:
-        name = " ".join(fold(product).replace("_", " ").split())
-        key = node_key.replace("_", " ")
-        return next((p for p in self.products if name in p.aliases or key in p.aliases), None)
+    def match_node(self, node_key: str, product: str, name: str = "") -> Product | None:
+        return next((p for p in self.products if mentions(p.aliases, node_key, product, name)), None)
+
+
+def words(text: str) -> str:
+    """Folded text reduced to words separated by single spaces (« Carbonate de soude (Na₂CO₃) » → « carbonate de
+    soude na2co3 »)."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", fold(text)).split())
+
+
+def mentions(aliases: tuple[str, ...], *texts: str) -> bool:
+    """True if one of the aliases appears as whole words in the node id, product or name of a chain node. The
+    proposal is only a suggestion: the user validates it on the material sheet."""
+    padded = [f" {words(t)} " for t in texts if t]
+    return any(f" {words(a)} " in t for a in aliases for t in padded)
 
 
 def dominant(rows: list[tuple[str, float, float]]) -> dict[str, float]:

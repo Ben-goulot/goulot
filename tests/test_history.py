@@ -92,3 +92,35 @@ def test_material_without_series_gets_a_pressure_without_percentage(client: Test
     assert sheet["verdict"]["pressure"] > 0 and sheet["verdict"]["pressure_label"] in ("Hausse", "Forte hausse")
     assert sheet["series"] is None and sheet["margin"] is None
     assert all(e["impact"] is None for e in sheet["events"])  # no instrument: no hypothesis, no percentage
+
+
+def test_materials_validated_before_price_links_get_them_once(ctx: AppContext) -> None:
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:  # as in phase 2: validated without any price link
+        conn.execute("DELETE FROM instrument_links WHERE material_id = ?", (material_id,))
+    assert collect.catch_up_links(ctx.db) == 1
+    with ctx.db.connect() as conn:
+        links = prices.links(conn, material_id)
+    assert {r["role"] for r in links} >= {"customs", "factor"}
+    assert all(r["validated"] == 0 for r in links if r["role"] != "factor")  # proposed, to be validated
+    assert collect.catch_up_links(ctx.db) == 0  # once only
+
+
+def test_inputs_worded_differently_still_get_their_series(ctx: AppContext) -> None:
+    from goulot.prices import czce, exchange_files, shfe
+
+    assert czce.EXCHANGE.match_node("na2co3", "Carbonate de sodium (soude Solvay)") is not None
+    assert czce.EXCHANGE.match_node("x", "propylène de qualité polymère") is not None
+    assert nbs.match_node("h2so4", "Acide sulfurique 98 %") is nbs._BY_SLUG["sulfuric_acid"]
+    assert shfe.EXCHANGE.match_node("x", "Délai fournisseur (lead time)") is None  # no English common words
+    assert not exchange_files.mentions(("zinc",), "zincite")  # whole words only
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE chain_nodes SET product = 'Carbonate de sodium (Na2CO3)' WHERE material_id = ? AND "
+                     "node_key = 'ammonia'", (material_id,))
+    lines: list[str] = []
+    collect.backfill(ctx.db, http_client(lambda r: httpx2.Response(404)), lambda n: None, material_id, lines.append)
+    assert any("Carbonate de soude (Zhengzhou)" in line and "intrant" in line for line in lines)
+    lines.clear()
+    collect.backfill(ctx.db, http_client(lambda r: httpx2.Response(404)), lambda n: None, material_id, lines.append)
+    assert not any("Série proposée" in line for line in lines)  # proposed once

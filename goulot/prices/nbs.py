@@ -115,7 +115,7 @@ ALIASES = {
                                                                                          "lldpe"),
     "polypropylene": ("polypropylene",), "acetic_acid": ("acide acetique", "acetic acid"), "urea": ("uree", "urea"),
     "styrene": ("styrene",), "pvc": ("pvc", "polychlorure de vinyle"), "lng": ("gnl", "lng"), "lpg": ("gpl", "lpg"),
-    "copper": ("cuivre", "copper"), "aluminium": ("aluminium",), "zinc": ("zinc",), "lead": ("plomb", "lead"),
+    "copper": ("cuivre", "copper"), "aluminium": ("aluminium",), "zinc": ("zinc",), "lead": ("plomb",),
     "polysilicon": ("polysilicium", "polysilicon"), "potash": ("chlorure de potassium", "potasse", "potash"),
     "lfp": ("phosphate de fer lithie", "lfp"), "natural_rubber": ("caoutchouc naturel",),
     "butadiene_rubber": ("caoutchouc butadiene", "polybutadiene"), "paraffin": ("paraffine", "paraffin"),
@@ -124,9 +124,14 @@ _BY_SLUG = {p.slug: p for p in PRODUCTS}
 _BY_NAME = {**_BY_SLUG, **{alias: _BY_SLUG[slug] for slug, names in ALIASES.items() for alias in names}}
 
 
-def match_node(node_key: str, product: str) -> Product | None:
-    """The NBS product a chain node stands for, by its id or its exact product name (folded), or None."""
-    return _BY_NAME.get(node_key) or _BY_NAME.get(" ".join(fold(product).replace("_", " ").split()))
+def match_node(node_key: str, product: str, name: str = "") -> Product | None:
+    """The NBS product a chain node stands for: its id or exact product name, else an alias in its wording."""
+    exact = _BY_NAME.get(node_key) or _BY_NAME.get(" ".join(fold(product).replace("_", " ").split()))
+    if exact is not None:
+        return exact
+    from goulot.prices.exchange_files import mentions
+
+    return next((_BY_SLUG[slug] for slug, names in ALIASES.items() if mentions(names, node_key, product, name)), None)
 
 
 def instrument_id(product: Product) -> str:

@@ -56,15 +56,15 @@ def propose_links(conn: sqlite3.Connection, material_id: str) -> None:
     if official is not None:
         nbs.ensure_instruments(conn)
         prices.link(conn, material_id, nbs.instrument_id(official), "official", proposed_by="reconstruction")
-    for node in conn.execute("SELECT node_key, product FROM chain_nodes WHERE material_id = ? AND valid_to IS NULL "
-                             "AND node_type = 'material' AND tier = 1", (material_id,)).fetchall():
+    for node in conn.execute("SELECT node_key, product, name FROM chain_nodes WHERE material_id = ? AND valid_to IS "
+                             "NULL AND node_type = 'material' AND tier = 1", (material_id,)).fetchall():
         for ex in EXCHANGES:  # a daily quote first (rank 1)
-            quote = ex.match_node(node["node_key"], node["product"])
+            quote = ex.match_node(node["node_key"], node["product"], node["name"])
             if quote is not None:
                 exchange_files.ensure_instruments(conn, ex)
                 prices.link(conn, material_id, ex.instrument_id(quote), "input", proposed_by="reconstruction",
                             node_key=node["node_key"])
-        product = nbs.match_node(node["node_key"], node["product"])
+        product = nbs.match_node(node["node_key"], node["product"], node["name"])
         if product is not None and product is not official:
             nbs.ensure_instruments(conn)
             prices.link(conn, material_id, nbs.instrument_id(product), "input", proposed_by="reconstruction",
@@ -110,9 +110,21 @@ def _due(last_fetch: str | None, frequency: str, now: datetime) -> bool:
     return now - datetime.fromisoformat(last_fetch) >= gap
 
 
+def catch_up_links(db: Database) -> int:
+    """Materials validated before the price links existed (phase 2) get their proposals once. Returns how many."""
+    with db.transaction() as conn:
+        missing = [r[0] for r in conn.execute(
+            "SELECT id FROM materials m WHERE status = 'validated' AND NOT EXISTS "
+            "(SELECT 1 FROM instrument_links l WHERE l.material_id = m.id)")]
+        for material_id in missing:
+            propose_links(conn, material_id)
+    return len(missing)
+
+
 def run(db: Database, client: httpx2.Client, secret: SecretGetter, now: datetime | None = None) -> dict[str, int]:
     """Fetch every due series linked to a validated material. Returns points written per instrument."""
     now = now or datetime.now(UTC)
+    catch_up_links(db)
     with db.connect() as conn:
         rows = conn.execute(
             "SELECT DISTINCT i.* FROM instruments i JOIN instrument_links l ON l.instrument_id = i.id "
@@ -166,6 +178,14 @@ def backfill(db: Database, client: httpx2.Client, secret: SecretGetter, material
              progress: Callable[[str], None] = lambda line: None, now: datetime | None = None) -> dict[str, int]:
     """All the history of the material's linked series, now (`goulot history backfill`). Points written per series."""
     now = now or datetime.now(UTC)
+    catch_up_links(db)
+    with db.transaction() as conn:  # an explicit download proposes again what the chain allows (idempotent)
+        before = {r["instrument_id"] for r in prices.links(conn, material_id)}
+        propose_links(conn, material_id)
+        added = [r for r in prices.links(conn, material_id) if r["instrument_id"] not in before]
+    for r in added:
+        progress(f"Série proposée, à valider sur la fiche : {r['name']}"
+                 + (f" (intrant « {r['node_key']} »)" if r["node_key"] else ""))
     with db.connect() as conn:
         rows = conn.execute("SELECT DISTINCT i.* FROM instruments i JOIN instrument_links l ON l.instrument_id = i.id "
                             "WHERE l.material_id = ?", (material_id,)).fetchall()
