@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import time
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -34,6 +35,18 @@ class PriceSourceError(RuntimeError):
     pass
 
 
+# Terms of service of the EIA and Census Bureau APIs: requests are throttled (a key that exceeds the tolerances per
+# second and per hour is suspended). One second between two requests to a keyed API; the tests set it to 0.
+PAUSE_S = 1.0
+EIA_PAGE_ROWS = 5000
+EIA_MAX_PAGES = 10
+
+
+def pause() -> None:
+    if PAUSE_S > 0:
+        time.sleep(PAUSE_S)
+
+
 def _ok_json(result: Any) -> Any:
     if result.status != 200:
         raise PriceSourceError(f"HTTP {result.status}")
@@ -55,15 +68,22 @@ def eia(client: httpx2.Client, key: str, series: str, start: date) -> list[Point
     route = EIA_ROUTES.get(series)
     if route is None:
         raise PriceSourceError("unknown EIA series")
-    data = _ok_json(fetch(client, EIA.format(route=route), params={
-        "api_key": key, "frequency": "daily", "data[0]": "value", "facets[series][]": series,
-        "start": start.isoformat(), "sort[0][column]": "period", "sort[0][direction]": "asc", "length": "5000",
-    }))
     out = []
-    for row in (data.get("response") or {}).get("data") or []:
-        v = _num(row.get("value"))
-        if v is not None and row.get("period"):
-            out.append((date.fromisoformat(str(row["period"])[:10]), v))
+    for page in range(EIA_MAX_PAGES):  # the API returns 5,000 rows at most: Brent since 1987 needs 3 pages
+        if page:
+            pause()
+        data = _ok_json(fetch(client, EIA.format(route=route), params={
+            "api_key": key, "frequency": "daily", "data[0]": "value", "facets[series][]": series,
+            "start": start.isoformat(), "sort[0][column]": "period", "sort[0][direction]": "asc",
+            "length": str(EIA_PAGE_ROWS), "offset": str(page * EIA_PAGE_ROWS),
+        }))
+        rows = (data.get("response") or {}).get("data") or []
+        for row in rows:
+            v = _num(row.get("value"))
+            if v is not None and row.get("period"):
+                out.append((date.fromisoformat(str(row["period"])[:10]), v))
+        if len(rows) < EIA_PAGE_ROWS:
+            break
     return out
 
 

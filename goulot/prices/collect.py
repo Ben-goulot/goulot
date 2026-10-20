@@ -104,6 +104,7 @@ def direct_inputs(conn: sqlite3.Connection, material_id: str) -> list[sqlite3.Ro
 
 SecretGetter = Callable[[str], str | None]
 PricePoint = tuple[Any, ...]
+KEYED_APIS = {"eia", "us_census_trade", "fred", "bls_ppi"}
 
 
 def _fetch(client: httpx2.Client, source: str, code: str, start: date, secret: SecretGetter) -> list[PricePoint]:
@@ -113,6 +114,8 @@ def _fetch(client: httpx2.Client, source: str, code: str, start: date, secret: S
             raise PriceSourceError("missing key")
         return value
 
+    if source in KEYED_APIS:
+        sources.pause()  # one second before each call to a keyed API: never a burst (terms of service)
     if source == "eia":
         return list(sources.eia(client, key("eia"), code, start))
     if source == "fred":

@@ -134,6 +134,7 @@ sources:
     auth: key:eia
     frequency: daily
     use: prix et stocks de pétrole et de gaz ; repères quotidiens Brent (série RBRTE, depuis 1987), WTI (RWTC), Henry Hub (RNGWHHD)
+    notes: "conditions d'utilisation de l'API (lues le 20 octobre 2026) : citer « EIA » ou « U.S. Energy Information Administration » comme source, sans laisser croire à une approbation ; pas de logo EIA ; ne pas présenter comme données EIA un contenu modifié ; appels espacés (suspension temporaire de la clé au-delà des tolérances) ; 5 000 lignes au plus par requête, d'où la pagination"
 
   # --- Prix : sources officielles d'abord (docs/SPEC.md, section 6) ---
   - id: dce
@@ -203,7 +204,7 @@ sources:
     auth: key:census
     frequency: monthly
     use: importations américaines par code à 10 chiffres et par pays d'origine (GEN_VAL_MO, GEN_QY1_MO, UNIT_QY1), d'où un prix unitaire mensuel par CAS
-    notes: clé gratuite désormais obligatoire (paramètre key=, réponse « Missing Key » sans elle), expurgée des journaux ; données publiques
+    notes: "clé gratuite désormais obligatoire (paramètre key=, réponse « Missing Key » sans elle), expurgée des journaux ; données publiques ; conditions d'utilisation (lues le 20 octobre 2026) : afficher en évidence « This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. » ; ne jamais utiliser ces données, seules ou combinées, pour identifier une personne ou une entreprise ; ne pas présenter comme données du Census Bureau un prix calculé par Goulot ; appels limités et espacés"
   - id: world_bank_pink_sheet
     enabled: true
     extra_hosts: [thedocs.worldbank.org]

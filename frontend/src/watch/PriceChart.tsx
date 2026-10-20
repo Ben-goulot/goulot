@@ -1,6 +1,6 @@
 import { createChart, createSeriesMarkers, LineSeries, type IChartApi, type SeriesMarker, type Time } from "lightweight-charts";
 import { useEffect, useRef } from "react";
-import type { SeriesPayload } from "./types";
+import { sourceCredit, type SeriesPayload } from "./types";
 
 export type ChartMark = { day: string; text: string; color: string; shape: "circle" | "arrowUp" | "arrowDown" | "square" };
 
@@ -43,9 +43,11 @@ export function PriceChart(props: { series: SeriesPayload; marks?: ChartMark[]; 
     };
   }, [props.series, props.marks, props.height]);
 
+  const credit = sourceCredit(props.series.source);
   return (
     <>
       <div className="chart" ref={box} />
+      {credit && <p className="credit">{credit}</p>}
       <p className="credit">
         Graphique :{" "}
         <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">

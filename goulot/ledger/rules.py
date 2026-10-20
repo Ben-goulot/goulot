@@ -24,6 +24,7 @@ class Series:
     rank: int  # 1 quote, 2 official price, 3 customs unit price, 4 family index, 5 proxy index
     frequency: str = "daily"  # daily | monthly | customs
     name: str = ""
+    source: str = ""  # instrument source (« eia », « us_census_trade »…), « goulot » for an index computed here
     dates: list[date] = field(init=False)
 
     def __post_init__(self) -> None:

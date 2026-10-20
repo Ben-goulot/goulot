@@ -64,7 +64,7 @@ def series(conn: sqlite3.Connection, instrument_id: str, *, since: date | None =
         thin = any(r["volume"] is not None and r["volume"] < MIN_CUSTOMS_VOLUME for r in rows[-6:])
         rank = 4 if thin else rank  # a thin customs series is only a weak index
     points = [(date.fromisoformat(r["day"]), float(r["value"])) for r in rows]
-    return Series(points, rank, inst["frequency"], inst["name"]) if points else None
+    return Series(points, rank, inst["frequency"], inst["name"], inst["source"]) if points else None
 
 
 def links(conn: sqlite3.Connection, material_id: str) -> list[sqlite3.Row]:
@@ -98,7 +98,7 @@ def proxy_index(conn: sqlite3.Connection, material_id: str) -> Series | None:
             weight += w
         else:
             out.append((day, round(total / weight, 4)))
-    return Series(out, 5, "daily", "indice des intrants") if out else None
+    return Series(out, 5, "daily", "indice des intrants", "goulot") if out else None
 
 
 def best_series(conn: sqlite3.Connection, material_id: str) -> Series | None:

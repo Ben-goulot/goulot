@@ -81,7 +81,7 @@ def _series_payload(s: Any, months: int) -> dict[str, Any] | None:
     points = [{"day": d.isoformat(), "value": v} for d, v in s.points if d >= start]
     first = points[0]["value"] if points else None
     last = points[-1]["value"] if points else None
-    return {"name": s.name, "rank": s.rank, "frequency": s.frequency, "points": points,
+    return {"name": s.name, "rank": s.rank, "frequency": s.frequency, "source": s.source, "points": points,
             "change_pct": round(100 * (last / first - 1), 2) if first and last else None}
 
 

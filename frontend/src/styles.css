@@ -147,3 +147,8 @@ button:disabled { opacity: 0.55; cursor: default; }
 .cases > li.case { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .cases > li.case.rejected { opacity: 0.6; }
 .cases > li.case p { margin: 4px 0; }
+
+/* Attribution required by the EIA and Census Bureau API terms of service: on every screen. */
+.sources-footer { max-width: 1200px; margin: 24px auto 16px; padding: 12px 16px; border-top: 1px solid var(--border);
+  color: var(--text-2); font-size: 0.8rem; }
+.sources-footer p { margin: 4px 0; }

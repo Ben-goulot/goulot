@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RANK_LABEL, RESULT_LABEL, signed, verdictClass, type Verdict, scale } from "./types";
+import { CENSUS_NOTICE, RANK_LABEL, RESULT_LABEL, scale, signed, sourceCredit, verdictClass, type Verdict } from "./types";
 
 const verdict = (v: Verdict["verdict"]) => ({ verdict: v }) as Verdict;
 
@@ -30,5 +30,16 @@ describe("scale of the comparable cases card", () => {
     expect(at(-2)).toBeGreaterThan(0);
     const positive = scale([3, 5]);
     expect(positive(0)).toBeGreaterThan(0); // zero is inside the axis even when every case rose
+  });
+});
+
+describe("source credits (terms of service)", () => {
+  it("shows the Census notice verbatim and never presents a Goulot index as published data", () => {
+    expect(CENSUS_NOTICE).toBe("This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.");
+    expect(sourceCredit("us_census_trade")).toContain(CENSUS_NOTICE);
+    expect(sourceCredit("us_census_trade")).toContain("calculé par Goulot");
+    expect(sourceCredit("eia")).toContain("U.S. Energy Information Administration");
+    expect(sourceCredit("goulot")).toContain("calculé par Goulot");
+    expect(sourceCredit(undefined)).toBeNull();
   });
 });

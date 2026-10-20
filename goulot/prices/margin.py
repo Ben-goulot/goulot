@@ -34,7 +34,7 @@ def margin_index(material: Series, inputs: Series) -> Series | None:
         if last is None or (day - last[0]).days > MAX_GAP_DAYS:
             continue
         out.append((day, round(100 * (value / base_m[1]) / (last[1] / base_i[1]), 4)))
-    return Series(out, 5, material.frequency, "marge relative (indice)") if len(out) > 1 else None
+    return Series(out, 5, material.frequency, "marge relative (indice)", "goulot") if len(out) > 1 else None
 
 
 def trend(index: Series | None, sessions: int = SESSIONS) -> tuple[str, float] | None:

@@ -175,3 +175,18 @@ def test_market_context_reaches_the_analysis_and_outcomes(ctx: AppContext) -> No
         outcome = chain.entries(conn, kinds=("outcome",))[0]
     assert outcome["result"] == "correct_calm" and outcome["series"] == "Acrylonitrile (test)"
     assert json.dumps(outcome)
+
+
+def test_eia_history_is_read_page_by_page() -> None:
+    """The EIA API returns 5,000 rows at most per request: Brent since 1987 takes several pages."""
+    days = business_days(date(1987, 5, 20), 6200)
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        offset, length = int(request.url.params["offset"]), int(request.url.params["length"])
+        rows = [{"period": d.isoformat(), "value": 18.0 + i * 0.001} for i, d in enumerate(days)][offset:offset + length]
+        return httpx2.Response(200, json={"response": {"data": rows}})
+
+    points = sources.eia(client(handler, seen), "e" * 20, "RBRTE", date(1987, 1, 1))
+    assert len(points) == 6200 and points[0][0] == date(1987, 5, 20) and points[-1][0] == days[-1]
+    assert [r.url.params["offset"] for r in seen] == ["0", "5000"]

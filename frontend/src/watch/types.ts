@@ -22,9 +22,32 @@ export type SeriesPayload = {
   name: string;
   rank: number;
   frequency: string;
+  source?: string;
   points: { day: string; value: number }[];
   change_pct: number | null;
 };
+
+// Attribution required by the terms of service of each source (EIA, Census Bureau API), and the line that says when
+// a figure is computed by Goulot rather than published by the source.
+export const CENSUS_NOTICE = "This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.";
+
+export const SOURCE_CREDIT: Record<string, string> = {
+  eia: "Source : U.S. Energy Information Administration (EIA).",
+  us_census_trade: "Prix unitaire calculé par Goulot (valeur ÷ quantité) à partir des données du Census Bureau. " + CENSUS_NOTICE,
+  nbs_china_prices: "Source : Bureau national des statistiques de Chine (prix de marché des moyens de production).",
+  shfe_ine: "Source : Shanghai Futures Exchange (prix de compensation du contrat le plus traité, choisi par Goulot).",
+  czce: "Source : Zhengzhou Commodity Exchange (prix de compensation du contrat le plus traité, choisi par Goulot).",
+  bls_ppi: "Source : U.S. Bureau of Labor Statistics.",
+  eurostat: "Source : Eurostat.",
+  fred: "Source : FRED, Federal Reserve Bank of St. Louis.",
+  yahoo_chart: "Source : Yahoo Finance (dépannage, usage personnel).",
+  stooq: "Source : Stooq (dépannage, usage personnel).",
+  goulot: "Indice calculé par Goulot à partir des séries liées ; ce n'est pas une donnée publiée par une source.",
+};
+
+export function sourceCredit(source: string | undefined): string | null {
+  return source ? SOURCE_CREDIT[source] ?? null : null;
+}
 
 export type Freshness = { last_ok_cycle: string | null; verified: boolean };
 

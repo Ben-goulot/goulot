@@ -4,6 +4,7 @@ import { assertionToJson, creationOptions, parseFragment, registrationToJson, re
 import { AddMaterial } from "./chain/AddMaterial";
 import { ChainView } from "./chain/ChainView";
 import { CaseLibrary } from "./watch/CaseLibrary";
+import { CENSUS_NOTICE } from "./watch/types";
 import { Markets } from "./watch/Markets";
 import { Reliability } from "./watch/Reliability";
 import { Sheet } from "./watch/Sheet";
@@ -188,6 +189,15 @@ export default function App() {
           </>
         )}
       </main>
+      <footer className="sources-footer">
+        <p>{CENSUS_NOTICE}</p>
+        <p>
+          Ce produit utilise l'API de données du Census Bureau, sans être approuvé ni certifié par le Census Bureau.
+          Prix de l'énergie : U.S. Energy Information Administration (EIA). Ni l'EIA ni le Census Bureau n'approuvent
+          Goulot. Les prix unitaires, indices, marges, variations propres et verdicts sont calculés par Goulot : ce ne
+          sont pas des données publiées par ces sources.
+        </p>
+      </footer>
     </>
   );
 }

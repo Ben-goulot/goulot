@@ -60,6 +60,14 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "create_connection", refuse)
 
 
+@pytest.fixture(autouse=True)
+def no_api_pause(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The pause between two calls to a keyed API (terms of service of EIA and Census) is skipped in tests."""
+    from goulot.prices import sources
+
+    monkeypatch.setattr(sources, "PAUSE_S", 0.0)
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(home=tmp_path / "home", log_dir_override=tmp_path / "logs")
