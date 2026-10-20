@@ -158,6 +158,37 @@ def _setup_secrets(settings: Settings) -> None:
         print(f"  Enregistré ({masked(value)}).")
         if spec.name == "anthropic":
             _test_anthropic(settings, value)
+        elif spec.name in PRICE_KEY_TESTS:
+            _test_price_key(settings, spec.name, value.strip())
+
+
+PRICE_KEY_TESTS = {"eia": "EIA", "census": "Census Bureau"}
+
+
+def _test_price_key(settings: Settings, name: str, key: str) -> None:
+    """One small request with the key just typed (a few days of Brent, one month of customs data)."""
+    from datetime import date, timedelta
+
+    import httpx2
+
+    from goulot.net.allowlist import load_allowlist
+    from goulot.net.client import build_client
+    from goulot.prices import sources
+
+    client = build_client(load_allowlist(settings.config_dir))
+    try:
+        if name == "eia":
+            sources.eia(client, key, "RBRTE", date.today() - timedelta(days=14))
+        else:
+            sources.census_unit_prices(client, key, "811292", date(date.today().year - 1, 1, 1))
+        print(f"  Test : clé acceptée par l'API {PRICE_KEY_TESTS[name]} ({len(key)} caractères).")
+    except sources.PriceSourceError as exc:
+        print(f"  Test : clé refusée ou inactive ({exc}). Longueur saisie : {len(key)} caractères. Vérifiez le "
+              "lien d'activation de l'e-mail, puis relancez « ./bin/goulot setup » et collez-la de nouveau.")
+    except httpx2.HTTPError as exc:
+        print(f"  Test impossible pour l'instant ({type(exc).__name__}) ; la clé est enregistrée.")
+    finally:
+        client.close()
 
 
 def _test_anthropic(settings: Settings, key: str) -> None:

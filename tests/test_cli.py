@@ -74,3 +74,31 @@ def test_open_and_add_passkey_accept_print() -> None:
     assert parser.parse_args(["open", "--print"]).print_only
     assert not parser.parse_args(["open"]).print_only
     assert parser.parse_args(["vault", "add-passkey", "--print"]).print_only
+
+
+def test_setup_tests_a_price_key_and_never_prints_it(monkeypatch: pytest.MonkeyPatch,
+                                                      capsys: pytest.CaptureFixture[str]) -> None:
+    import httpx2
+
+    from goulot.net.allowlist import Allowlist
+    from goulot.net.client import build_client
+
+    key = "FAKE" + "k" * 36
+    answers = iter([key])
+
+    def ask(label: str) -> str:
+        return next(answers) if label.startswith("Clé EIA") else ""
+
+    def refusing(*_: object, **__: object) -> httpx2.Client:
+        return build_client(Allowlist(set()), transport=httpx2.MockTransport(lambda r: httpx2.Response(
+            403, json={"code": "API_KEY_INVALID", "message": f"invalid api_key {key}"})))
+
+    monkeypatch.setattr(cli, "_ask_secret", ask)
+    monkeypatch.setattr("goulot.net.client.build_client", refusing)
+    monkeypatch.setattr("goulot.net.allowlist.load_allowlist", lambda *_: Allowlist(set()))
+    from goulot.settings import Settings
+
+    cli._setup_secrets(Settings())
+    out = capsys.readouterr().out
+    assert "clé refusée ou inactive" in out and "API_KEY_INVALID" in out and "40 caractères" in out
+    assert key not in out and get_secret("eia") == key  # kept, so that the user can fix it by typing it again

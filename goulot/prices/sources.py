@@ -57,8 +57,12 @@ def reason(body: bytes) -> str:
     try:
         data = json.loads(text)
         if isinstance(data, dict):
-            found = data.get("error") or data.get("message") or data.get("description") or data
-            text = json.dumps(found, ensure_ascii=False) if not isinstance(found, str) else found
+            found = data.get("error") or data
+            if isinstance(found, dict) and ("code" in found or "message" in found):
+                found = " : ".join(str(found[k]) for k in ("code", "message") if found.get(k))
+            elif isinstance(found, dict):
+                found = found.get("description") or json.dumps(found, ensure_ascii=False)
+            text = str(found)
     except json.JSONDecodeError:
         text = re.sub(r"<[^>]+>", " ", text)
     return TOKEN.sub("…", " ".join(text.split()))[:120]

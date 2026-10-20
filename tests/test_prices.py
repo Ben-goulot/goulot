@@ -194,7 +194,7 @@ def test_eia_history_is_read_page_by_page() -> None:
 
 def test_error_reasons_are_shown_without_any_key() -> None:
     key = "FAKE" + "x" * 28  # obviously not a key: built, so that no scanner takes it for one
-    assert sources.reason(b'{"error": {"code": "API_KEY_INVALID", "message": "bad"}}').startswith('{"code"')
+    assert sources.reason(b'{"error": {"code": "API_KEY_INVALID", "message": "bad"}}') == "API_KEY_INVALID : bad"
     assert sources.reason(f"Invalid Key: {key}".encode()) == "Invalid Key: …"
     assert key not in sources.reason(f'{{"error": "api_key {key} is not activated"}}'.encode())
     assert sources.reason(b"<html><body><h1>Missing Key</h1></body></html>") == "Missing Key"
