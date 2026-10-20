@@ -40,6 +40,7 @@ MAX_ITEMS_PER_SOURCE = 1_000  # bounded queue: a flooding feed cannot fill the d
 BACKOFF_BASE = timedelta(hours=3)
 BACKOFF_MAX = timedelta(hours=24)
 SITES_PER_QUERY = 8
+MISSING_KEY = "missing key"  # error of a source whose key is not in the keychain
 
 SecretGetter = Callable[[str], str | None]
 
@@ -117,7 +118,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
     def fires(c: httpx2.Client, since: datetime) -> list[Item]:
         key = secret("nasa_firms")
         if not key:
-            raise sources.SourceError("missing key")
+            raise sources.SourceError(MISSING_KEY)
         return sources.firms(c, key, boxes)
 
     return {
@@ -134,12 +135,14 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
 
 
 def _backoff(conn: sqlite3.Connection, source: str, now: datetime) -> bool:
-    """True while a failing source must wait: 3 h after one failure, then doubling, at most 24 h."""
-    runs = conn.execute("SELECT ok, started_at FROM collect_runs WHERE source = ? ORDER BY id DESC LIMIT 8",
+    """True while a failing source must wait: 3 h after one failure, then doubling, at most 24 h. A run that failed
+    for lack of a key is not a failure of the source: once the key is in the keychain, it is tried at the next
+    cycle."""
+    runs = conn.execute("SELECT ok, error, started_at FROM collect_runs WHERE source = ? ORDER BY id DESC LIMIT 8",
                         (source,)).fetchall()
     failures = 0
     for r in runs:
-        if r["ok"]:
+        if r["ok"] or r["error"].endswith(MISSING_KEY):
             break
         failures += 1
     if failures < 2:
@@ -178,7 +181,8 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
         family = str(load_sources()[source_id].get("family", ""))
         with db.connect() as conn:
             if not _due(conn, source_id, now):
-                families_ok.setdefault(family, True)
+                if not _backoff(conn, source_id, now):
+                    families_ok[family] = True  # answered less than 3 hours ago: the family is covered
                 continue
             since = (_last_success(conn, source_id) or now - FIRST_LOOKBACK) - OVERLAP
         started, error, fetched, kept = iso(now), "", 0, 0

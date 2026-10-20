@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from goulot.alerts.defang import defang
+from goulot.collect.runner import MISSING_KEY
 from goulot.db.connection import Database, get_setting
 from goulot.llm.budget import CRISIS, ECONOMY, RULES_ONLY, WatchMode
 
@@ -24,7 +25,6 @@ log = logging.getLogger("goulot.alerts")
 THROTTLE = timedelta(hours=1)
 SILENT_LIMIT = timedelta(hours=24)
 UNVERIFIED_LIMIT = timedelta(hours=12)
-MISSING_KEY = "missing key"  # error of a source whose key is not in the keychain (goulot/collect/runner.py)
 TITLE_CHARS = 120
 SECURITY_KINDS = {
     "unlock_blocked": "Ouverture du coffre bloquée après des échecs répétés.",

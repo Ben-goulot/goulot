@@ -270,3 +270,34 @@ def test_gdelt_queries_are_spaced_out(monkeypatch: pytest.MonkeyPatch) -> None:
     sources.gdelt(client, "a", now - timedelta(hours=3), now)
     sources.gdelt(client, "b", now - timedelta(hours=3), now)
     assert len(slept) == 1 and 5.5 < slept[0] <= 6.0
+
+
+def test_key_added_later_is_tried_at_the_next_cycle(ctx: AppContext) -> None:
+    from goulot.collect.runner import _backoff
+
+    with ctx.db.transaction() as conn:
+        for hours in (7, 4, 1):
+            conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok, error) VALUES ('c', "
+                         "'nasa_firms', 'hazard', ?, 0, 'SourceError: missing key')",
+                         ((NOW - timedelta(hours=hours)).isoformat(),))
+        assert not _backoff(conn, "nasa_firms", NOW)  # no penalty for a key not given yet
+        for hours in (3, 2):
+            conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok, error) VALUES ('c', "
+                         "'gdacs', 'hazard', ?, 0, 'SourceError: HTTP 500')", ((NOW - timedelta(hours=hours)).isoformat(),))
+        assert _backoff(conn, "gdacs", NOW)  # a real failure still waits
+
+
+def test_a_family_answered_recently_stays_covered(ctx: AppContext) -> None:
+    """GDELT fails, but Google News answered an hour ago and is not due: the news family is covered."""
+    from goulot.collect.base import enabled, load_sources
+
+    validated_chain(ctx)  # GDELT has queries to run
+    with ctx.db.transaction() as conn:
+        for source in load_sources():
+            if enabled(source) and source != "gdelt_doc":
+                conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok) VALUES ('c', ?, ?, ?, 1)",
+                             (source, load_sources()[source].get("family", ""), (NOW - timedelta(hours=1)).isoformat()))
+    client = build_client(Allowlist({"api.gdeltproject.org"}), transport=httpx2.MockTransport(
+        lambda _: httpx2.Response(500, content=b"")))
+    result = run_cycle(ctx.db, client, lambda _: None, NOW)
+    assert result.failed == ["gdelt_doc"] and result.ok
