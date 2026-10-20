@@ -357,6 +357,8 @@ def build_parser() -> argparse.ArgumentParser:
     hsub = history.add_subparsers(dest="history_action", required=True)
     backfill = hsub.add_parser("backfill", help="télécharge maintenant tout l'historique des séries d'une matière")
     backfill.add_argument("--cas", required=True, help="numéro CAS d'une matière déjà ajoutée et validée")
+    inputs = hsub.add_parser("inputs", help="montre les matières premières de la chaîne type et les séries trouvées")
+    inputs.add_argument("--cas", required=True, help="numéro CAS d'une matière déjà ajoutée et validée")
     cases = sub.add_parser("cases", help="bibliothèque de cas comparables")
     csub = cases.add_subparsers(dest="cases_action", required=True)
     build = csub.add_parser("build", help="prépare les cas passés d'une matière validée (devis, puis confirmation)")
@@ -384,6 +386,29 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print_inputs(db: Database, material_id: str, name: str) -> None:
+    """Chain type only (public data, never Ma chaîne): the material nodes of tiers 0 to 2 and the series matched."""
+    from goulot.prices.collect import EXCHANGES
+    from goulot.prices.nbs import match_node
+
+    with db.connect() as conn:
+        nodes = conn.execute("SELECT node_key, node_type, name, product, tier FROM chain_nodes WHERE material_id = ? "
+                             "AND valid_to IS NULL AND (tier <= 1 OR (tier = 2 AND node_type = 'material')) "
+                             "ORDER BY tier, node_type, node_key", (material_id,)).fetchall()
+    print(f"Cases de la chaîne type de « {name} » (rang 0 : la matière achetée ; 1 : ses intrants directs) :")
+    for n in nodes:
+        found = [p.fr for ex in EXCHANGES if (p := ex.match_node(n["node_key"], n["product"], n["name"]))]
+        official = match_node(n["node_key"], n["product"], n["name"])
+        if official is not None:
+            found.append(f"{official.fr} (prix officiel chinois)")
+        series = ", ".join(found) if found else "aucune série trouvée"
+        print(f"  rang {n['tier']} · {n['node_type']} · {n['node_key']} · nom « {n['name']} » · produit "
+              f"« {n['product']} » → {series}")
+    if not nodes:
+        print("  aucune case : la chaîne type est vide.")
+    print("Seules les cases « material » de rang 1 reçoivent une série proposée. Copiez ce résultat à Claude.")
+
+
 def cmd_history(settings: Settings, args: argparse.Namespace) -> None:
     from goulot.chain.identify import normalize_cas
     from goulot.net.allowlist import load_allowlist
@@ -399,6 +424,9 @@ def cmd_history(settings: Settings, args: argparse.Namespace) -> None:
         row = conn.execute("SELECT id, name, status FROM materials WHERE cas = ?", (cas,)).fetchone()
     if row is None or row["status"] != "validated":
         sys.exit("Aucune matière validée avec ce numéro CAS : ajoutez-la et validez sa chaîne dans l'app.")
+    if args.history_action == "inputs":
+        _print_inputs(db, row["id"], row["name"])
+        return
     print(f"Historique des prix de « {row['name']} » : cela peut prendre quelques minutes, sans coût d'IA.")
     written = backfill(db, build_client(load_allowlist(settings.config_dir)), get_secret, row["id"], print)
     print(f"Terminé : {sum(written.values())} points enregistrés sur {len(written)} source(s).")

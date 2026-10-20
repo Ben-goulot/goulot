@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from datetime import date
+from typing import Any
 
 import httpx2
 from fastapi.testclient import TestClient
@@ -124,3 +125,15 @@ def test_inputs_worded_differently_still_get_their_series(ctx: AppContext) -> No
     lines.clear()
     collect.backfill(ctx.db, http_client(lambda r: httpx2.Response(404)), lambda n: None, material_id, lines.append)
     assert not any("Série proposée" in line for line in lines)  # proposed once
+
+
+def test_history_inputs_command_shows_the_chain_type(ctx: AppContext, capsys: Any) -> None:
+    from goulot.cli.main import _print_inputs
+
+    validated_chain(ctx)
+    with ctx.db.connect() as conn:
+        material_id, name = conn.execute("SELECT id, name FROM materials").fetchone()
+    _print_inputs(ctx.db, material_id, name)
+    out = capsys.readouterr().out
+    assert "rang 1 · material · propylene" in out and "Propylène (Zhengzhou)" in out
+    assert "rang 1 · port · port_rotterdam" in out  # other boxes are listed too, without series
