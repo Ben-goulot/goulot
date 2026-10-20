@@ -56,8 +56,7 @@ def propose_links(conn: sqlite3.Connection, material_id: str) -> None:
     if official is not None:
         nbs.ensure_instruments(conn)
         prices.link(conn, material_id, nbs.instrument_id(official), "official", proposed_by="reconstruction")
-    for node in conn.execute("SELECT node_key, product, name FROM chain_nodes WHERE material_id = ? AND valid_to IS "
-                             "NULL AND node_type = 'material' AND tier = 1", (material_id,)).fetchall():
+    for node in direct_inputs(conn, material_id):
         for ex in EXCHANGES:  # a daily quote first (rank 1)
             quote = ex.match_node(node["node_key"], node["product"], node["name"])
             if quote is not None:
@@ -72,6 +71,35 @@ def propose_links(conn: sqlite3.Connection, material_id: str) -> None:
     for code, (name, unit) in FACTORS.items():
         iid = prices.ensure_instrument(conn, "eia", code, name, rank=1, frequency="daily", unit=unit, currency="USD")
         prices.link(conn, material_id, iid, "factor", proposed_by="auto", validated=True)
+
+
+def direct_inputs(conn: sqlite3.Connection, material_id: str) -> list[sqlite3.Row]:
+    """Material nodes that reach the purchased material without going through another material node: an input of
+    the purchased material itself (tier 1), or of the plants, countries or recyclers that make it (tier 2 or more,
+    as in a chain « soda ash → refinery → lithium carbonate »). The graph is oriented towards the purchased one."""
+    nodes = {r["node_key"]: r for r in conn.execute(
+        "SELECT node_key, node_type, product, name, tier FROM chain_nodes WHERE material_id = ? AND valid_to IS NULL",
+        (material_id,))}
+    sinks = {k for k, r in nodes.items() if r["tier"] == 0}
+    downstream: dict[str, set[str]] = {}
+    for e in conn.execute("SELECT from_key, to_key FROM chain_edges WHERE material_id = ? AND valid_to IS NULL",
+                          (material_id,)):
+        downstream.setdefault(e["from_key"], set()).add(e["to_key"])
+
+    def reaches_sink(start: str) -> bool:
+        seen, todo = {start}, list(downstream.get(start, ()))
+        while todo:
+            key = todo.pop()
+            if key in sinks:
+                return True
+            if key in seen or key not in nodes or nodes[key]["node_type"] == "material":
+                continue  # another material in between: an input of an input
+            seen.add(key)
+            todo.extend(downstream.get(key, ()))
+        return False
+
+    return [r for k, r in sorted(nodes.items(), key=lambda kr: (kr[1]["tier"], kr[0]))
+            if r["node_type"] == "material" and k not in sinks and reaches_sink(k)]
 
 
 SecretGetter = Callable[[str], str | None]

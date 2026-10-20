@@ -137,3 +137,25 @@ def test_history_inputs_command_shows_the_chain_type(ctx: AppContext, capsys: An
     out = capsys.readouterr().out
     assert "rang 1 · material · propylene" in out and "Propylène (Zhengzhou)" in out
     assert "rang 1 · port · port_rotterdam" in out  # other boxes are listed too, without series
+
+
+def test_inputs_of_the_producing_plants_are_direct_inputs(ctx: AppContext) -> None:
+    """Seen in the user's lithium chain: soda ash and sulfuric acid feed the refineries (tier 2), not the purchased
+    material itself; propane feeding propylene is an input of an input."""
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        now = "2026-10-20T00:00:00+00:00"  # the test chain's producers are countries: de_acrylonitrile here
+        for key, product, tier, to in (("soda_ash", "carbonate de sodium (soda ash)", 2, "de_acrylonitrile"),
+                                       ("propane", "propane", 2, "propylene")):
+            conn.execute("INSERT INTO chain_nodes (material_id, node_key, node_type, name, product, tier, "
+                         "country_iso2, place, capacity_text, confidence, valid_from, recorded_at) VALUES "
+                         "(?, ?, 'material', ?, ?, ?, 'unknown', 'unknown', '', 'medium', ?, ?)",
+                         (material_id, key, product, product, tier, now, now))
+            conn.execute("INSERT INTO chain_edges (material_id, from_key, to_key, relation, transport_mode, "
+                         "confidence, valid_from, recorded_at) VALUES (?, ?, ?, 'feedstock_of', 'unknown', 'medium', "
+                         "?, ?)", (material_id, key, to, now, now))
+        direct = {r["node_key"] for r in collect.direct_inputs(conn, material_id)}
+        collect.propose_links(conn, material_id)
+        links = {(r["instrument_id"], r["node_key"]) for r in prices.links(conn, material_id)}
+    assert {"propylene", "ammonia", "soda_ash"} <= direct and "propane" not in direct
+    assert ("czce:SA", "soda_ash") in links

@@ -388,25 +388,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _print_inputs(db: Database, material_id: str, name: str) -> None:
     """Chain type only (public data, never Ma chaîne): the material nodes of tiers 0 to 2 and the series matched."""
-    from goulot.prices.collect import EXCHANGES
+    from goulot.prices.collect import EXCHANGES, direct_inputs
     from goulot.prices.nbs import match_node
 
     with db.connect() as conn:
         nodes = conn.execute("SELECT node_key, node_type, name, product, tier FROM chain_nodes WHERE material_id = ? "
                              "AND valid_to IS NULL AND (tier <= 1 OR (tier = 2 AND node_type = 'material')) "
                              "ORDER BY tier, node_type, node_key", (material_id,)).fetchall()
-    print(f"Cases de la chaîne type de « {name} » (rang 0 : la matière achetée ; 1 : ses intrants directs) :")
+        direct = {r["node_key"] for r in direct_inputs(conn, material_id)}
+    print(f"Cases de la chaîne type de « {name} » (rang 0 : la matière achetée ; « intrant direct » : une matière "
+          "qui y mène sans passer par une autre matière) :")
     for n in nodes:
         found = [p.fr for ex in EXCHANGES if (p := ex.match_node(n["node_key"], n["product"], n["name"]))]
         official = match_node(n["node_key"], n["product"], n["name"])
         if official is not None:
             found.append(f"{official.fr} (prix officiel chinois)")
         series = ", ".join(found) if found else "aucune série trouvée"
-        print(f"  rang {n['tier']} · {n['node_type']} · {n['node_key']} · nom « {n['name']} » · produit "
+        mark = " · intrant direct" if n["node_key"] in direct else ""
+        print(f"  rang {n['tier']} · {n['node_type']} · {n['node_key']}{mark} · nom « {n['name']} » · produit "
               f"« {n['product']} » → {series}")
     if not nodes:
         print("  aucune case : la chaîne type est vide.")
-    print("Seules les cases « material » de rang 1 reçoivent une série proposée. Copiez ce résultat à Claude.")
+    print("Seuls les intrants directs reçoivent une série proposée. Copiez ce résultat à Claude.")
 
 
 def cmd_history(settings: Settings, args: argparse.Namespace) -> None:

@@ -104,7 +104,9 @@ def case_material(conn: sqlite3.Connection, material_id: str, since: date | None
         raise ValueError("unknown material")
     nodes = conn.execute("SELECT * FROM chain_nodes WHERE material_id = ? AND valid_to IS NULL ORDER BY tier, "
                          "COALESCE(global_share_pct, -1) DESC", (material_id,)).fetchall()
-    inputs = [n["product"] or n["name"] for n in nodes if n["node_type"] == "material" and n["tier"] == 1]
+    from goulot.prices.collect import direct_inputs
+
+    inputs = [n["product"] or n["name"] for n in direct_inputs(conn, material_id)]
     producing = [n for n in nodes if n["node_type"] in ("plant", "mine", "recycler", "country")]
     countries = list(dict.fromkeys(n["country_iso2"] for n in producing if len(n["country_iso2"]) == 2))
     sites = [n["name"] for n in producing if n["node_type"] in ("plant", "mine", "recycler")]
