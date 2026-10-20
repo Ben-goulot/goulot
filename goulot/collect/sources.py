@@ -34,6 +34,8 @@ PEGEL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{statio
 FEDERAL_REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
 
 GDELT_MAX_WINDOW = timedelta(days=90)
+# VIIRS on NOAA-21 and NOAA-20: Suomi NPP observations end on 2 November 2026 (FIRMS notice of October 2026).
+FIRMS_PRODUCTS = ("VIIRS_NOAA21_NRT", "VIIRS_NOAA20_NRT")
 # GDELT answers HTTP 429 to more than one request every 5 seconds: its queries are spaced out (a cycle runs in the
 # background, a minute or two more costs nothing).
 GDELT_PAUSE_S = 6.0
@@ -160,26 +162,33 @@ def usgs_quakes(client: httpx2.Client, min_magnitude: float = 5.0) -> list[Item]
 
 def firms(client: httpx2.Client, key: str, boxes: Iterable[tuple[str, float, float]], days: int = 1,
           min_frp: float = 10.0) -> list[Item]:
-    """Active fires near located sites. `boxes`: (node_key, lat, lon); one request per box of ±0.5°."""
+    """Active fires near located sites. `boxes`: (node_key, lat, lon); one request per box of ±0.5° and per
+    satellite. A fire seen by both satellites the same day, within about 1 km, is kept once."""
     items = []
+    seen: set[str] = set()
     for node_key, lat, lon in boxes:
         area = f"{lon - 0.5:.3f},{lat - 0.5:.3f},{lon + 0.5:.3f},{lat + 0.5:.3f}"
-        result = fetch(client, f"{FIRMS}/{quote(key, safe='')}/VIIRS_SNPP_NRT/{area}/{days}")
-        if result.status != 200:
-            raise SourceError(f"HTTP {result.status}")
-        for row in csv.DictReader(io.StringIO(result.content.decode("utf-8", "replace"))):
+        rows: list[dict[str, str]] = []
+        for product in FIRMS_PRODUCTS:
+            result = fetch(client, f"{FIRMS}/{quote(key, safe='')}/{product}/{area}/{days}")
+            if result.status != 200:
+                raise SourceError(f"HTTP {result.status}")
+            rows += list(csv.DictReader(io.StringIO(result.content.decode("utf-8", "replace"))))
+        for row in rows:
             try:
                 flat, flon, frp = float(row["latitude"]), float(row["longitude"]), float(row.get("frp") or 0)
             except (KeyError, ValueError):
                 continue
-            if frp < min_frp:
+            spot = f"firms:{flat:.2f}:{flon:.2f}:{row.get('acq_date')}"
+            if frp < min_frp or spot in seen:
                 continue
+            seen.add(spot)
             when = parse_datetime(f"{row.get('acq_date', '')}T{row.get('acq_time', '0000').zfill(4)[:2]}:"
                                   f"{row.get('acq_time', '0000').zfill(4)[2:]}:00")
             items.append(Item(
                 source="nasa_firms", kind="hazard", url="https://firms.modaps.eosdis.nasa.gov/map/",
                 title=f"Incendie détecté par satellite (puissance {frp:.0f} MW)", published_at=when,
-                lat=flat, lon=flon, magnitude=frp, key=f"firms:{flat:.3f}:{flon:.3f}:{row.get('acq_date')}",
+                lat=flat, lon=flon, magnitude=frp, key=spot,
                 details={"event_type": "WF", "near_node": node_key, "confidence": str(row.get("confidence", ""))[:10]},
             ))
     return items

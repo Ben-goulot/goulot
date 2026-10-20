@@ -82,7 +82,7 @@ sources:
     auth: key:nasa_firms
     frequency: 3h
     use: incendies actifs près des sites
-    notes: "vérifié : /api/area/csv/<MAP_KEY>/VIIRS_SNPP_NRT/<ouest,sud,est,nord>/<1 à 5 jours> ; 5 000 transactions par 10 minutes ; la clé est dans le chemin de l'URL, expurgée des journaux"
+    notes: "/api/area/csv/<MAP_KEY>/<produit>/<ouest,sud,est,nord>/<1 à 5 jours>, produits VIIRS_NOAA21_NRT et VIIRS_NOAA20_NRT (Suomi NPP, VIIRS_SNPP_NRT, s'arrête le 2 novembre 2026) ; 5 000 transactions par 10 minutes ; la clé est dans le chemin de l'URL, expurgée des journaux"
   - id: noaa_nhc
     enabled: true
     family: hazard

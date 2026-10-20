@@ -183,8 +183,11 @@ def test_hazard_and_logistics_parsers() -> None:
     assert gd[0].lat == 51.90 and gd[0].details["event_type"] == "FL" and gd[1].lat == -15.0
     quakes = sources.usgs_quakes(http())
     assert [q.magnitude for q in quakes] == [6.1]
-    fires = sources.firms(http(), "k" * 32, [("port_rotterdam", *ROTTERDAM)])
-    assert len(fires) == 1 and fires[0].magnitude == 55.2
+    asked: list[httpx2.Request] = []
+    fires = sources.firms(http(seen=asked), "k" * 32, [("port_rotterdam", *ROTTERDAM)])
+    assert len(fires) == 1 and fires[0].magnitude == 55.2  # the same fire seen by both satellites: kept once
+    products = {r.url.path.split("/")[5] for r in asked}
+    assert products == {"VIIRS_NOAA21_NRT", "VIIRS_NOAA20_NRT"}  # Suomi NPP ends on 2 November 2026
     storms = sources.nhc(http())
     assert len(storms) == 1 and storms[0].lat == 29.5 and storms[0].details["name"] == "Zeta"
     drop = sources.portwatch(http(), NOW)

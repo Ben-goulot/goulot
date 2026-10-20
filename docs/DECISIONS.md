@@ -4,6 +4,7 @@ Chaque décision : date, décision, raison, alternative écartée. Les plus réc
 
 | Date | Décision | Raison | Alternative écartée |
 | --- | --- | --- | --- |
+| 2026-10-20 | NASA FIRMS : produits VIIRS des satellites NOAA-21 et NOAA-20 (`VIIRS_NOAA21_NRT`, `VIIRS_NOAA20_NRT`) au lieu de Suomi NPP ; un même feu vu par les deux satellites le même jour, à environ 1 km près, n'est gardé qu'une fois | avis de FIRMS relevé par l'utilisateur : les observations de Suomi NPP cessent le 2 novembre 2026 ; deux satellites donnent plus de passages | NOAA-21 seul |
 | 2026-10-20 | GDELT interrogé au plus une fois toutes les 6 secondes (pause dans le collecteur) | la source répondait « HTTP 429 » (trop de requêtes) au premier cycle réel : elle accepte une demande toutes les 5 secondes, et les recherches partaient d'affilée | réduire le nombre de recherches |
 | 2026-10-20 | Une source à qui il manque sa clé (NASA FIRMS sans clé) n'envoie plus l'alerte quotidienne « source muette » : une seule alerte « attend sa clé », puis plus rien | c'est un réglage à faire, pas une panne ; l'alerte quotidienne noyait les vraies | désactiver la source sans prévenir |
 | 2026-10-20 | Noms de villes : garder tous les noms écrits en alphabet latin ou en écriture chinoise, japonaise ou coréenne (80 au plus), fichier compressé | la première réduction (12 noms) perdait des noms courants : « Anvers » ne trouvait pas Antwerpen | garder tous les noms, toutes écritures (fichier bien plus gros) |
