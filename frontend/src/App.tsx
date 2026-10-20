@@ -9,6 +9,7 @@ import { Markets } from "./watch/Markets";
 import { Reliability } from "./watch/Reliability";
 import { Sheet } from "./watch/Sheet";
 import { WatchSettings } from "./watch/WatchSettings";
+import { PrivacyContext } from "./private/privacy";
 
 const POLL_MS = 60_000;
 const HIDDEN_LOCK_MS = 5 * 60_000;
@@ -41,6 +42,7 @@ export default function App() {
   const [page, setPage] = useState<Page>(pageFromPath());
   const [status, setStatus] = useState<VaultStatus | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [presenting, setPresenting] = useState(false);
   const grant = useRef<string | undefined>(undefined);
   const hiddenSince = useRef<number | null>(null);
 
@@ -98,6 +100,17 @@ export default function App() {
   };
 
   useEffect(() => {
+    // « Mode présentation » with the P key, unless the user is typing.
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable);
+      if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "p" || e.key === "P")) setPresenting((v) => !v);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
     const onPop = () => setPage(pageFromPath());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -138,8 +151,10 @@ export default function App() {
   }
   if (!ready || !status) return <main className="center muted">Chargement…</main>;
 
+  const vaultOpen = status.unlocked && hasVaultToken();
   return (
-    <>
+    <PrivacyContext.Provider value={{ vaultOpen, presenting, unlock: () => void unlock() }}>
+      <div className={presenting ? "app presenting" : "app"}>
       <header className="topbar">
         <span className="brand">Goulot</span>
         <nav>
@@ -159,8 +174,12 @@ export default function App() {
             Réglages
           </button>
         </nav>
+        <button className={presenting ? "pill presenting-on" : "pill closed"} onClick={() => setPresenting(!presenting)} title="Touche P">
+          Mode présentation
+        </button>
         <VaultPill status={status} onUnlock={unlock} onLock={lock} />
       </header>
+      {presenting && <p className="banner presenting-banner">Mode présentation : noms et chiffres floutés, même coffre ouvert. Touche P pour en sortir.</p>}
       {message && <p className="banner">{message}</p>}
       <main className={page === "accueil" || page === "ajout" || page === "coffre" ? "content" : "content wide"}>
         {page === "accueil" && (
@@ -179,7 +198,7 @@ export default function App() {
           />
         )}
         {page.startsWith("cas/") && <CaseLibrary materialId={page.slice(4)} onBack={() => go(`matiere/${page.slice(4)}`)} />}
-        {page.startsWith("fiabilite") && <Reliability materialId={page.length > 10 ? page.slice(10) : null} />}
+        {page.startsWith("fiabilite") && <Reliability key={String(vaultOpen)} materialId={page.length > 10 ? page.slice(10) : null} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
         {page === "coffre" && (
@@ -198,7 +217,8 @@ export default function App() {
           sont pas des données publiées par ces sources.
         </p>
       </footer>
-    </>
+      </div>
+    </PrivacyContext.Provider>
   );
 }
 

@@ -51,12 +51,21 @@ export function sourceCredit(source: string | undefined): string | null {
 
 export type Freshness = { last_ok_cycle: string | null; verified: boolean };
 
+/** What a closed vault shows of a personal verdict: no X, « motif dans le coffre ». */
+export type LockedPersonal = {
+  verdict: "ras" | "pot" | "ant" | "unverified";
+  label: string;
+  window_weeks: number | null;
+  reason: string;
+};
+
 export type MarketRow = {
   id: string;
   name: string;
   cas: string;
   status: string;
   verdict: Verdict | null;
+  personal: LockedPersonal | null;
   series: SeriesPayload | null;
 };
 
@@ -82,6 +91,7 @@ export type SheetEvent = {
 export type Sheet = {
   material: { id: string; name: string; cas: string; status: string; hs_codes: { code: string }[] };
   verdict: Verdict | null;
+  personal: LockedPersonal | null;
   freshness: Freshness;
   events: SheetEvent[];
   analysis: {

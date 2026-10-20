@@ -54,7 +54,7 @@ def digest_params(conn: sqlite3.Connection, material: dict[str, Any], now: datet
     v = _verdict_row(conn, material["id"])
     events = [dict(id=e["id"], status=e["event_status"], confirmation=e["confirmation"], c_fait=e["c_fait"],
                    severity_hint=e["severity_hint"], title=e["title"])
-              for e in conn.execute("SELECT * FROM events WHERE material_id = ? AND last_seen_at >= ?",
+              for e in conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ?",
                                     (material["id"], (now - timedelta(days=7)).isoformat()))]
     best = prices.best_series(conn, material["id"])
     price = None

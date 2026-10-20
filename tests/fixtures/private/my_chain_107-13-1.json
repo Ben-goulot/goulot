@@ -1,0 +1,30 @@
+{
+  "_comment": "Ma chaîne fictive pour le CAS de test 107-13-1 (acrylonitrile). Valeurs canari reconnaissables octet par octet (docs/SPEC.md, section 13) : aucune ne doit sortir du coffre. Aucun site, aucune entreprise réels.",
+  "chain": {
+    "sites": [
+      {"id": "beta", "name": "CANARY-SITE-7F3A", "role": "producer", "company": "CANARY-COMPANY-5K8M",
+       "aliases": ["CANARY-ALIAS-2W6E"], "city": "CANARY-CITY-9Q2X", "country_iso2": "CN",
+       "lat": 29.871, "lon": 121.544, "watch_level": "hazards",
+       "alternatives": [{"name": "CANARY-PLANB-3H7J", "status": "qualified", "switch_weeks": 6}]},
+      {"id": "alpha", "name": "Distributeur Alpha (fictif)", "role": "distributor", "company": "Alpha Fictif SA",
+       "city": "Anvers", "country_iso2": "BE", "lat": 51.219, "lon": 4.402, "stock_days": 37.29,
+       "watch_level": "city_material"},
+      {"id": "europe", "name": "Production européenne (fictive)", "role": "producer", "node_key": "de_acrylonitrile",
+       "country_iso2": "DE", "watch_level": "city_material"}
+    ],
+    "links": [
+      {"source": "beta", "target": "alpha", "share_pct": 100, "transport_mode": "sea", "incoterm": "FOB",
+       "lead_days": 35},
+      {"source": "alpha", "target": "me", "share_pct": 63.417, "transport_mode": "road", "incoterm": "DAP",
+       "lead_days": 7},
+      {"source": "europe", "target": "me", "share_pct": 36.583, "transport_mode": "river", "lead_days": 21}
+    ],
+    "not_used": [],
+    "stock_at_user_days": 35,
+    "notes": "CANARY-NOTE-8P4R"
+  },
+  "quote": {"date": "2026-10-01", "unit_price": 4217.93, "currency": "EUR", "unit": "t"},
+  "coverage": {"stock_weeks": 37.29, "supplier_lead_time_days": 417, "price_threshold_pct": 63.417},
+  "canaries": ["CANARY-SITE-7F3A", "CANARY-CITY-9Q2X", "CANARY-COMPANY-5K8M", "CANARY-ALIAS-2W6E",
+               "CANARY-PLANB-3H7J", "CANARY-NOTE-8P4R", "63.417", "37.29", "4217.93"]
+}

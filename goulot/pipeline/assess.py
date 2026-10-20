@@ -22,6 +22,7 @@ from goulot.chain.delays import delays_to_material
 from goulot.db.connection import Database, utcnow
 from goulot.history import similarity
 from goulot.ledger import outcomes
+from goulot.ledger import personal as ledger_personal
 from goulot.llm import batch
 from goulot.llm.backend import MessageBackend
 from goulot.llm.batch import BatchBackend
@@ -32,6 +33,7 @@ from goulot.pipeline import analysis
 from goulot.pipeline.verdict import EventInput, Verdict, compute
 from goulot.prices import stats
 from goulot.prices import store as prices
+from goulot.private import service as private_service
 from goulot.vault.keys import Vault, VaultError
 
 log = logging.getLogger("goulot.pipeline.assess")
@@ -63,12 +65,18 @@ def anomalous_materials(conn: sqlite3.Connection) -> set[str]:
     return out
 
 
-def due_events(conn: sqlite3.Connection, allowance: Allowance) -> list[sqlite3.Row]:
+def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] | frozenset[str] = frozenset()
+               ) -> list[sqlite3.Row]:
+    """`weighs`: events that touch a site of Ma chaîne which weighs for the user (computed on the Mac): they trigger
+    the analysis even under 0.5 % of world supply, and pass the crisis reserve from severity 2 (CLAUDE.md, Budget)."""
     out = []
     anomalies = anomalous_materials(conn)
     for e in conn.execute("SELECT * FROM events WHERE analysis_state NOT IN ('queued') ORDER BY first_seen_at"):
         priced = e["material_id"] in anomalies and e["confirmation"] == "confirmed"
-        if e["severity_hint"] < allowance.min_severity or not (priced or analysis.should_analyze(conn, e)):
+        personal = e["id"] in weighs and (e["confirmation"] == "confirmed"
+                                          or e["severity_hint"] >= analysis.URGENT_SEVERITY)
+        floor = min(allowance.min_severity, 2) if e["id"] in weighs else allowance.min_severity
+        if e["severity_hint"] < floor or not (priced or personal or analysis.should_analyze(conn, e)):
             continue
         last = conn.execute("SELECT signature FROM analyses WHERE event_id = ? ORDER BY created_at DESC LIMIT 1",
                             (e["id"],)).fetchone()
@@ -78,7 +86,8 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance) -> list[sqlite3.R
 
 
 def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batched: BatchBackend | None,
-                 now: datetime, allowance: Allowance, budget_name: str = "watch") -> dict[str, int]:
+                 now: datetime, allowance: Allowance, budget_name: str = "watch",
+                 weighs: set[str] | frozenset[str] = frozenset()) -> dict[str, int]:
     """Collect ended analysis batches, then send the due analyses. Returns counts by mode."""
     counts = {"collected": 0, "standard": 0, "batch": 0}
     if batched is not None:
@@ -88,7 +97,7 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
     requests: list[tuple[str, dict[str, Any]]] = []
     queued: list[str] = []
     with db.transaction() as conn:
-        events = due_events(conn, allowance)
+        events = due_events(conn, allowance, weighs)
         prepared = []
         for e in events:
             contexts, _, _ = prices.market(conn, e["material_id"], date.fromisoformat(e["first_seen_at"][:10]))
@@ -156,7 +165,7 @@ def collect(db: Database, budget: Budget, backend: BatchBackend, budget_name: st
 def event_inputs(conn: sqlite3.Connection, material_id: str, now: datetime) -> list[EventInput]:
     since = (now - ACTIVE_WINDOW).isoformat(timespec="seconds")
     out = []
-    for e in conn.execute("SELECT * FROM events WHERE material_id = ? AND last_seen_at >= ? "
+    for e in conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                           "AND event_status NOT IN ('resolved')", (material_id, since)):
         links = conn.execute(
             "SELECT l.node_key, n.global_share_pct FROM event_links l LEFT JOIN chain_nodes n ON n.material_id = "
@@ -224,10 +233,23 @@ def refresh_verdicts(db: Database, vault: Vault, now: datetime, *, verified: boo
     return changed
 
 
-def resolve_outcomes(db: Database, now: datetime) -> int:
-    """Outcomes of matured advices and missed rises, on each material's best series (docs/SPEC.md, section 7)."""
+def in_break_in(db: Database, now: datetime) -> bool:
+    with db.connect() as conn:
+        first = conn.execute("SELECT MIN(validated_at) FROM materials WHERE validated_at IS NOT NULL").fetchone()[0]
+    return first is None or now - datetime.fromisoformat(first) < timedelta(days=BREAK_IN_DAYS)
+
+
+def resolve_outcomes(db: Database, now: datetime, vault: Vault | None = None) -> int:
+    """Outcomes of matured advices and missed rises, on each material's best series (docs/SPEC.md, section 7).
+    With the vault key, personal advices too (answers, private series, signals, public prices)."""
     with db.transaction() as conn:
         written = outcomes.resolve(conn, now.date(), lambda m: prices.best_series(conn, m), at=now)
+        if vault is not None and private_service.usable(vault):
+            try:
+                written += ledger_personal.resolve(conn, vault, now.date(), lambda m: prices.best_series(conn, m),
+                                                   at=now)
+            except VaultError:
+                log.warning("vault key unavailable: personal outcomes wait")
         for m in store.list_materials(conn):
             if m["status"] == "validated":
                 written += outcomes.record_missed_moves(conn, m["id"], prices.best_series(conn, m["id"]), at=now)

@@ -8,7 +8,6 @@ import stat
 import tomllib
 from pathlib import Path
 
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from goulot.api.context import AppContext
@@ -17,7 +16,7 @@ from goulot.security.logs import setup_logging
 from goulot.security.redact import redact, register_secret
 from goulot.security.secrets import set_secret
 from goulot.settings import REPO_ROOT
-from tests.conftest import MemoryKeyring, unsafe_headers
+from tests.conftest import MemoryKeyring, api_routes, unsafe_headers
 
 FAKE_SECRETS = {
     "anthropic": "sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKEFAKE-1234",
@@ -47,8 +46,8 @@ def test_no_secret_in_responses(
     assert len(secrets) == len(FAKE_SECRETS) + 1  # the vault master key is checked too
     client.put("/api/private/coverage/acrylonitrile", json={"stock_weeks": 3}, headers=unsafe_headers(csrf, vault_token))
     bodies: list[str] = []
-    for route in client.app.routes:  # type: ignore[attr-defined]
-        if isinstance(route, APIRoute) and "GET" in route.methods and "{" not in route.path:
+    for route in api_routes(client.app):
+        if "GET" in route.methods and "{" not in route.path:
             r = client.get(route.path, headers={"X-Vault-Token": vault_token})
             bodies.append(r.text + json.dumps(dict(r.headers)))
     bodies.append(client.post("/api/private/vault/rekey-grant", json={}, headers=unsafe_headers(csrf, vault_token)).text)

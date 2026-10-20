@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
+import { Locked, Pv, usePrivacy } from "../private/privacy";
 import { PriceChart, type ChartMark } from "./PriceChart";
 import { RANK_LABEL, RESULT_LABEL, signed, type Reliability as Data } from "./types";
 
@@ -74,8 +75,9 @@ export function Reliability(props: { materialId: string | null }) {
             <span className="muted">avance moyenne {ind.average_lead_weeks ?? "—"} sem.</span>
           </div>
         </div>
-        <p className="muted">La colonne « Ma matière » (verdicts personnels) arrive avec Ma chaîne, coffre ouvert.</p>
       </section>
+
+      <MyMaterial materialId={props.materialId} />
 
       {data.series && (
         <section className="panel">
@@ -125,5 +127,95 @@ export function Reliability(props: { materialId: string | null }) {
         </table>
       </section>
     </div>
+  );
+}
+
+type Personal = {
+  indicators: {
+    break_in: boolean;
+    warnings_confirmed: { good: number; resolved: number; matured: number; on_index: number };
+    calm_right: { good: number; resolved: number; matured: number; on_index: number };
+    pressure_right: { good: number; resolved: number; matured: number; on_index: number };
+    false_alarms: number;
+    missed_rises: number;
+    average_lead_weeks: number | null;
+    resolved: number;
+    by_answer: number;
+    by_private_series: number;
+  };
+  entries: { seq: number; at: string; kind: string; verdict?: string; label?: string; result?: string; basis?: string; of_seq?: number; answer?: string }[];
+};
+
+/** « Ma matière » column: personal verdicts, judged on the user's answers, private series and public prices. Only
+ * with the vault open. */
+function MyMaterial(props: { materialId: string | null }) {
+  const { vaultOpen } = usePrivacy();
+  const [data, setData] = useState<Personal | null>(null);
+  useEffect(() => {
+    if (!vaultOpen) {
+      setData(null);
+      return;
+    }
+    const q = props.materialId ? `?material_id=${props.materialId}` : "";
+    api.get<Personal>(`/api/private/reliability${q}`).then(setData, () => setData(null));
+  }, [vaultOpen, props.materialId]);
+  if (!vaultOpen) {
+    return (
+      <section className="panel">
+        <h2>Fiabilité · Ma matière</h2>
+        <Locked text="La colonne « Ma matière » (verdicts personnels) ne s'affiche que coffre ouvert." />
+      </section>
+    );
+  }
+  if (!data) return <section className="panel">Chargement…</section>;
+  const ind = data.indicators;
+  const outcomes = new Map(data.entries.filter((e) => e.kind === "outcome").map((e) => [e.of_seq, e]));
+  return (
+    <section className="panel">
+      <h2>Fiabilité · Ma matière</h2>
+      {ind.break_in && <p className="muted">Pas encore assez de recul ({ind.resolved} conseils personnels résolus).</p>}
+      <div className="kpis">
+        <Ratio label="Alertes confirmées" stat={ind.warnings_confirmed} breakIn={ind.break_in} />
+        <Ratio label="« Rien à signaler » justes" stat={ind.calm_right} breakIn={ind.break_in} />
+        <Ratio label="Pressions dans le bon sens" stat={ind.pressure_right} breakIn={ind.break_in} />
+        <div className="kpi">
+          <span className="muted">Fausses alertes · hausses manquées</span>
+          <strong className="mono">
+            {ind.false_alarms} · {ind.missed_rises}
+          </strong>
+          <span className="muted">
+            {ind.by_answer} par tes réponses · {ind.by_private_series} par tes devis et achats
+          </span>
+        </div>
+      </div>
+      <table className="watchlist">
+        <tbody>
+          {data.entries
+            .filter((e) => e.kind === "verdict" || e.kind === "signal" || e.kind === "missed_move")
+            .reverse()
+            .map((e) => {
+              const o = outcomes.get(e.seq);
+              return (
+                <tr key={e.seq}>
+                  <td className="mono muted">{e.seq}</td>
+                  <td className="mono">{e.at.slice(0, 10)}</td>
+                  <td>
+                    <Pv>{e.kind === "verdict" ? e.label ?? e.verdict : e.kind === "signal" ? "Signal fournisseur" : "Hausse non signalée"}</Pv>
+                  </td>
+                  <td>
+                    {o ? (
+                      <span className={GOOD.has(o.result ?? "") ? "up" : o.result === "unresolved" ? "muted" : "down"}>
+                        {RESULT_LABEL[o.result ?? ""] ?? o.result} {o.basis ? `(${o.basis})` : ""}
+                      </span>
+                    ) : (
+                      <span className="muted">{e.kind === "verdict" ? "en cours" : "—"}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+        </tbody>
+      </table>
+    </section>
   );
 }

@@ -158,7 +158,7 @@ def build_router(ctx: AppContext) -> APIRouter:
         if not EVENT_RE.match(event_id):
             raise HTTPException(404, "Introuvable.")
         with ctx.db.connect() as conn:
-            event = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+            event = conn.execute("SELECT * FROM public_events WHERE id = ?", (event_id,)).fetchone()
             if event is None:
                 raise HTTPException(404, "Événement introuvable.")
             target = similarity.target_for_event(conn, event)

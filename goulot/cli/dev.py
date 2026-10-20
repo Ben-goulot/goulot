@@ -8,12 +8,14 @@ validated on 2026-10-16), kept in a separate database so that the app's own data
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from goulot.chain import service, store
 from goulot.chain.identify import IdentificationError, identify
@@ -384,6 +386,29 @@ def record_watch(settings: Settings, args: argparse.Namespace) -> None:
     print("Enregistré dans tests/fixtures/llm/watch_107-13-1. Copiez ce résultat à Claude.")
 
 
+def fetch_cities(settings: Settings) -> None:
+    """Download the GeoNames list of cities above 15,000 inhabitants through the app's client, keep its reduced form
+    in `goulot/data/cities.json.gz` (offline place lookup of Ma chaîne). Public data, no key, no AI."""
+    from goulot.net.client import fetch
+    from goulot.private import cities
+
+    host = urlsplit(cities.SOURCE_URL).hostname or ""
+    print(f"Téléchargement de la liste des villes GeoNames ({host}), sans IA ni clé…")
+    client = build_client(load_allowlist(settings.config_dir, [host]))  # this host for this command only
+    try:
+        result = fetch(client, cities.SOURCE_URL, max_bytes=20 * 1024 * 1024)
+    finally:
+        client.close()
+    if result.status != 200:
+        sys.exit(f"Réponse inattendue de GeoNames : {result.status}.")
+    rows = cities.reduce_dump(result.content)
+    size = cities.write(rows)
+    digest = hashlib.sha256(result.content).hexdigest()
+    print(f"{len(rows)} villes gardées dans goulot/data/cities.json.gz ({size / 1e6:.1f} Mo, compressé).")
+    print(f"Archive téléchargée : {len(result.content) / 1e6:.1f} Mo, empreinte SHA-256 {digest[:16]}….")
+    print("Terminé. Copiez ce résultat à Claude.")
+
+
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
     if args.dev_action == "record":
         record(settings, args)
@@ -399,3 +424,5 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         print("Interrogation des sources depuis votre Mac (sans IA, sans clé) ; réponses gardées dans .samples/.")
         check_sources.run(settings)
         print("Terminé. Copiez ce résultat à Claude.")
+    elif args.dev_action == "fetch-cities":
+        fetch_cities(settings)

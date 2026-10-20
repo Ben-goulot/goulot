@@ -142,7 +142,7 @@ Chaque test est écrit dans sa phase et doit vraiment exercer le contrôle : pas
 - **Phase 2** : `test_prompt_injection_fixtures` (pages piégées dans la recherche), `test_no_user_data_in_prompts`.
 - **Phase 3** : `test_xss_fixtures_rendered_as_text`, `test_prompt_injection_fixtures` (articles piégés), `test_fake_sites_cannot_confirm`, `test_alert_links_defanged`, `test_budget_cap_modes`, `test_circuit_breaker`, `test_telegram_send_only`, `test_collector_limits`.
 - **Phase 3 (suite)** : `test_ledger_append_only`, `test_ledger_tamper_detected`, `test_private_canary_never_leaves` (couverture et devis : prompts, requêtes, alertes, journaux), `test_export_no_private_fields` (export de l'historique), `test_case_requires_reliable_source`, `test_event_response_computed_by_code`, `test_unverified_case_excluded`.
-- **Phase 4** : `test_locked_view_leaks_nothing` (aucune valeur canari ni marque « ta chaîne » dans les réponses hors `/api/private/`), `test_private_canary_never_leaves` étendu à Ma chaîne, aux signaux et aux verdicts personnels, `test_csv_import_in_memory`.
+- **Phase 4** : `test_locked_view_leaks_nothing` (aucune valeur canari ni marque « ta chaîne » dans les réponses hors `/api/private/`), `test_private_canary_never_leaves` étendu à Ma chaîne, aux signaux et aux verdicts personnels, `test_csv_import_in_memory`. Les tests qui énumèrent les routes parcourent aussi celles des sous-routeurs (`tests/conftest.py`, `api_routes`).
 - **Phase 5** : les tests de `docs/UPDATES.md`.
 - **Phase 6** : `test_export_no_private_fields` étendu au rapport de conformité, `test_export_offline`, `test_private_export_requires_vault`.
 

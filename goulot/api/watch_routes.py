@@ -1,6 +1,7 @@
-"""Routes of « Marchés », « Fiche matière » and « Fiabilité » (phase 3). Public data only: nothing private is read
-here (the personal verdict and Ma chaîne come with phase 4, under /api/private/). Model texts are returned as
-strings, displayed as text and clipped by the page."""
+"""Routes of « Marchés », « Fiche matière » and « Fiabilité » (phase 3). Public data only: Ma chaîne, signals and
+the personal verdict are under /api/private/; a closed vault shows only the label of the personal verdict and its
+action window (`locked_summary`). Events found only through Ma chaîne never appear here (`public_events`). Model
+texts are returned as strings, displayed as text and clipped by the page."""
 
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext
+from goulot.api.private_routes import locked_summary
 from goulot.chain import store
 from goulot.collect.runner import freshness
 from goulot.db.connection import set_setting
@@ -20,6 +22,7 @@ from goulot.ledger import chain, outcomes
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS
+from goulot.pipeline.visibility import serious_event
 from goulot.prices import margin
 from goulot.prices import store as prices
 from goulot.security.secrets import get_secret
@@ -107,7 +110,7 @@ def build_router(ctx: AppContext) -> APIRouter:
             for m in store.list_materials(conn):
                 best = prices.best_series(conn, m["id"]) if m["status"] == "validated" else None
                 series = _series_payload(best, 2)
-                out.append({**m, "verdict": _verdict(conn, m["id"]),
+                out.append({**m, "verdict": _verdict(conn, m["id"]), "personal": locked_summary(ctx, m["id"]),
                             "series": {**series, "points": series["points"][-40:]} if series else None})
         return {"freshness": fresh, "materials": out}
 
@@ -118,7 +121,7 @@ def build_router(ctx: AppContext) -> APIRouter:
             m = material_or_404(conn, material_id)
             nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
             events = []
-            rows = conn.execute("SELECT * FROM events WHERE material_id = ? AND last_seen_at >= ? "
+            rows = conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                                 "ORDER BY first_seen_at", (material_id,
                                                            (today - timedelta(days=60)).isoformat())).fetchall()
             for i, e in enumerate(rows):
@@ -165,7 +168,7 @@ def build_router(ctx: AppContext) -> APIRouter:
                      for n in nodes.values() if n["lat"] is not None]
             verdict = _verdict(conn, material_id)
         return {
-            "material": m, "verdict": verdict,
+            "material": m, "verdict": verdict, "personal": locked_summary(ctx, material_id),
             "freshness": freshness(ctx.db, today), "events": events,
             "analysis": {"headline": card.get("headline", ""), "summary": card.get("summary", ""),
                          "triggers": card.get("monitoring_triggers", []),
@@ -203,8 +206,7 @@ def build_router(ctx: AppContext) -> APIRouter:
     def budget_status() -> dict[str, Any]:
         mode = watch_mode(ctx.budget)
         with ctx.db.connect() as conn:
-            serious = conn.execute("SELECT 1 FROM events WHERE confirmation = 'confirmed' AND severity_hint >= 3 "
-                                   "AND event_status IN ('ongoing', 'escalating') LIMIT 1").fetchone() is not None
+            serious = serious_event(conn)
         return {"mode": mode.mode, "spent_usd": mode.spent, "cap_usd": mode.cap,
                 "reconstruction_spent_usd": round(ctx.budget.spent("reconstruction"), 4),
                 "reconstruction_cap_usd": ctx.budget.cap("reconstruction"), "serious_event": serious,
@@ -213,8 +215,7 @@ def build_router(ctx: AppContext) -> APIRouter:
     @router.post("/budget/raise")
     def budget_raise(body: RaiseBody) -> dict[str, float]:
         with ctx.db.connect() as conn:
-            serious = conn.execute("SELECT 1 FROM events WHERE confirmation = 'confirmed' AND severity_hint >= 3 "
-                                   "AND event_status IN ('ongoing', 'escalating') LIMIT 1").fetchone() is not None
+            serious = serious_event(conn)
         if not serious:
             raise HTTPException(409, "Le plafond ne se relève que pendant un événement grave en cours.")
         try:

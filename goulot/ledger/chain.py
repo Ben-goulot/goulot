@@ -89,9 +89,28 @@ def verify(conn: sqlite3.Connection) -> Verification:
     return Verification(True, count, prev)
 
 
-def entries(conn: sqlite3.Connection, *, material_id: str | None = None, kinds: tuple[str, ...] = KINDS
-            ) -> list[dict[str, Any]]:
+def entries(conn: sqlite3.Connection, *, material_id: str | None = None, kinds: tuple[str, ...] = KINDS,
+            scope: str | None = "market") -> list[dict[str, Any]]:
+    """Public content of the entries. Entries of the personal scope (Ma chaîne, signals, feedback, personal
+    verdicts and their outcomes) are left out unless `scope` is "personal" or None: a caller that does not ask for
+    them never sees them, even by mistake."""
     rows = conn.execute("SELECT seq, at, material_id, kind, content FROM ledger ORDER BY seq").fetchall()
-    return [{"seq": r["seq"], "at": r["at"], "material_id": r["material_id"], "kind": r["kind"],
-             **json.loads(r["content"])} for r in rows
-            if r["kind"] in kinds and (material_id is None or r["material_id"] == material_id)]
+    out = []
+    for r in rows:
+        if r["kind"] not in kinds or (material_id is not None and r["material_id"] != material_id):
+            continue
+        content = json.loads(r["content"])
+        if scope is not None and content.get("scope", "market") != scope:
+            continue
+        out.append({"seq": r["seq"], "at": r["at"], "material_id": r["material_id"], "kind": r["kind"], **content})
+    return out
+
+
+def private_fields(conn: sqlite3.Connection, vault: Vault, seq: int) -> dict[str, Any]:
+    """Decrypted private fields of one entry ({} when it has none)."""
+    row = conn.execute("SELECT private_blob, private_key_version FROM ledger WHERE seq = ?", (seq,)).fetchone()
+    if row is None or row["private_blob"] is None:
+        return {}
+    data: dict[str, Any] = vault.decrypt_json(PRIVATE_FIELD, private_record_id(seq), row["private_key_version"],
+                                              row["private_blob"])
+    return data

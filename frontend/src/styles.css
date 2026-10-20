@@ -152,3 +152,37 @@ button:disabled { opacity: 0.55; cursor: default; }
 .sources-footer { max-width: 1200px; margin: 24px auto 16px; padding: 12px 16px; border-top: 1px solid var(--border);
   color: var(--text-2); font-size: 0.8rem; }
 .sources-footer p { margin: 4px 0; }
+
+/* Ma chaîne and the vault (design/README.md, « Ma chaîne », « Coffre », « Mode présentation »). */
+.presenting .pv { filter: blur(6px); }
+.pill.presenting-on { color: var(--amber); border-color: var(--amber); background: transparent; padding: 8px 14px; }
+.banner.presenting-banner { border-color: var(--amber); color: var(--amber); }
+.locked { display: grid; gap: 10px; justify-items: start; padding: 12px 0; color: var(--neutral); }
+.locked p { margin: 0; }
+.segmented { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.legend { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 0.85rem; flex-wrap: wrap; }
+.swatch { display: inline-block; width: 18px; height: 4px; border-radius: 2px; background: var(--accent); }
+.swatch.private { height: 12px; width: 14px; background: transparent; border: 1.5px dashed var(--accent); border-radius: 3px; }
+.swatch.faded { height: 12px; width: 14px; background: rgba(11, 14, 19, 0.7); border: 1px solid var(--border); border-radius: 3px; }
+.react-flow__node.chain-node.adopted { border-color: var(--accent); border-width: 2px; }
+.react-flow__node.chain-node.private-site { border: 1.5px dashed var(--accent); }
+.react-flow__node.chain-node.faded { opacity: 0.35; }
+.react-flow__node.chain-node.faded .node-sub::after { content: " · pas chez toi"; }
+.react-flow__edge.dim path { opacity: 0.35; }
+.react-flow__edge.my-edge path { stroke: var(--accent); }
+.react-flow__edge.my-edge.w1 path { stroke-width: 3.5px; }
+.react-flow__edge.my-edge.w2 path { stroke-width: 4px; }
+.react-flow__edge.my-edge.w3 path { stroke-width: 4.5px; }
+.react-flow__edge.my-edge.w4 path { stroke-width: 5px; }
+.react-flow__edge.my-edge.w5 path { stroke-width: 6px; }
+.stack { display: grid; gap: 8px; margin: 8px 0 12px; }
+.suggestions { margin: 4px 0 0; gap: 4px; }
+.suggestions button { width: 100%; text-align: left; }
+.link-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.link-row input { width: 110px; }
+.small-map { height: 240px; }
+.file-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--row); cursor: pointer; }
+.file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.danger { border-color: #ff7b7b; color: #ff7b7b; margin-top: 12px; }
+.personal .card { margin-top: 12px; }

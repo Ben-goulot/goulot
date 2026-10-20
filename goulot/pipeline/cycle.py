@@ -22,7 +22,7 @@ import anthropic
 from goulot.alerts import digest, service
 from goulot.alerts.channels import send_email, send_telegram
 from goulot.api.context import AppContext, MissingAPIKey
-from goulot.collect.runner import CycleResult, freshness, run_cycle
+from goulot.collect.runner import DISRUPTION_TERMS, CycleResult, freshness, run_cycle
 from goulot.db.connection import get_setting, set_setting
 from goulot.llm.budget import (
     CRISIS,
@@ -38,8 +38,16 @@ from goulot.net.allowlist import load_allowlist
 from goulot.net.client import build_client, fetch
 from goulot.pipeline import assess, grouping, triage
 from goulot.pipeline.assess import Allowance
+from goulot.pipeline.visibility import serious_event
 from goulot.prices import collect as price_collect
+from goulot.private import matching, records
+from goulot.private import refresh as private_refresh
+from goulot.private import service as private_service
+from goulot.private.personal import expiring
+from goulot.private.watch import PrivateWatch
+from goulot.private.watch import build as build_private_watch
 from goulot.security.secrets import get_secret
+from goulot.vault.keys import VaultError
 
 log = logging.getLogger("goulot.pipeline")
 _lock = threading.Lock()
@@ -136,10 +144,16 @@ def process(ctx: AppContext, now: datetime) -> None:
         log.warning("triage batch failed: %s", type(exc).__name__)
     with ctx.db.transaction() as conn:
         grouping.group_triaged(conn)
+    with ctx.db.connect() as conn:
+        models = private_service.safe_models(conn, ctx.vault)  # empty when the vault key cannot be read
+    weighs: set[str] = set()
+    if models:
+        with ctx.db.transaction() as conn:
+            weighs = matching.refresh(conn, ctx.vault, models, now)
     try:
         if allowance.one_batch_a_day and _batch_today(ctx, "impact", now):
             allowance = Allowance(analyze=False, rules_only=allowance.rules_only)
-        assess.run_analyses(ctx.db, ctx.budget, std, backend, now, allowance)
+        assess.run_analyses(ctx.db, ctx.budget, std, backend, now, allowance, weighs=weighs)
     except (BudgetExceeded, CircuitOpen) as exc:
         log.warning("analyses skipped: %s", type(exc).__name__)
     except anthropic.APIError as exc:
@@ -147,28 +161,35 @@ def process(ctx: AppContext, now: datetime) -> None:
     fresh = freshness(ctx.db, now)
     changed = assess.refresh_verdicts(ctx.db, ctx.vault, now, verified=fresh["verified"],
                                       last_ok_cycle=fresh["last_ok_cycle"], rules_only=allowance.rules_only)
-    assess.resolve_outcomes(ctx.db, now)
+    personal: list[tuple[str, object]] = []
+    if private_service.usable(ctx.vault):
+        personal = list(private_refresh.refresh(
+            ctx.db, ctx.vault, now, models, verified=fresh["verified"], last_ok_cycle=fresh["last_ok_cycle"],
+            rules_only=allowance.rules_only, break_in=assess.in_break_in(ctx.db, now)))
+    assess.resolve_outcomes(ctx.db, now, ctx.vault)
     try:
         if backend is not None:
             digest.collect(ctx.db, ctx.budget, backend)
         digest.submit(ctx.db, ctx.budget, backend, now, ai=mode.mode not in (ECONOMY, CRISIS, RULES_ONLY))
     except (BudgetExceeded, CircuitOpen, anthropic.APIError) as exc:
         log.warning("digest batch skipped: %s", type(exc).__name__)
-    notify(ctx, now, changed, mode)
+    notify(ctx, now, changed, mode, personal)
     if fresh["verified"]:
         heartbeat(ctx)
     with ctx.db.transaction() as conn:
         triage.purge_irrelevant(conn, now.isoformat(timespec="seconds"))
 
 
-def notify(ctx: AppContext, now: datetime, changed: Sequence[tuple[str, object]], mode: WatchMode) -> int:
+def notify(ctx: AppContext, now: datetime, changed: Sequence[tuple[str, object]], mode: WatchMode,
+           personal: Sequence[tuple[str, object]] = ()) -> int:
     with ctx.db.transaction() as conn:
         last_audit = int(get_setting(conn, "alerts_last_audit_id") or 0)
-        serious = conn.execute("SELECT 1 FROM events WHERE confirmation = 'confirmed' AND severity_hint >= 3 "
-                               "AND event_status IN ('ongoing', 'escalating') LIMIT 1").fetchone() is not None
+        serious = serious_event(conn)
         alerts = [
             *service.security_alerts(conn, last_audit),
             *service.verdict_alerts(conn, changed, now),
+            *service.personal_alerts(conn, personal, now),
+            *service.reminder_alerts(private_reminders(ctx, now), now),
             *service.event_alerts(conn),
             *service.budget_alerts(conn, mode, now, serious, raise_headroom(ctx.budget)),
             *service.health_alerts(conn, now),
@@ -182,6 +203,29 @@ def notify(ctx: AppContext, now: datetime, changed: Sequence[tuple[str, object]]
     return service.dispatch(ctx.db, alerts, sender(ctx), now)
 
 
+def private_reminders(ctx: AppContext, now: datetime) -> int:
+    """Supplier signals that reached 90 days: the count only, the reminder says nothing more."""
+    if not private_service.usable(ctx.vault):
+        return 0
+    try:
+        with ctx.db.connect() as conn:
+            return len(expiring(records.read_all(conn, ctx.vault, "signal"), now.date()))
+    except VaultError:
+        return 0
+
+
+def private_watch(ctx: AppContext) -> PrivateWatch | None:
+    """In-memory rules and queries of Ma chaîne for this cycle; None when the vault key cannot be read."""
+    with ctx.db.connect() as conn:
+        if not private_service.usable(ctx.vault):
+            return None
+        try:
+            chains = {mid: doc for mid, (_, doc) in private_service.latest_all(conn, ctx.vault).items()}
+        except VaultError:
+            return None
+        return build_private_watch(conn, chains, DISRUPTION_TERMS)
+
+
 def run(ctx: AppContext) -> CycleResult | None:
     if not _lock.acquire(blocking=False):
         log.info("cycle skipped: another one is running")
@@ -190,7 +234,7 @@ def run(ctx: AppContext) -> CycleResult | None:
         now = datetime.fromtimestamp(ctx.clock.time(), UTC)
         http = ctx.http_client()
         try:
-            result = run_cycle(ctx.db, http, get_secret, now)
+            result = run_cycle(ctx.db, http, get_secret, now, private=private_watch(ctx))
             price_collect.run(ctx.db, http, get_secret, now)
         finally:
             http.close()

@@ -253,3 +253,17 @@ def test_freshness_and_failed_cycle(ctx: AppContext) -> None:
     down = run_cycle(ctx.db, http({}), lambda name: None, NOW + timedelta(hours=14))
     assert not down.ok and "gdelt_doc" in down.failed
     assert freshness(ctx.db, NOW + timedelta(hours=14))["verified"] is False
+
+
+def test_gdelt_queries_are_spaced_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GDELT answers HTTP 429 to more than one request every 5 seconds."""
+    slept: list[float] = []
+    monkeypatch.setattr(sources, "GDELT_PAUSE_S", 6.0)
+    monkeypatch.setattr(sources, "_gdelt_last", 0.0)
+    monkeypatch.setattr(sources.time, "sleep", slept.append)
+    client = build_client(Allowlist({"api.gdeltproject.org"}), transport=httpx2.MockTransport(
+        lambda _: httpx2.Response(200, json={"articles": []})))
+    now = datetime(2026, 10, 20, tzinfo=UTC)
+    sources.gdelt(client, "a", now - timedelta(hours=3), now)
+    sources.gdelt(client, "b", now - timedelta(hours=3), now)
+    assert len(slept) == 1 and 5.5 < slept[0] <= 6.0

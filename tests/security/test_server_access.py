@@ -5,7 +5,6 @@ from __future__ import annotations
 import socket
 
 import pytest
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from goulot.api.context import AppContext
@@ -15,7 +14,7 @@ from goulot.security.sessions import create_one_time_token
 from goulot.security.tokens import digest
 from goulot.server import bind_sockets
 from goulot.settings import BindError, load_settings, validate_bind_hosts
-from tests.conftest import ORIGIN, db_bytes, login, unsafe_headers
+from tests.conftest import ORIGIN, api_routes, db_bytes, fill_path, login, unsafe_headers
 
 PUBLIC_ROUTES = {("GET", "/healthz"), ("GET", "/auth"), ("POST", "/auth/exchange"), ("GET", "/{page:path}")}
 
@@ -94,15 +93,15 @@ def test_csrf_and_origin(client: TestClient, ctx: AppContext) -> None:
 
 
 def _fill(path: str) -> str:
-    return path.replace("{passkey_id}", "x").replace("{ref}", "acrylonitrile").replace("{page:path}", "x")
+    return fill_path(path, {"ref": "acrylonitrile"})
 
 
 def test_auth_required_on_all_routes(client: TestClient, ctx: AppContext) -> None:
-    routes = [(m, r.path) for r in client.app.routes if isinstance(r, APIRoute) for m in r.methods]  # type: ignore[attr-defined]
-    api_routes = [(m, p) for m, p in routes if p.startswith("/api/")]
-    assert len(api_routes) >= 15
+    routes = [(m, r.path) for r in api_routes(client.app) for m in r.methods]
+    api = [(m, p) for m, p in routes if p.startswith("/api/")]
+    assert len(api) >= 55  # the routes of the included routers are enumerated too
     assert {(m, p) for m, p in routes if not p.startswith("/api/")} == PUBLIC_ROUTES
-    for method, path in api_routes:
+    for method, path in api:
         r = client.request(method, _fill(path), headers={"Origin": ORIGIN}, json={})
         assert r.status_code == 401, (method, path)
     # Unknown /api/ paths too, and a forged or expired session.

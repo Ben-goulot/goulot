@@ -24,6 +24,7 @@ log = logging.getLogger("goulot.alerts")
 THROTTLE = timedelta(hours=1)
 SILENT_LIMIT = timedelta(hours=24)
 UNVERIFIED_LIMIT = timedelta(hours=12)
+MISSING_KEY = "missing key"  # error of a source whose key is not in the keychain (goulot/collect/runner.py)
 TITLE_CHARS = 120
 SECURITY_KINDS = {
     "unlock_blocked": "Ouverture du coffre bloquée après des échecs répétés.",
@@ -59,8 +60,8 @@ def verdict_alerts(conn: sqlite3.Connection, changed: Sequence[tuple[str, object
             "ORDER BY created_at DESC LIMIT 1", (material_id,)).fetchone()
         if previous is None and verdict == "ras":
             continue  # a first « Rien à signaler » is not news
-        row = conn.execute("SELECT break_in FROM verdicts WHERE material_id = ? AND current = 1",
-                           (material_id,)).fetchone()
+        row = conn.execute("SELECT break_in FROM verdicts WHERE material_id = ? AND scope = 'market' "
+                           "AND current = 1", (material_id,)).fetchone()
         text = f"Goulot · {_name(conn, material_id)} : {getattr(v, 'label', verdict)}."
         window = getattr(v, "window_weeks", None)
         if verdict in ("ant", "pot") and window is not None:
@@ -76,10 +77,48 @@ def verdict_alerts(conn: sqlite3.Connection, changed: Sequence[tuple[str, object
     return out
 
 
+def personal_alerts(conn: sqlite3.Connection, changed: Sequence[tuple[str, object]], at: datetime) -> list[Alert]:
+    """A personal verdict is announced by the material, the verdict and the action window, with « motif dans
+    l'app »: never X (with the window it would reveal the contractual lead time), never a supplier, share, stock,
+    price or signal (docs/SPEC.md, section 9)."""
+    out = []
+    for material_id, p in changed:
+        v = getattr(p, "verdict", None)
+        verdict = getattr(v, "verdict", "")
+        previous = conn.execute(
+            "SELECT verdict FROM verdicts WHERE material_id = ? AND scope = 'personal' AND current = 0 "
+            "ORDER BY created_at DESC LIMIT 1", (material_id,)).fetchone()
+        if (previous is None and verdict == "ras") or verdict == "unverified":
+            continue  # a first calm is not news; « non vérifié » is already sent for the market verdict
+        label = {"ant": "Anticiper stock", "pot": "Problème potentiel", "ras": "Rien à signaler"}[verdict]
+        text = f"Goulot · {_name(conn, material_id)} : {label} (pour ton approvisionnement)."
+        window = getattr(v, "window_weeks", None)
+        if verdict in ("ant", "pot") and window is not None:
+            text += (" Fenêtre d'action dépassée." if window < 0 else
+                     f" Fenêtre d'action : {window:.0f} semaine{'s' if window >= 2 else ''}.")
+        text += " Motif dans l'app."
+        row = conn.execute("SELECT break_in FROM verdicts WHERE material_id = ? AND scope = 'personal' "
+                           "AND current = 1", (material_id,)).fetchone()
+        if row and row[0]:
+            text += " (rodage)"
+        out.append(Alert("verdict", f"personal-{material_id}-{at:%Y%m%dT%H%M%S}", text, material_id,
+                         urgent=verdict == "ant"))
+    return out
+
+
+def reminder_alerts(expired_signals: int, at: datetime) -> list[Alert]:
+    """Supplier signals at 90 days: a reminder without material, site or signal type."""
+    if expired_signals <= 0:
+        return []
+    return [Alert("reminder", f"reminder-signals-{at:%G-W%V}",
+                  "Goulot : un rappel t'attend dans l'app (coffre). Confirme ou clos ce qui doit l'être.")]
+
+
 def event_alerts(conn: sqlite3.Connection) -> list[Alert]:
     out = []
-    for e in conn.execute("SELECT id, material_id, title, place FROM events WHERE confirmation = 'confirmed' "
+    for e in conn.execute("SELECT id, material_id, title, place FROM public_events WHERE confirmation = 'confirmed' "
                           "AND severity_hint >= 3 AND origin IN ('news', 'policy', 'hazard', 'logistics')"):
+        # public events only: an event of Ma chaîne acts through the verdict, never alone
         title = defang(str(e["title"]))[:TITLE_CHARS]
         place = f" ({defang(str(e['place']))[:60]})" if e["place"] and e["place"] != "unknown" else ""
         out.append(Alert("event", f"event-{e['id']}", f"Goulot · {_name(conn, e['material_id'])} : nouvel "
@@ -112,6 +151,13 @@ def health_alerts(conn: sqlite3.Connection, at: datetime) -> list[Alert]:
                           "AS last_run FROM collect_runs GROUP BY source"):
         silent = r["last_ok"] is None or at - datetime.fromisoformat(r["last_ok"]) > SILENT_LIMIT
         awake = bool(r["last_run"]) and at - datetime.fromisoformat(r["last_run"]) < timedelta(hours=6)
+        last = conn.execute("SELECT error FROM collect_runs WHERE source = ? ORDER BY id DESC LIMIT 1",
+                            (r["source"],)).fetchone()
+        if last is not None and last[0].endswith(MISSING_KEY):
+            # Not a silent source: one that was never given its key. Said once, not every day.
+            out.append(Alert("missing_key", f"missing-key-{r['source']}", f"Goulot : la source {r['source']} "
+                             "attend sa clé (« ./bin/goulot setup ») ; elle reste inactive en attendant."))
+            continue
         if silent and awake:
             out.append(Alert("silent_source", f"silent-{r['source']}-{day}",
                              f"Goulot : la source {r['source']} ne répond plus depuis plus de 24 heures."))

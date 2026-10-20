@@ -11,7 +11,6 @@ from pathlib import Path
 
 import keyring
 import pytest
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from goulot.api.context import AppContext
@@ -27,8 +26,10 @@ from tests.authenticator import SoftAuthenticator
 from tests.conftest import (
     ORIGIN,
     MemoryKeyring,
+    api_routes,
     db_bytes,
     enroll,
+    fill_path,
     login,
     setup_vault,
     unlock,
@@ -197,12 +198,7 @@ def test_vault_recovery_roundtrip(ctx: AppContext, tmp_path: Path, fake_keyring:
 
 
 def _private_routes(client: TestClient) -> list[tuple[str, str]]:
-    return [
-        (m, r.path)
-        for r in client.app.routes  # type: ignore[attr-defined]
-        if isinstance(r, APIRoute) and r.path.startswith("/api/private/")
-        for m in r.methods
-    ]
+    return [(m, r.path) for r in api_routes(client.app) if r.path.startswith("/api/private/") for m in r.methods]
 
 
 def test_private_routes_require_vault(
@@ -210,12 +206,10 @@ def test_private_routes_require_vault(
 ) -> None:
     csrf, vault_token = opened
     routes = _private_routes(client)
-    assert len(routes) >= 7
-    fill = {"{passkey_id}": "unknown", "{ref}": "acrylonitrile"}
+    assert len(routes) >= 20
 
     def call(method: str, path: str, token: str | None) -> int:
-        for k, v in fill.items():
-            path = path.replace(k, v)
+        path = fill_path(path, {"passkey_id": "unknown", "ref": "acrylonitrile"})
         body = {"minutes": 15} if path.endswith("lock-minutes") else {}
         return client.request(method, path, json=body, headers=unsafe_headers(csrf, token)).status_code
 

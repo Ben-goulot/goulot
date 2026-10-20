@@ -47,6 +47,7 @@ def test_alert_links_defanged(ctx: AppContext) -> None:
         conn.execute("INSERT INTO events (id, material_id, event_type, event_status, origin, title, place, "
                      "first_seen_at, last_seen_at, confirmation, severity_hint, updated_at) VALUES ('E1', 'm1', "
                      "'labor_action', 'ongoing', 'news', ?, 'evil.example', 'x', 'x', 'confirmed', 3, 'x')", (TRAP,))
+        conn.execute("INSERT INTO event_links (event_id, material_id, node_key) VALUES ('E1', 'm1', 'port_a')")
         alerts = service.event_alerts(conn)
     sent: list[str] = []
     service.dispatch(ctx.db, alerts, sent.append, NOW)

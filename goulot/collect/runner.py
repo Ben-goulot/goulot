@@ -14,7 +14,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx2
 
@@ -23,6 +23,9 @@ from goulot.collect import sources
 from goulot.collect.base import Item, enabled, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names
 from goulot.db.connection import Database
+
+if TYPE_CHECKING:
+    from goulot.private.watch import PrivateWatch
 
 log = logging.getLogger("goulot.collect")
 
@@ -82,21 +85,23 @@ def _last_success(conn: sqlite3.Connection, source: str) -> datetime | None:
 
 
 def _store(conn: sqlite3.Connection, item: Item, hits: list[Rule], now: datetime) -> bool:
+    """Only public rules are kept with the article: a rule from Ma chaîne (negative id, in memory) leaves no trace."""
     cur = conn.execute(
         "INSERT OR IGNORE INTO articles (source, kind, url, url_hash, domain, provider_domain, title, lang, "
         "published_at, first_seen_at, collected_at, excerpt, lat, lon, magnitude, details, rules_hit, materials) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (item.source, item.kind, item.url, item.identity(), item.domain, item.provider_domain, item.title,
          item.lang, iso(item.published_at), iso(now), iso(now), item.excerpt, item.lat, item.lon, item.magnitude,
-         json.dumps(item.details, ensure_ascii=False), json.dumps(sorted({r.id for r in hits})),
+         json.dumps(item.details, ensure_ascii=False), json.dumps(sorted({r.id for r in hits if r.id > 0})),
          json.dumps(sorted({r.material_id for r in hits}))),
     )
     return cur.rowcount == 1
 
 
-def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter
+def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
+              private_queries: list[tuple[str, list[str]]] | None = None
               ) -> dict[str, Callable[[httpx2.Client, datetime], list[Item]]]:
-    qs = queries(conn)
+    qs = queries(conn) + (private_queries or [])
     boxes = [(r["node_key"], r["lat"], r["lon"]) for r in conn.execute(
         "SELECT DISTINCT node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone'")]
     terms = sorted({r["value"] for r in conn.execute(
@@ -153,15 +158,18 @@ def _due(conn: sqlite3.Connection, source: str, now: datetime) -> bool:
     return now - last >= (DAILY if frequency.startswith("daily") else timedelta(hours=2, minutes=45))
 
 
-def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: datetime | None = None) -> CycleResult:
+def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: datetime | None = None,
+              private: PrivateWatch | None = None) -> CycleResult:
+    """`private`: rules and queries of Ma chaîne, built in memory by the caller; never stored nor logged."""
     now = now or datetime.now(UTC)
     cycle_id = str(uuid.uuid4())
     with db.transaction() as conn:
         conn.execute("INSERT INTO cycles (id, started_at) VALUES (?, ?)", (cycle_id, iso(now)))
-        fetchers = _fetchers(conn, now, secret)
-        rules = active_rules(conn)
+        fetchers = _fetchers(conn, now, secret, private.queries if private else None)
+        rules = active_rules(conn) + (private.rules if private else [])
         country_nodes = {r[0] for r in conn.execute(
             "SELECT node_key FROM chain_nodes WHERE valid_to IS NULL AND node_type = 'country'")}
+        country_nodes |= private.needs_material if private else set()
     result = CycleResult(cycle_id, ok=False)
     families_ok: dict[str, bool] = {}
     for source_id, fetch in fetchers.items():

@@ -66,6 +66,7 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
               <th>Variation</th>
               <th>2 mois</th>
               <th>Verdict</th>
+              <th>Pour toi</th>
               <th>Pression</th>
             </tr>
           </thead>
@@ -88,6 +89,15 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
                       <span className={verdictClass(r.verdict)}>{r.verdict?.label ?? "Pas encore de verdict"}</span>
                     ) : (
                       <span className="badge neutral">Chaîne à valider</span>
+                    )}
+                  </td>
+                  <td>
+                    {r.personal ? (
+                      <span className={`badge ${r.personal.verdict}`} title={r.personal.reason}>
+                        {r.personal.label}
+                      </span>
+                    ) : (
+                      <span className="muted">—</span>
                     )}
                   </td>
                   <td>{r.verdict ? <Pressure value={r.verdict.pressure} label={r.verdict.pressure_label} /> : "—"}</td>

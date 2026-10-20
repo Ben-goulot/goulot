@@ -408,6 +408,7 @@ def build_parser() -> argparse.ArgumentParser:
     rc.add_argument("--cas", required=True, help="107-13-1, 554-13-2 ou 7440-55-3")
     rc.add_argument("--force", action="store_true", help="repart de zéro (sinon : reprise après un échec)")
     dsub.add_parser("check-sources", help="interroge depuis le Mac les sources injoignables du bac à sable (sans IA)")
+    dsub.add_parser("fetch-cities", help="télécharge la liste des villes GeoNames et l'embarque, réduite (sans IA)")
     for later in ("keygen", "release", "bootstrap"):
         p = dsub.add_parser(later, help="disponible en phase 5")
         p.add_argument("rest", nargs=argparse.REMAINDER)
@@ -531,7 +532,8 @@ def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
 
 
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
-    if args.dev_action not in ("record", "probe", "record-watch", "check-sources", "record-cases"):
+    if args.dev_action not in ("record", "probe", "record-watch", "check-sources", "record-cases",
+                               "fetch-cities"):
         print("Signature et publication des mises à jour : disponibles en phase 5.")
         return
     from goulot.cli.dev import cmd_dev as run_dev

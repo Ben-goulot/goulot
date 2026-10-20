@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
+import { PersonalCard } from "../private/PersonalCard";
 import { Comparables } from "./Comparables";
 import { EventMap } from "./EventMap";
 import { Pressure } from "./Markets";
@@ -156,6 +157,8 @@ export function Sheet(props: {
           </button>
         </section>
       </div>
+
+      <PersonalCard materialId={props.materialId} locked={data.personal} onChain={props.onChain} />
 
       {data.upcoming.length > 0 && (
         <section className="panel band">

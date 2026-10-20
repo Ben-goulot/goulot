@@ -206,6 +206,8 @@ def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
                 by_material.setdefault(r["material_id"], [])
                 if r["node_key"]:
                     by_material[r["material_id"]].append(r["node_key"])
+        for material_id in json.loads(item["materials"]):
+            by_material.setdefault(material_id, [])  # found near a site of Ma chaîne only: no public link
         for material_id, nodes in by_material.items():
             seen = datetime.fromisoformat(item["first_seen_at"])
             event_id = _event_id(conn, seen.strftime("%Y-%m-%d"))

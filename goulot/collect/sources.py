@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -33,6 +34,10 @@ PEGEL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{statio
 FEDERAL_REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
 
 GDELT_MAX_WINDOW = timedelta(days=90)
+# GDELT answers HTTP 429 to more than one request every 5 seconds: its queries are spaced out (a cycle runs in the
+# background, a minute or two more costs nothing).
+GDELT_PAUSE_S = 6.0
+_gdelt_last = 0.0
 KAUB_LOW_WATER_CM = 100  # below 1 m at Kaub, Rhine barges load partially (78 cm: critical)
 PORTWATCH_DROP = 0.6  # a day under 60 % of the 30-day mean counts as a disruption signal
 NS = {
@@ -71,7 +76,12 @@ def _text(node: Any, path: str) -> str:
 
 # --- news -------------------------------------------------------------------------------------------------
 def gdelt(client: httpx2.Client, query: str, since: datetime, now: datetime) -> list[Item]:
+    global _gdelt_last
     start = max(since, now - GDELT_MAX_WINDOW)
+    wait = _gdelt_last + GDELT_PAUSE_S - time.monotonic()
+    if GDELT_PAUSE_S > 0 and wait > 0:
+        time.sleep(wait)
+    _gdelt_last = time.monotonic()
     data = _json(client, GDELT, {
         "query": query, "mode": "artlist", "format": "json", "maxrecords": "250", "sort": "datedesc",
         "startdatetime": start.strftime("%Y%m%d%H%M%S"), "enddatetime": now.strftime("%Y%m%d%H%M%S"),

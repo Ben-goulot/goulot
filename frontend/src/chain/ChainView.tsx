@@ -2,6 +2,8 @@ import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } fro
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
+import { MyChainSide, overlay, useMyChain } from "../private/MyChainSide";
+import { Locked, usePrivacy } from "../private/privacy";
 import { HEADER_Y, layout } from "./layout";
 import { BASIS, clip, CONFIDENCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
 
@@ -60,6 +62,9 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [ack, setAck] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [mode, setMode] = useState<"type" | "mine">("type");
+  const { vaultOpen, presenting } = usePrivacy();
+  const my = useMyChain(props.materialId);
 
   const load = useCallback(async () => {
     try {
@@ -117,8 +122,8 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
       className: `chain-edge conf-${e.confidence}`,
       markerEnd: { type: MarkerType.ArrowClosed },
     }));
-    return { nodes, edges };
-  }, [chain, selected]);
+    return mode === "mine" && vaultOpen ? overlay(chain, nodes, edges, my.data, selected, presenting) : { nodes, edges };
+  }, [chain, selected, mode, vaultOpen, my.data, presenting]);
 
   if (!chain) return <section className="panel">{message ?? "Chargement…"}</section>;
 
@@ -170,7 +175,24 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
           {chain.material.status === "validated" ? "validée" : "à relire"}
         </span>
       </header>
+      <div className="row">
+        <div className="segmented" role="group" aria-label="Vue de la chaîne">
+          <button className={mode === "type" ? "tab active" : "tab"} onClick={() => setMode("type")}>
+            Chaîne type
+          </button>
+          <button className={mode === "mine" ? "tab active" : "tab"} onClick={() => setMode("mine")}>
+            Ma chaîne
+          </button>
+        </div>
+        {mode === "mine" && vaultOpen && (
+          <span className="legend">
+            <span className="swatch mine" /> Ma chaîne (épaisseur = part) <span className="swatch private" /> Site privé{" "}
+            <span className="swatch faded" /> Pas chez toi
+          </span>
+        )}
+      </div>
       {message && <p className="banner">{message}</p>}
+      {mode === "mine" && my.message && <p className="banner">{my.message}</p>}
       {chain.injection_suspected && (
         <p className="banner">
           Une page lue pendant la recherche contenait des consignes adressées à l'IA. Relis les sources avant de valider.
@@ -195,7 +217,17 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
           </ReactFlow>
         </div>
         <aside className="panel side">
-          {node ? (
+          {mode === "mine" ? (
+            vaultOpen ? (
+              chain.material.status === "validated" ? (
+                <MyChainSide materialId={props.materialId} chain={chain} selected={selected} my={my} onSelect={setSelected} />
+              ) : (
+                <p className="muted">Valide d'abord la chaîne type : Ma chaîne se pose dessus.</p>
+              )
+            ) : (
+              <Locked />
+            )
+          ) : node ? (
             <>
               <p className="eyebrow">Maillon sélectionné</p>
               <h3 className="title">{clip(node.name, 120)}</h3>

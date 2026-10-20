@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
 import keyring
 import keyring.backend
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from goulot.api.app import create_app
@@ -62,10 +64,13 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def no_api_pause(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The pause between two calls to a keyed API (terms of service of EIA and Census) is skipped in tests."""
+    """The pauses between two calls to a keyed API (terms of service of EIA and Census) and between two GDELT
+    queries (rate limit) are skipped in tests."""
+    from goulot.collect import sources as collect_sources
     from goulot.prices import sources
 
     monkeypatch.setattr(sources, "PAUSE_S", 0.0)
+    monkeypatch.setattr(collect_sources, "GDELT_PAUSE_S", 0.0)
 
 
 @pytest.fixture
@@ -92,6 +97,27 @@ def client(ctx: AppContext) -> Iterator[TestClient]:
 @pytest.fixture
 def authenticator() -> SoftAuthenticator:
     return SoftAuthenticator(origin=ORIGIN)
+
+
+def api_routes(app: object) -> list[APIRoute]:
+    """Every route of the app, those of the included routers too (FastAPI keeps them behind `_IncludedRouter`,
+    out of `app.routes`): a security test that enumerates the routes must see them all."""
+    found: list[APIRoute] = []
+
+    def walk(routes: list[object]) -> None:
+        for r in routes:
+            if isinstance(r, APIRoute):
+                found.append(r)
+            elif hasattr(r, "original_router"):
+                walk(list(r.original_router.routes))
+
+    walk(list(app.routes))  # type: ignore[attr-defined]
+    return found
+
+
+def fill_path(path: str, values: dict[str, str] | None = None) -> str:
+    """A concrete URL for a route path: known parameters from `values`, the others « x »."""
+    return re.sub(r"\{(\w+)(:path)?\}", lambda m: (values or {}).get(m.group(1), "x"), path)
 
 
 def db_bytes(db_path: Path) -> bytes:

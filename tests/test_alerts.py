@@ -144,3 +144,15 @@ def test_rejected_digest_falls_back_to_code(ctx: AppContext) -> None:
     _, text = digest.compose(ctx.db, MONDAY_MORNING)  # type: ignore[misc]
     assert "mot mot mot" not in text and "code seul" in text
     assert assess  # the verdict itself never comes from the digest
+
+
+def test_source_without_key_is_said_once_not_every_day(ctx: AppContext) -> None:
+    with ctx.db.transaction() as conn:
+        for hours in (50, 26, 1):
+            conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok, error) VALUES ('c', "
+                         "'nasa_firms', 'hazard', ?, 0, 'SourceError: missing key')",
+                         ((NOW - timedelta(hours=hours)).isoformat(),))
+        alerts = [a for a in service.health_alerts(conn, NOW) if "nasa_firms" in a.text]
+        later = [a for a in service.health_alerts(conn, NOW + timedelta(days=1)) if "nasa_firms" in a.text]
+    assert [a.kind for a in alerts] == ["missing_key"] and "setup" in alerts[0].text
+    assert later[0].dedupe_key == alerts[0].dedupe_key  # the same key: dispatched once, never again
