@@ -243,10 +243,18 @@ def backfill(db: Database, client: httpx2.Client, secret: SecretGetter, material
         try:
             points = _fetch(client, inst["source"], inst["code"], HISTORY_START.get(inst["frequency"],
                                                                                      date(2000, 1, 1)), secret)
-        except (httpx2.HTTPError, PriceSourceError, ValueError, KeyError) as exc:
+        except PriceSourceError as exc:  # its messages are written by our code, keys masked
+            progress(f"  indisponible : {'clé absente' if str(exc) == 'missing key' else exc}")
+            continue
+        except (httpx2.HTTPError, ValueError, KeyError) as exc:  # their text may hold an address: type only
             progress(f"  indisponible ({type(exc).__name__})")
             continue
         with db.transaction() as conn:
             written[inst["id"]] = prices.upsert(conn, inst["id"], points)
+        if points:
+            days = [p[0] for p in points]
+            progress(f"  {len(points)} points, du {min(days)} au {max(days)}")
+        else:
+            progress("  aucune donnée renvoyée par la source")
     return written
 

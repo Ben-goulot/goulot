@@ -190,3 +190,21 @@ def test_eia_history_is_read_page_by_page() -> None:
     points = sources.eia(client(handler, seen), "e" * 20, "RBRTE", date(1987, 1, 1))
     assert len(points) == 6200 and points[0][0] == date(1987, 5, 20) and points[-1][0] == days[-1]
     assert [r.url.params["offset"] for r in seen] == ["0", "5000"]
+
+
+def test_error_reasons_are_shown_without_any_key() -> None:
+    key = "FAKE" + "x" * 28  # obviously not a key: built, so that no scanner takes it for one
+    assert sources.reason(b'{"error": {"code": "API_KEY_INVALID", "message": "bad"}}').startswith('{"code"')
+    assert sources.reason(f"Invalid Key: {key}".encode()) == "Invalid Key: …"
+    assert key not in sources.reason(f'{{"error": "api_key {key} is not activated"}}'.encode())
+    assert sources.reason(b"<html><body><h1>Missing Key</h1></body></html>") == "Missing Key"
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(403, json={"error": f"api_key {key} not activated"})
+
+    try:
+        sources.eia(client(handler), key, "RBRTE", date(1987, 1, 1))
+    except sources.PriceSourceError as exc:
+        assert str(exc).startswith("HTTP 403") and key not in str(exc) and "not activated" in str(exc)
+    else:
+        raise AssertionError("an HTTP 403 must raise")

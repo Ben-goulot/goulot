@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import time
 from datetime import UTC, date, datetime
 from typing import Any
@@ -47,9 +48,26 @@ def pause() -> None:
         time.sleep(PAUSE_S)
 
 
+TOKEN = re.compile(r"[A-Za-z0-9_\-]{20,}")
+
+
+def reason(body: bytes) -> str:
+    """A short, printable reason from an error body: plain text only, any key-like token masked."""
+    text = " ".join(body[:400].decode("utf-8", errors="replace").split())
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            found = data.get("error") or data.get("message") or data.get("description") or data
+            text = json.dumps(found, ensure_ascii=False) if not isinstance(found, str) else found
+    except json.JSONDecodeError:
+        text = re.sub(r"<[^>]+>", " ", text)
+    return TOKEN.sub("…", " ".join(text.split()))[:120]
+
+
 def _ok_json(result: Any) -> Any:
     if result.status != 200:
-        raise PriceSourceError(f"HTTP {result.status}")
+        detail = reason(result.content or b"")
+        raise PriceSourceError(f"HTTP {result.status}" + (f" : {detail}" if detail else ""))
     try:
         return json.loads(result.content)
     except json.JSONDecodeError as exc:
