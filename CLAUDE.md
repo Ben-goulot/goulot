@@ -157,7 +157,7 @@ Depuis la copie de travail pendant la construction ; ensuite par le lanceur `gou
 
 - `goulot setup` : assistant de configuration (clés dans le trousseau en saisie masquée, création du coffre et affichage unique de la clé de secours, canal d'alerte, test des sources). Lancé par l'utilisateur lui-même dans son Terminal.
 - `goulot vault status`, `vault lock` ; `goulot vault recover` (restauration avec la clé de secours) et `vault new-recovery-key`, lancés par l'utilisateur dans son Terminal.
-- `goulot start`, `open`, `doctor`, `update --check`, `update --rollback`, `backup`, `panic`.
+- `goulot start`, `open`, `doctor`, `update` (état), `update --check`, `--install`, `--rollback`, `--resume`, `backup`, `panic`.
 - `goulot history backfill --cas <CAS>` (historique des séries liées) ; `goulot cases build --cas <CAS>` (préparation des cas comparables, avec devis, aussi depuis l'écran « Bibliothèque de cas ») ;
 - `goulot ledger verify` (chaîne d'empreintes du registre) ; `goulot export --template article24 --cas <CAS>…` (rapport de conformité, aussi depuis l'écran Conformité).
 - `goulot dev keygen`, `dev release`, `dev bootstrap` : clé de signature, publication, première installation (`docs/UPDATES.md`).

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Goulot app (docs/UPDATES.md). Template: @CURRENT@ and @LOGS@ are filled by goulot/updater/system.py.
+     Always runs the version of `current`, never the working copy. Restarted after a crash; during a switch the
+     updater unloads it (launchctl bootout) and loads it again (launchctl bootstrap). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.goulot.app</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@CURRENT@/.venv/bin/python</string>
+        <string>-P</string>
+        <string>-m</string>
+        <string>goulot</string>
+        <string>start</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONPATH</key>
+        <string>@CURRENT@</string>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>@CURRENT@</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>Umask</key>
+    <integer>63</integer>
+    <key>StandardOutPath</key>
+    <string>@LOGS@/app.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>@LOGS@/app.launchd.log</string>
+</dict>
+</plist>

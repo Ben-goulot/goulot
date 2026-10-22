@@ -8,6 +8,7 @@ import { CENSUS_NOTICE } from "./watch/types";
 import { Markets } from "./watch/Markets";
 import { Reliability } from "./watch/Reliability";
 import { Sheet } from "./watch/Sheet";
+import { SystemSettings } from "./watch/SystemSettings";
 import { WatchSettings } from "./watch/WatchSettings";
 import { PrivacyContext } from "./private/privacy";
 
@@ -204,6 +205,7 @@ export default function App() {
         {page === "coffre" && (
           <>
             <WatchSettings />
+            <SystemSettings />
             <VaultPage status={status} grant={grant} refresh={refresh} onUnlock={unlock} setMessage={setMessage} />
           </>
         )}

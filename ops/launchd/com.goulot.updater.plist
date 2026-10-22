@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Goulot updater (docs/UPDATES.md): every night at 4:30 and at login. Template: @CURRENT@ and @LOGS@ are filled
+     by goulot/updater/system.py. The mode (automatique, me demander, désactivé) is read from the app's settings. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.goulot.updater</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@CURRENT@/.venv/bin/python</string>
+        <string>-P</string>
+        <string>-m</string>
+        <string>goulot</string>
+        <string>update</string>
+        <string>--auto</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONPATH</key>
+        <string>@CURRENT@</string>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>@CURRENT@</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>Nice</key>
+    <integer>5</integer>
+    <key>LowPriorityIO</key>
+    <true/>
+    <key>Umask</key>
+    <integer>63</integer>
+    <key>StandardOutPath</key>
+    <string>@LOGS@/updater.launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>@LOGS@/updater.launchd.log</string>
+</dict>
+</plist>

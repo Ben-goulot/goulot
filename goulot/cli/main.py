@@ -27,7 +27,6 @@ from goulot.vault.recovery import RecoveryKeyError
 from goulot.vault.tokens import VaultTokenService
 
 LATER = {
-    "update": "Mises à jour automatiques : disponibles en phase 5.",
     "export": "Export de conformité : disponible en phase 6.",
 }
 CLEAR_SCREEN = "\033[2J\033[3J\033[H"
@@ -80,7 +79,12 @@ def cmd_open(settings: Settings, args: argparse.Namespace) -> None:
     _open_url(f"{settings.origin}/auth#t={token}", print_only=args.print_only)
 
 
-def cmd_doctor(settings: Settings, _: argparse.Namespace) -> None:
+def cmd_doctor(settings: Settings, args: argparse.Namespace) -> None:
+    if args.release:
+        from goulot.cli.updates import cmd_release_check
+
+        cmd_release_check(settings, args.release)
+        return
     checks = run_checks(settings)
     marks = {OK: "✅", WARN: "🟠", FAIL: "❌"}
     for c in checks:
@@ -97,17 +101,28 @@ def cmd_backup(settings: Settings, _: argparse.Namespace) -> None:
 
 
 def cmd_panic(settings: Settings, _: argparse.Namespace) -> None:
+    if sys.platform == "darwin":
+        from goulot.updater.system import stop_agents
+
+        stopped = stop_agents()
+        if stopped:
+            print(f"✅ Services arrêtés : {', '.join(stopped)} (ils ne redémarrent qu'à votre demande).")
     if settings.db_path.exists():
         revoke_everything(_db(settings))
         print("✅ Sessions, liens de connexion et jetons de coffre révoqués ; coffre fermé.")
     print(
         "\nÀ faire maintenant :\n"
-        "1. Arrêtez le serveur (Ctrl+C dans son onglet du Terminal).\n"
+        "1. Si vous avez lancé le serveur à la main : arrêtez-le (Ctrl+C dans son onglet du Terminal).\n"
         "2. Révoquez la clé API Anthropic : https://platform.claude.com/settings/keys\n"
-        "   puis créez-en une nouvelle dans l'espace de travail « goulot » et lancez « ./bin/goulot setup ».\n"
+        "   puis créez-en une nouvelle dans l'espace de travail « goulot » et lancez « goulot setup ».\n"
         "3. Si vous en avez un : révoquez le jeton GitHub (https://github.com/settings/tokens).\n"
         "4. Si vous utilisez Telegram : envoyez /revoke à @BotFather pour changer le jeton du bot.\n"
-        "5. Si la clé de signature des mises à jour est en cause : procédure de docs/UPDATES.md (« Clé compromise »)."
+        "5. Si la clé de signature des mises à jour est en cause : aucune version signée ne peut l'écarter.\n"
+        "   a. Sur GitHub, supprimez le secret GOULOT_SIGNING_KEY (Settings > Environments > release).\n"
+        "   b. Dans Trousseaux d'accès, supprimez l'élément « goulot-signing ».\n"
+        "   c. Videz la liste des clés de goulot/updater/trust.py (avec Claude), puis « ./bin/goulot dev keygen ».\n"
+        "   d. Publiez une nouvelle version, puis réinstallez avec « ./bin/goulot dev bootstrap ».\n"
+        "6. Pour relancer les services ensuite : « ./bin/goulot dev bootstrap » (ou redémarrez la session)."
     )
 
 
@@ -369,7 +384,17 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("start", help="lance le serveur sur http://localhost:8742")
     open_ = sub.add_parser("open", help="ouvre l'interface avec un lien à usage unique")
     open_.add_argument("--print", dest="print_only", action="store_true", help=PRINT_HELP)
-    sub.add_parser("doctor", help="vérifie l'installation")
+    doctor = sub.add_parser("doctor", help="vérifie l'installation")
+    doctor.add_argument("--release", help=argparse.SUPPRESS)  # health test of a new version, run by the updater
+    update = sub.add_parser("update", help="mises à jour signées : état, vérification, retour arrière")
+    group = update.add_mutually_exclusive_group()
+    group.add_argument("--check", action="store_true", help="cherche une nouvelle version, sans l'installer")
+    group.add_argument("--install", action="store_true", help="installe maintenant la nouvelle version")
+    group.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # LaunchAgent, mode of the settings
+    group.add_argument("--rollback", action="store_true", help="revient à la version précédente encore installée")
+    group.add_argument("--resume", action="store_true", help="reprend les mises à jour après une pause")
+    db_ = sub.add_parser("db", help=argparse.SUPPRESS)
+    db_.add_subparsers(dest="db_action", required=True).add_parser("migrate")
     sub.add_parser("backup", help="sauvegarde la base maintenant")
     sub.add_parser("panic", help="révoque tout et affiche la marche à suivre")
     vault = sub.add_parser("vault", help="coffre des données privées")
@@ -409,9 +434,13 @@ def build_parser() -> argparse.ArgumentParser:
     rc.add_argument("--force", action="store_true", help="repart de zéro (sinon : reprise après un échec)")
     dsub.add_parser("check-sources", help="interroge depuis le Mac les sources injoignables du bac à sable (sans IA)")
     dsub.add_parser("fetch-cities", help="télécharge la liste des villes GeoNames et l'embarque, réduite (sans IA)")
-    for later in ("keygen", "release", "bootstrap"):
-        p = dsub.add_parser(later, help="disponible en phase 5")
-        p.add_argument("rest", nargs=argparse.REMAINDER)
+    kg = dsub.add_parser("keygen", help="crée la clé de signature des mises à jour (secret GitHub et trousseau)")
+    kg_group = kg.add_mutually_exclusive_group()
+    kg_group.add_argument("--rotate", action="store_true", help="prépare une nouvelle clé (rotation, étape 1)")
+    kg_group.add_argument("--activate", action="store_true", help="la nouvelle clé signe désormais (étape 2)")
+    rel = dsub.add_parser("release", help="lance la publication d'une version (approbation sur GitHub)")
+    rel.add_argument("--bump", choices=("patch", "minor", "major"), default="patch")
+    dsub.add_parser("bootstrap", help="première installation de la dernière version publiée")
     for name, message in LATER.items():
         p = sub.add_parser(name, help=message)
         p.add_argument("rest", nargs=argparse.REMAINDER)
@@ -532,9 +561,15 @@ def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
 
 
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
-    if args.dev_action not in ("record", "probe", "record-watch", "check-sources", "record-cases",
-                               "fetch-cities"):
-        print("Signature et publication des mises à jour : disponibles en phase 5.")
+    if args.dev_action in ("keygen", "release", "bootstrap"):
+        from goulot.cli import updates
+
+        if args.dev_action == "keygen":
+            updates.cmd_keygen(args)
+        elif args.dev_action == "release":
+            updates.cmd_dev_release(args)
+        else:
+            updates.cmd_bootstrap(settings, args)
         return
     from goulot.cli.dev import cmd_dev as run_dev
 
@@ -550,6 +585,12 @@ def main(argv: list[str] | None = None) -> None:
         settings = load_settings()
     except BindError as exc:
         sys.exit(str(exc))
+    from goulot.cli.updates import cmd_db, cmd_update, is_workcopy
+    from goulot.updater.state import Layout
+
+    if is_workcopy() and args.command != "dev" and Layout(settings.home).current.is_symlink():
+        sys.exit("Goulot est installé : utilisez « goulot " + args.command + " » (la version installée). "
+                 "La copie de travail ne sert plus qu'aux commandes « ./bin/goulot dev ».")
     handlers = {
         "setup": cmd_setup,
         "start": cmd_start,
@@ -562,6 +603,8 @@ def main(argv: list[str] | None = None) -> None:
         "ledger": cmd_ledger,
         "history": cmd_history,
         "cases": cmd_cases,
+        "update": cmd_update,
+        "db": cmd_db,
     }
     try:
         handlers[args.command](settings, args)

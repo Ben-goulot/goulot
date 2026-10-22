@@ -33,7 +33,7 @@ Mac : updater (chaque nuit et à l'ouverture de session)
 
 ## Côté GitHub
 
-- Branche `main` protégée par un ruleset : CI obligatoire avant fusion, pas de push forcé ni de suppression. L'utilisateur est le seul à pouvoir écrire. Les workflows lancés par des PR extérieures attendent son approbation et ne reçoivent aucun secret.
+- Branche `main` protégée par un ruleset : CI obligatoire avant fusion, pas de push forcé ni de suppression. L'utilisateur est le seul à pouvoir écrire, et le seul à pouvoir contourner la règle pour pousser directement (décision du 22 octobre 2026). Les workflows lancés par des PR extérieures attendent son approbation et ne reçoivent aucun secret.
 - `ci.yml` (PR et push) : `uv sync --locked`, `ruff`, `mypy`, `pytest` (dont `tests/security`), `pip-audit`, `bandit`, `npm ci --ignore-scripts`, tests frontend, `npm audit --audit-level=high` (dépendances de développement comprises : elles tournent pendant le build), build du frontend, `gitleaks`. Permissions : `contents: read`.
 - `dependabot.yml` : écosystèmes `uv`, `npm` et `github-actions`, chaque semaine, mises à jour groupées, `cooldown: default-days: 7`. Une nouvelle version n'est proposée qu'après 7 jours de recul, le temps qu'une version piégée soit repérée et retirée ; les correctifs de sécurité ne sont pas retardés.
 - Fusion automatique des PR Dependabot de niveau correctif quand la CI est verte (`dependabot-automerge.yml`, qui vérifie que l'auteur est `dependabot[bot]` ; permissions `contents: write` et `pull-requests: write`, sans autre secret) ; les montées mineures et majeures attendent l'utilisateur. Rien n'atteint le Mac sans l'approbation de la release.
@@ -66,7 +66,7 @@ Pendant les phases 1 à 4, l'app se lance à la main depuis la copie de travail 
 
 ### L'updater
 
-LaunchAgent `com.goulot.updater` : chaque nuit à 4 h 30 et à l'ouverture de session. Réglage dans l'app : automatique (par défaut), me demander, ou désactivé.
+LaunchAgent `com.goulot.updater` : chaque nuit à 4 h 30 et à l'ouverture de session. Réglage dans l'app : automatique (par défaut), me demander (une alerte annonce la version, `goulot update --install` l'installe), ou désactivé. Commandes : `goulot update` (état), `--check`, `--install`, `--rollback`, `--resume`.
 
 1. **Vérifier.** Lire la dernière release du dépôt par l'API GitHub. Télécharger manifeste, signature et archive dans un dossier temporaire en 0700.
 2. **Authentifier.** Vérifier la signature avec les seules clés publiques compilées dans `goulot/updater/trust.py` de la version active. Vérifier taille et SHA-256 de l'archive. Exiger une version strictement supérieure à la plus haute version jamais installée, absente des versions rejetées, et un `min_updater_version` compatible.
@@ -91,7 +91,7 @@ Règles :
 ## Clé de signature
 
 - Création unique avec `goulot dev keygen`, lancé par l'utilisateur dans son Terminal, hors du bac à sable de Claude Code : génère la paire Ed25519, envoie la clé privée dans le secret d'environnement `GOULOT_SIGNING_KEY` (`gh secret set --env release`) sans l'afficher, en garde une copie de secours dans un élément de trousseau séparé (`goulot-signing`, hors du service `goulot` de l'app, créé sans application autorisée : toute lecture demande le mot de passe macOS), et inscrit la clé publique dans `goulot/updater/trust.py`.
-- Seules les clés de `trust.py`, livré dans les versions signées, font foi ; aucun fichier modifiable sur le disque n'ajoute de clé. Rotation : une version signée par la clé actuelle livre un `trust.py` avec l'ancienne et la nouvelle clé ; les versions suivantes sont signées par la nouvelle, puis l'ancienne est retirée.
+- Seules les clés de `trust.py`, livré dans les versions signées, font foi ; aucun fichier modifiable sur le disque n'ajoute de clé. Rotation en deux temps : `goulot dev keygen --rotate` prépare la nouvelle clé (trousseau seulement) et l'ajoute à `trust.py` ; une version signée par la clé actuelle livre donc l'ancienne et la nouvelle ; une fois installée, `goulot dev keygen --activate` confie la nouvelle clé à GitHub ; les versions suivantes sont signées par elle, puis l'ancienne est retirée.
 - Clé compromise : aucune version signée ne peut l'écarter, puisque l'attaquant pourrait signer lui aussi. Procédure : nouvelle clé, nouvelle release, réinstallation manuelle avec `goulot dev bootstrap`. `goulot panic` affiche cette procédure.
 
 ## Dépôt privé : écarts

@@ -26,6 +26,12 @@ PHASE_3 = {
     "test_collector_limits", "test_ledger_append_only", "test_ledger_tamper_detected",
 }
 PHASE_4 = {"test_locked_view_leaks_nothing", "test_private_canary_never_leaves", "test_csv_import_in_memory"}
+PHASE_5 = {
+    "test_update_tampered_rejected", "test_untrusted_key_rejected", "test_update_downgrade_rejected",
+    "test_update_rejected_version_not_reinstalled", "test_update_path_traversal_rejected",
+    "test_update_healthcheck_rollback", "test_update_manual_rollback_restores_backup",
+    "test_rollback_keeps_ledger_and_private_inputs", "test_update_pause_after_two_failures", "test_key_rotation",
+}
 
 
 def _security_tests() -> dict[str, ast.FunctionDef]:
@@ -39,7 +45,7 @@ def _security_tests() -> dict[str, ast.FunctionDef]:
 
 def test_security_tests_of_finished_phases_present_and_real() -> None:
     found = _security_tests()
-    missing = (PHASE_1 | PHASE_2 | PHASE_3 | PHASE_4) - found.keys()
+    missing = (PHASE_1 | PHASE_2 | PHASE_3 | PHASE_4 | PHASE_5) - found.keys()
     assert not missing, missing
     for name, node in found.items():
         source = ast.unparse(node)

@@ -20,6 +20,7 @@ from goulot.api.chain_routes import build_router
 from goulot.api.context import AppContext
 from goulot.api.middleware import SecurityMiddleware
 from goulot.api.private_routes import build_router as build_private_router
+from goulot.api.system_routes import build_router as build_system_router
 from goulot.api.watch_routes import build_router as build_watch_router
 from goulot.db.connection import set_setting
 from goulot.private import coverage
@@ -261,6 +262,7 @@ def create_app(ctx: AppContext) -> FastAPI:
     app.include_router(build_watch_router(ctx))
     app.include_router(build_case_router(ctx))
     app.include_router(build_private_router(ctx))
+    app.include_router(build_system_router(ctx))
 
     # --- frontend (static, no data) --------------------------------------------------------------------
     dist = ctx.settings.frontend_dist
