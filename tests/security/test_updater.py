@@ -357,6 +357,7 @@ def test_key_rotation(tmp_path: Path) -> None:
     # trust.py is edited in place, between its markers, and keeps the current key during a rotation.
     trust = tmp_path / "trust.py"
     trust.write_text((Path(signing.__file__).parent / "trust.py").read_text(encoding="utf-8"), encoding="utf-8")
+    signing.write_trusted(trust, [])
     assert signing.read_trusted(trust) == []
     signing.write_trusted(trust, [old_pub])
     signing.write_trusted(trust, [*signing.read_trusted(trust), new_pub])

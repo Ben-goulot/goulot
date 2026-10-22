@@ -12,5 +12,6 @@ REPOSITORY = "Ben-goulot/goulot"
 # (key id, raw Ed25519 public key in base64). The key id is the first 16 hex digits of its SHA-256.
 TRUSTED_KEYS: tuple[tuple[str, str], ...] = (
     # BEGIN TRUSTED KEYS (written by `goulot dev keygen`)
+    ("f19789241fc23219", "+Ze9SyAwAWOlS7WffviIRWJ5Po+Tw1tmrttN2BdK4qc="),
     # END TRUSTED KEYS
 )

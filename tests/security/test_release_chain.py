@@ -64,6 +64,7 @@ def test_migrations_additive_only() -> None:
 def test_signing_key_never_on_a_command_line(tmp_path: Path) -> None:
     trust = tmp_path / "trust.py"
     trust.write_text((REPO_ROOT / "goulot" / "updater" / "trust.py").read_text(encoding="utf-8"), encoding="utf-8")
+    signing.write_trusted(trust, [])  # a first key, as on a new installation
     seen: list[tuple[list[str], str | None]] = []
 
     def runner(args: list[str], stdin: str | None) -> subprocess.CompletedProcess[str]:
