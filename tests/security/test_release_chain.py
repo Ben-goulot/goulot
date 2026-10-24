@@ -51,6 +51,8 @@ def test_dependabot_cooldown() -> None:
     assert all(u["cooldown"]["default-days"] >= 7 for u in ecosystems.values())
     automerge = (WORKFLOWS / "dependabot-automerge.yml").read_text(encoding="utf-8")
     assert "dependabot[bot]" in automerge and "semver-patch" in automerge
+    # Only GitHub's auto-merge, which waits for the required checks; `gh pr merge` would merge at once.
+    assert "enablePullRequestAutoMerge" in automerge and "gh pr merge" not in automerge
 
 
 def test_migrations_additive_only() -> None:

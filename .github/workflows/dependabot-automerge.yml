@@ -1,5 +1,7 @@
 # Auto-merge of Dependabot patch updates once the required CI checks are green (docs/UPDATES.md). Minor and
 # major updates wait for the user. Only for PRs opened by dependabot[bot]; no secret besides the job token.
+# GitHub's auto-merge is enabled through the API, never through the gh merge command: without required checks on
+# main, that command merges at once (PR #3, 2026-10-24), whereas the API call fails and nothing is merged.
 name: dependabot-automerge
 
 on: pull_request
@@ -20,5 +22,9 @@ jobs:
       - if: steps.meta.outputs.update-type == 'version-update:semver-patch'
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+          PR_ID: ${{ github.event.pull_request.node_id }}
+        run: |
+          gh api graphql -f id="$PR_ID" -f query='
+            mutation($id: ID!) {
+              enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId }
+            }'
