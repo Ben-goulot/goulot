@@ -22,7 +22,7 @@ from goulot.security.fs import ensure_private_dir
 from goulot.settings import Settings
 from goulot.updater import github
 from goulot.updater.install import Hooks, Offer
-from goulot.updater.manifest import UpdateRefused
+from goulot.updater.manifest import Manifest, UpdateRefused
 from goulot.updater.state import Layout
 from goulot.updater.trust import TRUSTED_KEYS
 
@@ -237,6 +237,13 @@ def notifier(settings: Settings) -> Any:
 
 
 def live_hooks(settings: Settings, uv: str, keys: tuple[tuple[str, str], ...] = TRUSTED_KEYS) -> Hooks:
+    def approved(manifest: Manifest) -> str:
+        client = github.updater_client()
+        try:
+            return github.approved_by(client, manifest.commit)
+        finally:
+            client.close()
+
     def fetch() -> Offer:
         client = github.updater_client()  # closed with the process: one update run, then exit
         assets = github.latest_release(client)
@@ -247,6 +254,7 @@ def live_hooks(settings: Settings, uv: str, keys: tuple[tuple[str, str], ...] = 
         fetch=fetch,
         sync_env=lambda release: sync_env(uv, release),
         release_check=release_check,
+        approved=approved,
         migrate=migrate,
         stop_app=lambda: stop_app(settings.port),
         start_app=start_app,

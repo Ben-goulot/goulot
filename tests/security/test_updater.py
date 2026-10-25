@@ -23,7 +23,7 @@ from goulot.private import coverage, records
 from goulot.settings import Settings
 from goulot.updater import UPDATER_PROTOCOL
 from goulot.updater.install import Hooks, Offer, Updater
-from goulot.updater.manifest import UpdateRefused, key_id, verify_signature
+from goulot.updater.manifest import Manifest, UpdateRefused, key_id, verify_signature
 from goulot.updater.restore import RestoreError
 from goulot.updater.state import Layout, load_state
 from tests.conftest import setup_vault
@@ -85,8 +85,15 @@ class Fake:
     offer: Offer | None = None
     healthy: bool = True
     check_fails: bool = False
+    approver: str | None = "Ben-goulot"
     calls: list[str] = field(default_factory=list)
     alerts: list[str] = field(default_factory=list)
+
+    def approved(self, manifest: Manifest) -> str:
+        self.calls.append(f"approved {manifest.version}")
+        if self.approver is None:
+            raise UpdateRefused("version publiée sans votre approbation sur GitHub")
+        return self.approver
 
     def hooks(self, db_path: Path, keys: tuple[tuple[str, str], ...]) -> Hooks:
         def fetch() -> Offer:
@@ -111,6 +118,7 @@ class Fake:
             stop_app=lambda: self.calls.append("stop"),
             start_app=lambda: self.calls.append("start"),
             healthy=lambda version: self.healthy,
+            approved=self.approved,
             notify=lambda key, text: self.alerts.append(text),
             keys=keys,
         )
@@ -152,7 +160,8 @@ def test_update_installs_signed_release(updater: Updater, fake: Fake, settings: 
     assert (layout.release_dir("0.5.0") / "goulot" / "__init__.py").stat().st_mode & 0o777 == 0o600
     state = load_state(layout)
     assert state.highest_installed == "0.5.0" and state.last_install["key_id"] == signer[1][0]
-    assert fake.calls[:3] == ["sync 0.5.0", "check 0.5.0", "stop"]
+    assert state.last_install["approved_by"] == "Ben-goulot"
+    assert fake.calls[:4] == ["approved 0.5.0", "sync 0.5.0", "check 0.5.0", "stop"]  # approval before download
     assert any("installé" in a for a in fake.alerts)
 
 
@@ -398,3 +407,19 @@ def test_update_lock_outside_pypi_rejected(updater: Updater, fake: Fake, setting
     wheel_elsewhere = LOCK.replace(b"https://files.pythonhosted.org/", b"https://evil.example/")
     fake.offer = _release("0.5.1", signer[0], archive=_tar({"goulot/__init__.py": b"", "uv.lock": wheel_elsewhere}))
     assert updater.run().status == "refused" and not any(c.startswith("sync") for c in fake.calls)
+
+
+def test_update_unapproved_release_rejected(updater: Updater, fake: Fake, settings: Settings,
+                                            signer: tuple[Ed25519PrivateKey, tuple[str, str]]) -> None:
+    """Signed but published without the owner's approval on GitHub (docs/UPDATES.md, step 2): never installed,
+    nor even announced in « me demander » mode."""
+    fake.approver = None
+    fake.offer = _release("0.5.0", signer[0])
+    assert updater.check().status == "refused"
+    assert updater.run("ask").status == "refused"
+    layout = Layout(settings.home)
+    assert layout.installed() == [] and layout.current_version() is None
+    assert "0.5.0" in load_state(layout).rejected and not any(c.startswith("sync") for c in fake.calls)
+    fake.approver = "Ben-goulot"
+    assert _install(updater, fake, "0.5.1", signer[0]) == "installed"
+    assert load_state(layout).last_install["approved_by"] == "Ben-goulot"

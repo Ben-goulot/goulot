@@ -30,7 +30,7 @@ PHASE_5 = {
     "test_update_tampered_rejected", "test_untrusted_key_rejected", "test_update_downgrade_rejected",
     "test_update_rejected_version_not_reinstalled", "test_update_path_traversal_rejected",
     "test_update_healthcheck_rollback", "test_update_manual_rollback_restores_backup",
-    "test_rollback_keeps_ledger_and_private_inputs", "test_update_pause_after_two_failures", "test_key_rotation",
+    "test_rollback_keeps_ledger_and_private_inputs", "test_update_pause_after_two_failures", "test_key_rotation", "test_update_unapproved_release_rejected",
 }
 
 

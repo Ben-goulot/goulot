@@ -76,3 +76,31 @@ def download_manifest(client: httpx2.Client, assets: ReleaseAssets) -> tuple[byt
 
 def download_archive(client: httpx2.Client, assets: ReleaseAssets, size: int) -> bytes:
     return _get(client, assets.archive_url, min(size, MAX_ARCHIVE_BYTES))
+
+
+def approved_by(client: httpx2.Client, commit: str, repository: str = REPOSITORY) -> str:
+    """The login of the owner who approved the `release` deployment that published this commit (docs/UPDATES.md,
+    step 2). GitHub keeps these approvals publicly; a version signed without them (as the first 0.5.0 on
+    2026-10-25, when the environment lacked its required reviewer) is refused."""
+    owner = repository.split("/", 1)[0].lower()
+    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    raw = _get(client, f"{API}/repos/{repository}/actions/workflows/release.yml/runs?head_sha={commit}"
+                       "&status=success&per_page=20", 1024 * 1024, headers)
+    try:
+        runs = [r for r in json.loads(raw)["workflow_runs"] if r.get("head_sha") == commit]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise FetchError("réponse de GitHub illisible") from exc
+    for run in runs:
+        try:
+            run_id = int(run["id"])
+            approvals: Any = json.loads(_get(client, f"{API}/repos/{repository}/actions/runs/{run_id}/approvals",
+                                             1024 * 1024, headers))
+            for a in approvals:
+                login = str(a["user"]["login"])
+                if (a.get("state") == "approved" and login.lower() == owner
+                        and any(e.get("name") == "release" for e in a.get("environments", []))):
+                    return login
+        except (ValueError, KeyError, TypeError) as exc:
+            raise FetchError("réponse de GitHub illisible") from exc
+    raise UpdateRefused("version publiée sans votre approbation sur GitHub")
+

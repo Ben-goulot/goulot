@@ -53,6 +53,7 @@ class Hooks:
     stop_app: Callable[[], None]
     start_app: Callable[[], None]
     healthy: Callable[[str], bool]            # /healthz answers this version within 60 s
+    approved: Callable[[Manifest], str]       # who approved its publication on GitHub; raises UpdateRefused
     notify: Callable[[str, str], None]        # (dedupe key, text)
     keys: tuple[tuple[str, str], ...]
 
@@ -147,6 +148,13 @@ class Updater:
             state.available = None
             state.last_result = "à jour"
             return Outcome("up_to_date", f"Aucune nouvelle version ({exc}).")
+        try:
+            approver = self.hooks.approved(manifest)
+        except UpdateRefused as exc:
+            return self._refused(state, manifest.version, str(exc))
+        except Exception as exc:  # GitHub unreachable: try again next time
+            state.last_result = f"vérification impossible ({type(exc).__name__})"
+            return Outcome("offline", "Vérification impossible pour l'instant : nouvel essai au prochain passage.")
         if mode == "ask":
             state.available = manifest.version
             state.last_result = f"version {manifest.version} disponible"
@@ -162,7 +170,7 @@ class Updater:
             shutil.rmtree(self.layout.release_dir(manifest.version), ignore_errors=True)
             return self._refused(state, manifest.version, f"installation impossible ({type(exc).__name__})",
                                  reject=False)
-        return self.switch(state, manifest, key)
+        return self.switch(state, manifest, key, approver)
 
     def check(self) -> Outcome:
         """`goulot update --check`: what the latest release is, without installing nor counting a failure."""
@@ -179,7 +187,14 @@ class Updater:
             check_installable(manifest, highest_installed=state.highest_installed, rejected=state.rejected)
         except UpdateRefused as exc:
             return Outcome("up_to_date", f"À jour ({exc}).", manifest.version)
-        return Outcome("available", f"Version {manifest.version} disponible, signature valide.", manifest.version)
+        try:
+            approver = self.hooks.approved(manifest)
+        except UpdateRefused as exc:
+            return Outcome("refused", f"Version {manifest.version} refusée : {exc}.", manifest.version)
+        except Exception as exc:
+            return Outcome("offline", f"Vérification impossible ({type(exc).__name__}).")
+        return Outcome("available", f"Version {manifest.version} disponible, signature valide, approuvée par "
+                       f"{approver}.", manifest.version)
 
     def _refused(self, state: State, version: str | None, reason: str, *, reject: bool = True) -> Outcome:
         if version is not None and reject:
@@ -197,7 +212,7 @@ class Updater:
         return Outcome("refused", text, version)
 
     # --- steps 5 to 8: back up, switch, watch, notify ------------------------------------------------------
-    def switch(self, state: State, manifest: Manifest, key: str) -> Outcome:
+    def switch(self, state: State, manifest: Manifest, key: str, approver: str) -> Outcome:
         version = manifest.version
         previous = self.layout.current_version() or WORKCOPY
         db = Database(self.db_path)
@@ -235,7 +250,8 @@ class Updater:
             return Outcome("rolled_back", text, version)
         state.consecutive_failures = 0
         state.available = None
-        state.last_install = {"version": version, "at": _now(), "key_id": key, "commit": manifest.commit}
+        state.last_install = {"version": version, "at": _now(), "key_id": key, "commit": manifest.commit,
+                              "approved_by": approver}
         state.last_result = f"{version} installée"
         self.cleanup(state)
         notes = manifest.notes_fr.strip()

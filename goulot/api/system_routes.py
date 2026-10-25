@@ -103,6 +103,11 @@ def _update_checks(ctx: AppContext, now: datetime) -> list[Check]:
         checks.append(Check(OK, "Signature de la version",
                             f"{install['version']} installée le {install['at'][:10]}, signature vérifiée (clé "
                             f"{install['key_id']})"))
+        approver = install.get("approved_by")
+        checks.append(Check(OK, "Approbation de la version",
+                            f"{install['version']} approuvée sur GitHub par {approver}")
+                      if approver else Check(WARN, "Approbation de la version",
+                                             f"{install['version']} installée sans approbation enregistrée"))
         checks.append(Check(OK, "Audit des dépendances",
                             f"pip-audit et npm audit sans alerte à la publication de {install['version']}"))
     else:

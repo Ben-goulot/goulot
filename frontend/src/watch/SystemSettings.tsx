@@ -10,7 +10,7 @@ type Updates = {
   available: string | null;
   last_check: string | null;
   last_result: string;
-  last_install: { version?: string; at?: string; key_id?: string };
+  last_install: { version?: string; at?: string; key_id?: string; approved_by?: string };
   versions: string[];
   rejected: string[];
 };
@@ -68,7 +68,7 @@ export function SystemSettings() {
             {updates.last_install.version && (
               <li>
                 Dernière installation : <span className="mono">{updates.last_install.version}</span> le {day(updates.last_install.at)},
-                signature vérifiée (clé <span className="mono">{updates.last_install.key_id}</span>)
+                signature vérifiée (clé <span className="mono">{updates.last_install.key_id}</span>){updates.last_install.approved_by && `, approuvée par ${updates.last_install.approved_by}`}
               </li>
             )}
             <li>
