@@ -28,6 +28,19 @@ from goulot.updater.restore import RestoreError
 from goulot.updater.state import Layout, load_state
 from tests.conftest import setup_vault
 
+LOCK = b"""version = 1
+[[package]]
+name = "goulot"
+version = "0.1.0"
+source = { virtual = "." }
+
+[[package]]
+name = "idna"
+version = "3.10"
+source = { registry = "https://pypi.org/simple" }
+wheels = [{ url = "https://files.pythonhosted.org/packages/aa/bb/idna-3.10-py3-none-any.whl", hash = "sha256:00" }]
+"""
+
 
 def _keypair() -> tuple[Ed25519PrivateKey, tuple[str, str]]:
     private = Ed25519PrivateKey.generate()
@@ -53,6 +66,7 @@ def _release(version: str, key: Ed25519PrivateKey, *, archive: bytes | None = No
         "goulot/__init__.py": f'__version__ = "{version}"\n'.encode(),
         "pyproject.toml": b"[project]\nname = 'goulot'\n",
         "frontend/dist/index.html": b"<!doctype html>",
+        "uv.lock": LOCK,
     })
     manifest = {"name": "goulot", "version": version, "commit": "a" * 40, "created_at": "2026-10-22T04:00:00+00:00",
                 "sha256": hashlib.sha256(data).hexdigest(), "size": len(data),
@@ -365,3 +379,22 @@ def test_key_rotation(tmp_path: Path) -> None:
     namespace: dict[str, object] = {}
     exec(compile(trust.read_text(encoding="utf-8"), str(trust), "exec"), namespace)  # noqa: S102 - our own file
     assert namespace["TRUSTED_KEYS"] == (old_pub, new_pub)
+
+
+@pytest.mark.parametrize("source", [
+    'source = { registry = "https://evil.example/simple" }',
+    'source = { git = "https://github.com/evil/idna" }',
+    'source = { path = "/tmp/idna" }',
+])
+def test_update_lock_outside_pypi_rejected(updater: Updater, fake: Fake, settings: Settings,
+                                           signer: tuple[Ed25519PrivateKey, tuple[str, str]], source: str) -> None:
+    """A signed release whose uv.lock points outside PyPI is refused before uv runs (CLAUDE.md, rule 6)."""
+    lock = LOCK.replace(b'source = { registry = "https://pypi.org/simple" }', source.encode())
+    fake.offer = _release("0.5.0", signer[0], archive=_tar({"goulot/__init__.py": b"", "uv.lock": lock}))
+    outcome = updater.run()
+    assert outcome.status == "refused" and "uv.lock" in outcome.message
+    assert not any(c.startswith("sync") for c in fake.calls)
+    assert Layout(settings.home).installed() == []
+    wheel_elsewhere = LOCK.replace(b"https://files.pythonhosted.org/", b"https://evil.example/")
+    fake.offer = _release("0.5.1", signer[0], archive=_tar({"goulot/__init__.py": b"", "uv.lock": wheel_elsewhere}))
+    assert updater.run().status == "refused" and not any(c.startswith("sync") for c in fake.calls)

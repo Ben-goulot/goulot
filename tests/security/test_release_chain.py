@@ -42,6 +42,9 @@ def test_workflow_permissions_least_privilege() -> None:
     for forbidden in ("actions/checkout", "setup-uv", "setup-node", "npm ", "uv ", "pip "):
         assert forbidden not in text, forbidden
     assert "gh attestation verify" in text and "openssl pkeyutl -sign" in text and "shred -u" in text
+    raw = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    assert "--source-ref refs/heads/main" in raw and "--deny-self-hosted-runners" in raw
+    assert '--target "$GITHUB_SHA"' in raw  # the release is tied to the commit of this run, not to an artifact
 
 
 def test_dependabot_cooldown() -> None:

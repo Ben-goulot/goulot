@@ -108,6 +108,7 @@ class Updater:
             shutil.rmtree(partial, ignore_errors=True)
             raise
         partial.rename(target)
+        archive.check_lock_sources(target)
         self.hooks.sync_env(target)
         return target
 
@@ -210,6 +211,7 @@ class Updater:
             try:
                 self._put_back(previous, backup_path, version)
             except RestoreError as restore_exc:
+                self.hooks.start_app()  # `current` still names the previous version: it starts again
                 return self._rollback_failed(state, version, restore_exc)
             self.hooks.start_app()
             return self._refused(state, version, f"migration impossible ({type(exc).__name__})")

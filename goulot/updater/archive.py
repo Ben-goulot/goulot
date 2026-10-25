@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import os
 import tarfile
+import tomllib
 from pathlib import Path, PurePosixPath
 
 from goulot.security.fs import DIR_MODE, FILE_MODE
@@ -17,6 +18,8 @@ from goulot.updater.manifest import UpdateRefused
 
 MAX_MEMBERS = 20_000
 MAX_EXTRACTED_BYTES = 600 * 1024 * 1024
+PYPI_REGISTRY = "https://pypi.org/simple"
+PYPI_FILES = "https://files.pythonhosted.org/"
 
 
 def _safe_parts(name: str) -> tuple[str, ...]:
@@ -85,3 +88,25 @@ def extract(archive: bytes, dest: Path) -> None:
                         raise UpdateRefused("archive tronquée")
                     out.write(chunk)
                     remaining -= len(chunk)
+
+
+def check_lock_sources(release: Path) -> int:
+    """Before `uv sync`: every locked package comes from PyPI, as a file with a hash on files.pythonhosted.org, or
+    is the project itself. A lock pointing anywhere else (another index, a git repository, a local path, an URL)
+    is refused before anything is downloaded (CLAUDE.md, rule 6: the only exception is PyPI)."""
+    try:
+        lock = tomllib.loads((release / "uv.lock").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise UpdateRefused("uv.lock absent ou illisible") from exc
+    files = 0
+    for package in lock.get("package", []):
+        source = package.get("source")
+        if source == {"virtual": "."}:
+            continue
+        if source != {"registry": PYPI_REGISTRY}:
+            raise UpdateRefused(f"uv.lock : source refusée pour {str(package.get('name'))[:40]}")
+        for f in ([package["sdist"]] if "sdist" in package else []) + list(package.get("wheels", [])):
+            if not str(f.get("url", "")).startswith(PYPI_FILES) or not str(f.get("hash", "")).startswith("sha256:"):
+                raise UpdateRefused(f"uv.lock : fichier refusé pour {str(package.get('name'))[:40]}")
+            files += 1
+    return files

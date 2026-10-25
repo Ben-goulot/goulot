@@ -129,6 +129,8 @@ def release_check(settings: Settings, release_dir: Path) -> list[str]:
     if not (settings.frontend_dist / "index.html").exists():
         raise HealthFailure("interface absente de la version")
     ensure_private_dir(settings.home)
+    for stale in settings.home.glob("healthcheck-*"):  # left by a test that was interrupted
+        shutil.rmtree(stale, ignore_errors=True)
     work = Path(tempfile.mkdtemp(prefix="healthcheck-", dir=settings.home))
     try:
         ensure_private_dir(work)

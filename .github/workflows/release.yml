@@ -126,8 +126,10 @@ jobs:
         run: |
           archive="goulot-$VERSION.tar.gz"
           gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY" \
-            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-ref refs/heads/main --source-digest "$GITHUB_SHA" --deny-self-hosted-runners
           test "$(jq -r .version meta.json)" = "$VERSION"
+          test "$(jq -r .commit meta.json)" = "$GITHUB_SHA"
           test "$(sha256sum "$archive" | cut -d ' ' -f 1)" = "$(jq -r .sha256 meta.json)"
           test "$(stat -c %s "$archive")" = "$(jq -r .size meta.json)"
       - name: Manifest and signature
@@ -139,7 +141,7 @@ jobs:
           archive="goulot-$VERSION.tar.gz"
           jq -n \
             --arg version "$VERSION" \
-            --arg commit "$(jq -r .commit meta.json)" \
+            --arg commit "$GITHUB_SHA" \
             --arg created_at "$(jq -r .created_at meta.json)" \
             --arg sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
             --argjson size "$(stat -c %s "$archive")" \
@@ -163,6 +165,6 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         working-directory: release
         run: |
-          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$(jq -r .commit meta.json)" \
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "Goulot $VERSION" --notes-file notes_fr.txt \
             "goulot-$VERSION.tar.gz" manifest.json manifest.json.sig
