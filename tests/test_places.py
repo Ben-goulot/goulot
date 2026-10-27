@@ -218,7 +218,7 @@ def test_chain_api_gives_positions_and_city_search(client: Any, ctx: AppContext)
     assert client.put("/api/settings/delivery-zone", json={"zone": "mars"}, **put).status_code == 422
 
 
-def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch, settings: Any) -> None:
+def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch, settings: Any, tmp_path: Path) -> None:
     import httpx2
 
     from goulot.cli import check_sources
@@ -229,6 +229,7 @@ def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch
     answer = {"features": [{"attributes": {"portname": n}} for n in names]}
     monkeypatch.setattr(check_sources, "build_client", lambda allowlist: build_client(
         Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(lambda r: httpx2.Response(200, json=answer))))
+    monkeypatch.setattr(check_sources, "SAMPLES", tmp_path)
     unknown, missing = check_sources.portwatch_names(settings)
     assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"]
 

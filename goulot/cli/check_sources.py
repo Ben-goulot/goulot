@@ -85,19 +85,23 @@ def run(settings: Settings, today: date | None = None) -> list[dict[str, object]
     return report
 
 
-def portwatch_names(settings: Settings) -> tuple[list[str], list[str]]:
-    """Names of the IMF PortWatch chokepoints compared with the embedded table (goulot/data/chokepoints.json):
-    (in PortWatch but not in the table, in the table but not in PortWatch)."""
+def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list[str], list[str]]:
+    """Names of the IMF PortWatch chokepoints of the last days compared with the embedded table
+    (goulot/data/chokepoints.json): (in PortWatch but not in the table, in the table but not in PortWatch). The answer
+    is kept in .samples/ like the others."""
     from goulot.chain.places import chokepoints
     from goulot.collect.sources import PORTWATCH
 
+    since = (today or date.today()) - timedelta(days=10)
     client = build_client(load_allowlist(settings.config_dir))
     try:
-        result = fetch(client, PORTWATCH, params={"where": "1=1", "outFields": "portname",
-                                                  "returnDistinctValues": "true", "returnGeometry": "false",
-                                                  "f": "json"})
+        result = fetch(client, PORTWATCH, params={"where": f"date >= DATE '{since.isoformat()}'",
+                                                  "outFields": "portid,portname", "returnGeometry": "false",
+                                                  "resultRecordCount": "2000", "f": "json"}, max_bytes=MAX_BYTES)
     finally:
         client.close()
+    SAMPLES.mkdir(exist_ok=True)
+    (SAMPLES / "portwatch_noms.bin").write_bytes(result.content)
     found = {str(f["attributes"]["portname"]) for f in json.loads(result.content).get("features", [])}
     table = {c["portwatch_name"] for c in chokepoints().values()}
     return sorted(found - table), sorted(table - found)
