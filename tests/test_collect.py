@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -77,6 +78,10 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
     ("services9.arcgis.com", sources.PORTWATCH.split("arcgis.com", 1)[1]): (200, json.dumps(portwatch_json()).encode()),
     ("www.pegelonline.wsv.de", "/webservices/rest-api/v2/stations/KAUB/W/currentmeasurement.json"):
         (200, json.dumps({"timestamp": "2026-10-18T06:00:00+02:00", "value": 82}).encode()),
+    ("mapping.emergency.copernicus.eu", "/activations/api/activations/"):
+        (200, (Path(__file__).parent / "fixtures" / "sources" / "copernicus_activations.json").read_bytes()),
+    ("eur-lex.europa.eu", "/EN/display-feed.rss"):
+        (200, (Path(__file__).parent / "fixtures" / "sources" / "eurlex_oj_l.xml").read_bytes()),
     ("www.federalregister.gov", "/api/v1/documents.json"): (200, json.dumps({"results": [
         {"title": "Antidumping duty on acrylonitrile from Korea", "abstract": "HTS 2926.10.00", "type": "Notice",
          "html_url": "https://www.federalregister.gov/d/1", "publication_date": "2026-10-17"}]}).encode()),

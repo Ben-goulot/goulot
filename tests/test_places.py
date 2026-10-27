@@ -234,16 +234,16 @@ def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch
     assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"]
 
 
-def test_candidate_sources_are_tried_from_check_sources_only() -> None:
-    """The three hosts approved on 27 October 2026 are asked by the dev check, not by the app's watch."""
+def test_sources_of_27_october_in_the_app_and_echa_left_aside() -> None:
+    """Copernicus EMS and EUR-Lex answered from the Mac and joined the watch; ECHA answers robots with a
+    JavaScript challenge: left aside, asked by nothing (docs/DECISIONS.md, 27 October 2026)."""
     from datetime import date
 
     from goulot.cli import check_sources
     from goulot.net.allowlist import load_allowlist
     from goulot.settings import REPO_ROOT
 
-    hosts = {"echa.europa.eu", "mapping.emergency.copernicus.eu", "eur-lex.europa.eu"}
-    targets = {url.split("/")[2] for _, url in check_sources.targets(date(2026, 10, 27))}
-    assert hosts <= targets and hosts <= set(check_sources.EXTRA_HOSTS)
     app = load_allowlist(REPO_ROOT / "config")
-    assert not any(app.allows(h) for h in hosts)
+    assert app.allows("mapping.emergency.copernicus.eu") and app.allows("eur-lex.europa.eu")
+    assert not app.allows("echa.europa.eu") and "echa.europa.eu" not in check_sources.EXTRA_HOSTS
+    assert not any("echa.europa.eu" in url for _, url in check_sources.targets(date(2026, 10, 27)))

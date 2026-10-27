@@ -12,7 +12,7 @@ classes:
 official:
   suffixes: [".gov", ".gouv.fr", ".gov.cn", ".gov.uk", ".europa.eu", ".gob.cl", ".gob.mx", ".go.jp", ".go.kr", ".gc.ca",
              ".gov.au", ".gob.ar", ".gov.br"]
-  domains: [imf.org, worldbank.org, iea.org, gdacs.org, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn,
+  domains: [imf.org, worldbank.org, iea.org, gdacs.org, copernicus.eu, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn,
             onderzoeksraad.nl]  # Onderzoeksraad voor Veiligheid : bureau néerlandais d'enquête sur les accidents
   # Les domaines des producteurs d'une chaîne validée s'ajoutent dans la base locale, après accord de l'utilisateur.
 

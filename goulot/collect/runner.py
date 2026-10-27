@@ -162,6 +162,8 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "imf_portwatch_chokepoints": lambda c, s: sources.portwatch(c, now),
         "pegelonline": lambda c, s: sources.pegel(c),
         "federal_register": lambda c, s: sources.federal_register(c, terms, s) if terms else [],
+        "copernicus_ems": lambda c, s: sources.copernicus(c, now),
+        "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
     }
 
 
@@ -229,7 +231,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
         country_nodes |= private.needs_material if private else set()
     result = CycleResult(cycle_id, ok=False)
     families_ok: dict[str, bool] = {}
-    fetched_items: dict[str, list[Item]] = {}  # answers the world hot spots need (GDACS)
+    fetched_items: dict[str, list[Item]] = {}  # answers the world hot spots need (GDACS, Copernicus)
     for source_id, fetch in fetchers.items():
         if not enabled(source_id):
             continue
@@ -248,7 +250,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 items, error = exc.items[:MAX_ITEMS_PER_SOURCE], f"SourceError: {exc}"
                 log.warning("source failed midway: source=%s error=%s kept_items=%s", source_id, error, len(items))
             fetched = len(items)
-            if source_id == "gdacs" and not error:
+            if source_id in ("gdacs", "copernicus_ems") and not error:
                 fetched_items[source_id] = items
             with db.transaction() as conn:
                 for item in items:

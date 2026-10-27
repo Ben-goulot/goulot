@@ -36,6 +36,15 @@ PORTWATCH = ("https://services9.arcgis.com/weJ1QsnbMYJlCHdG/ArcGIS/rest/services
              "FeatureServer/0/query")
 PEGEL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{station}/W/currentmeasurement.json"
 FEDERAL_REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
+COPERNICUS_EMS = "https://mapping.emergency.copernicus.eu/activations/api/activations/"
+COPERNICUS_PAGE = "https://mapping.emergency.copernicus.eu/activations/{code}/"
+COPERNICUS_CREDIT = "© Union européenne, Copernicus Emergency Management Service"
+COPERNICUS_DAYS = 30
+# Copernicus categories as GDACS event types, for the size of a zone and the type of an event.
+COPERNICUS_TYPES = {"flood": "FL", "fire": "WF", "wildfire": "WF", "earthquake": "EQ", "storm": "TC", "wind": "TC",
+                    "volcano": "VO", "volcanic-activity": "VO", "tsunami": "TS", "drought": "DR",
+                    "industrial-accident": "IND", "mass-movement": "LS", "landslide": "LS"}
+EURLEX_OJ_L = "https://eur-lex.europa.eu/EN/display-feed.rss?rssId=165"
 
 GDELT_MAX_WINDOW = timedelta(days=90)
 # VIIRS on NOAA-21 and NOAA-20: Suomi NPP observations end on 2 November 2026 (FIRMS notice of October 2026).
@@ -354,6 +363,66 @@ def federal_register(client: httpx2.Client, terms: list[str], since: datetime) -
             source="federal_register", kind="policy", url=link, title=clean_text(d.get("title"), 300),
             published_at=parse_datetime(d.get("publication_date")), excerpt=clean_text(d.get("abstract")),
             lang="en", domain=domain_of(link), details={"type": str(d.get("type") or "")[:40]},
+        ))
+    return items
+
+
+def _wkt_point(text: str) -> tuple[float, float] | None:
+    """(lat, lon) of « POINT (lon lat) »."""
+    parts = text.replace("POINT", "").strip(" ()").split()
+    try:
+        lon, lat = float(parts[0]), float(parts[1])
+    except (IndexError, ValueError):
+        return None
+    return (lat, lon) if -90 <= lat <= 90 and -180 <= lon <= 180 else None
+
+
+def copernicus(client: httpx2.Client, now: datetime) -> list[Item]:
+    """Rapid Mapping activations of the last 30 days, newest first. The list gives each zone's centre, not its
+    outline. `closed` means the mapping is done, not the event over: it is kept as a detail only."""
+    data = _json(client, COPERNICUS_EMS, {"limit": "50", "offset": "0"})
+    items = []
+    for a in (data or {}).get("results", []) or []:
+        code = str(a.get("code") or "")[:20]
+        when = parse_datetime(a.get("activationTime"))
+        where = _wkt_point(str(a.get("centroid") or ""))
+        if not code.isalnum() or when is None or where is None:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=UTC)
+        if now - when > timedelta(days=COPERNICUS_DAYS):
+            continue
+        category = a.get("category") or {}
+        slug = str(category.get("slug", "") if isinstance(category, dict) else "")[:30]
+        countries = ", ".join(str(c.get("short_name", "")) for c in a.get("countries") or [] if isinstance(c, dict))
+        items.append(Item(
+            source="copernicus_ems", kind="hazard", url=COPERNICUS_PAGE.format(code=code),
+            title=clean_text(f"{code} : {a.get('name') or ''}", 300), published_at=when, lat=where[0], lon=where[1],
+            domain="mapping.emergency.copernicus.eu", key=f"cems:{code}",
+            details={"event_type": COPERNICUS_TYPES.get(slug, "OT"), "category": slug, "country": countries[:80],
+                     "closed": str(a.get("closed")).lower() == "true", "credit": COPERNICUS_CREDIT},
+        ))
+    return items
+
+
+def eurlex(client: httpx2.Client, since: datetime) -> list[Item]:
+    """Acts of the Official Journal, L series (RSS, 100 latest). Every act is offered to the rule filter: only those
+    naming a watched material, input, site or customs code go further."""
+    root = _xml(client, EURLEX_OJ_L)
+    items = []
+    for it in root.iter("item"):
+        title = clean_text(_text(it, "title"), 400)
+        celex = title.split(":", 2)[1].strip() if title.startswith("CELEX:") else ""
+        if not celex.isalnum():
+            continue
+        published = parse_datetime(_text(it, "pubDate"))
+        if published and published < since:
+            continue
+        url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}"
+        items.append(Item(
+            source="eurlex_oj_l", kind="policy", url=url, title=title.split(":", 2)[2].strip()[:300],
+            published_at=published, excerpt=clean_text(_text(it, "description")), lang="en",
+            domain="eur-lex.europa.eu", key=f"eurlex:{celex}", details={"celex": celex},
         ))
     return items
 

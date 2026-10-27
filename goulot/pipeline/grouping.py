@@ -34,7 +34,8 @@ TYPE_FAMILIES = (
     {"labor_action", "civil_unrest", "armed_conflict"},
 )
 NAMED_KINDS = {"company", "site", "port", "chokepoint"}
-HAZARD_TYPES = {"FL": "natural_disaster", "EQ": "natural_disaster", "VO": "natural_disaster",
+HAZARD_TYPES = {"IND": "industrial_outage", "LS": "natural_disaster", "TS": "natural_disaster",
+                "FL": "natural_disaster", "EQ": "natural_disaster", "VO": "natural_disaster",
                 "DR": "extreme_weather", "TC": "extreme_weather", "WF": "industrial_outage"}
 
 

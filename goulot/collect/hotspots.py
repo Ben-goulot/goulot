@@ -1,5 +1,6 @@
 """World hot spots (docs/SPEC.md, section 8, « Zones d'alerte »): chokepoints whose traffic collapsed (IMF
-PortWatch), chokepoints the general press still reports in crisis (Google News), and orange or red GDACS alerts.
+PortWatch), chokepoints the general press still reports in crisis (Google News), orange or red GDACS alerts and the
+Copernicus Rapid Mapping activations of the last 30 days.
 Shown on every map, masked at will; they never change a verdict by themselves: a flow or a node of the chain inside
 one is only shown as exposed.
 
@@ -38,7 +39,8 @@ MIN_BASELINE_DAYS = 180
 KEEP_YEARS = 4
 PAGE = 2000
 MAX_PAGES = 30
-GDACS_RADIUS_KM = {"EQ": 100, "TC": 300, "FL": 100, "VO": 50, "WF": 50, "DR": 300, "TS": 150}
+GDACS_RADIUS_KM = {"EQ": 100, "TC": 300, "FL": 100, "VO": 50, "WF": 50, "DR": 300, "TS": 150, "IND": 30, "LS": 30,
+                   "OT": 50}
 GDACS_LEVELS = ("orange", "red")
 PORTWATCH_PAGE_URL = "https://portwatch.imf.org/pages/chokepoints"
 NEWS_STRAITS = ("hormuz", "bab_el_mandeb", "suez", "malacca", "panama", "bosporus", "gibraltar", "taiwan", "kerch",
@@ -208,6 +210,23 @@ def gdacs_hotspots(items: list[Item]) -> list[dict[str, Any]]:
     return out
 
 
+def copernicus_hotspots(items: list[Item]) -> list[dict[str, Any]]:
+    """Copernicus Rapid Mapping activations of the last 30 days: a circle around each zone's centre."""
+    out = []
+    for it in items:
+        if it.lat is None or it.lon is None or not it.key:
+            continue
+        kind = str(it.details.get("event_type", "OT"))
+        out.append({
+            "id": f"copernicus:{it.key.removeprefix('cems:')}", "kind": "copernicus", "label": clean_text(it.title, 60),
+            "status": "activation Copernicus", "lat": it.lat, "lon": it.lon,
+            "rings": [places.circle(it.lat, it.lon, GDACS_RADIUS_KM.get(kind, 50))],
+            "source_url": it.url, "source_name": sources.COPERNICUS_CREDIT,
+            "started_at": (it.published_at or datetime.now(UTC)).date().isoformat(),
+        })
+    return out
+
+
 def _replace(conn: sqlite3.Connection, kind: str, spots: list[dict[str, Any]], now: datetime) -> None:
     conn.execute("DELETE FROM hotspots WHERE kind = ?", (kind,))
     conn.executemany(
@@ -224,6 +243,8 @@ def refresh(db: Database, http: httpx2.Client, now: datetime, fetched: dict[str,
     with db.transaction() as conn:
         if "gdacs" in fetched:
             _replace(conn, "gdacs", gdacs_hotspots(fetched["gdacs"]), now)
+        if "copernicus_ems" in fetched:
+            _replace(conn, "copernicus", copernicus_hotspots(fetched["copernicus_ems"]), now)
     if enabled("google_news_rss"):
         try:
             headlines = [it for q, lang, cc in news_queries() for it in sources.google_news(http, q, lang, cc)]

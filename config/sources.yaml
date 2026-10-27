@@ -69,6 +69,14 @@ sources:
     auth: none
     frequency: 3h
     use: cyclones, inondations, séismes, volcans, sécheresses
+  - id: copernicus_ems
+    enabled: true
+    family: hazard
+    url: https://mapping.emergency.copernicus.eu/activations/api/activations/
+    auth: none
+    frequency: 3h
+    use: activations de la cartographie rapide Copernicus (inondations, incendies, séismes, accidents industriels) des 30 derniers jours ; centre de la zone, sans contour
+    notes: vérifié depuis le Mac le 27 octobre 2026 (JSON paginé, count/next/results, sans clé) ; réutilisation libre en indiquant la source, « © Union européenne, Copernicus Emergency Management Service »
   - id: usgs_earthquakes
     enabled: true
     family: hazard
@@ -117,6 +125,14 @@ sources:
     auth: none
     frequency: daily
     use: droits de douane et contrôles américains
+  - id: eurlex_oj_l
+    enabled: true
+    family: policy
+    url: https://eur-lex.europa.eu/EN/display-feed.rss?rssId=165
+    auth: none
+    frequency: daily
+    use: actes du Journal officiel de l'UE, série L (droits antidumping et compensateurs, mesures restrictives, modifications de REACH), filtrés par les règles de veille sur le Mac
+    notes: vérifié depuis le Mac le 27 octobre 2026 (flux RSS des 100 derniers actes, sans compte) ; réutilisation libre en indiquant la source (décision 2011/833/UE)
   - id: ofac_sanctions
     enabled: true
     family: policy

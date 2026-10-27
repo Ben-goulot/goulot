@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>EUR-Lex - Acts of the Official Journal L (fictitious test feed)</title>
+<item><title>CELEX:32026R9001: Commission Implementing Regulation (EU) 2026/9001 imposing a definitive anti-dumping duty on imports of acrylonitrile originating in the Republic of Korea (fictitious)</title>
+<link>https://eur-lex.europa.eu/./legal-content/AUTO/?uri=CELEX:32026R9001</link><pubDate>Fri, 17 Oct 2026 00:00:00 +0200</pubDate><description>Anti-dumping, CN code 2926 10 00</description></item>
+<item><title>CELEX:32026D9002: Council Decision (CFSP) 2026/9002 on an assistance measure (fictitious)</title>
+<link>https://eur-lex.europa.eu/./legal-content/AUTO/?uri=CELEX:32026D9002</link><pubDate>Fri, 17 Oct 2026 00:00:00 +0200</pubDate></item>
+<item><title>Not an act &lt;script&gt;alert(1)&lt;/script&gt;</title><link>https://example.org/x</link></item>
+<item><title>CELEX:32025R0001: Commission Regulation (EU) 2025/1 on acrylonitrile, too old (fictitious)</title>
+<link>https://eur-lex.europa.eu/./legal-content/AUTO/?uri=CELEX:32025R0001</link><pubDate>Thu, 02 Jan 2025 00:00:00 +0100</pubDate></item>
+</channel></rss>
