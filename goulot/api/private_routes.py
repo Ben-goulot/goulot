@@ -17,7 +17,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext
-from goulot.chain import store
+from goulot.chain import lifecycle, store
 from goulot.collect.runner import freshness
 from goulot.ledger import chain as ledger_chain
 from goulot.ledger import personal as ledger_personal
@@ -45,6 +45,10 @@ MAX_CSV_CHARS = 1_000_000
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class DeleteBody(_Strict):
+    name: str = Field(max_length=300)
 
 
 class CsvBody(_Strict):
@@ -174,6 +178,22 @@ def build_router(ctx: AppContext) -> APIRouter:
                          (material_id,))
         recompute()
         return {"removed": int(removed)}
+
+    @router.post("/private/materials/{material_id}/delete")
+    def material_delete(material_id: str, body: DeleteBody) -> dict[str, bool]:
+        """Final deletion (docs/SPEC.md, section 2): behind the vault, so that Ma chaîne, signals, quotes, purchases
+        and coverage of the material are erased with it, whether or not they exist. The ledger is never touched."""
+        material(material_id)
+        guarded(lambda: records.erase_material(ctx.db, ctx.vault, material_id))
+        try:
+            with ctx.db.transaction() as conn:
+                lifecycle.delete(conn, material_id, body.name)
+        except lifecycle.LifecycleError as exc:
+            raise HTTPException(409, str(exc)) from None
+        with ctx.db.connect() as conn:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # no copy of the deleted pages left in the WAL
+        recompute()
+        return {"ok": True}
 
     @router.post("/private/materials/{material_id}/my-chain/import")
     def my_chain_import(material_id: str, body: CsvBody) -> dict[str, Any]:

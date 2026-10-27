@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext, MissingAPIKey
-from goulot.chain import places, service, store
+from goulot.chain import lifecycle, places, service, store
 from goulot.chain.delays import delays_to_material
 from goulot.chain.identify import IdentificationError, identify
 from goulot.chain.quote import confirm_quote, reconstruction_quote, save_quote
@@ -222,6 +222,28 @@ def build_router(ctx: AppContext) -> APIRouter:
         except ChainStateError as exc:
             raise HTTPException(409, str(exc)) from None
         return {"ok": True}
+
+    @router.post("/materials/{material_id}/archive")
+    def material_archive(material_id: str) -> dict[str, bool]:
+        """« Arrêter le suivi »: reversible; no query and no AI call for the material any more."""
+        material = _material(material_id)
+        try:
+            with ctx.db.transaction() as conn:
+                lifecycle.archive(conn, material["id"])
+        except lifecycle.LifecycleError as exc:
+            raise HTTPException(409, str(exc)) from None
+        return {"ok": True}
+
+    @router.post("/materials/{material_id}/resume")
+    def material_resume(material_id: str) -> dict[str, int]:
+        """« Reprendre le suivi »: the rules of the validated chain again, without a new reconstruction."""
+        material = _material(material_id)
+        try:
+            with ctx.db.transaction() as conn:
+                rules = lifecycle.resume(conn, material["id"])
+        except lifecycle.LifecycleError as exc:
+            raise HTTPException(409, str(exc)) from None
+        return {"rules": rules}
 
     @router.get("/places/cities")
     def city_search(q: str = "", country: str = "") -> dict[str, Any]:

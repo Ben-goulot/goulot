@@ -71,7 +71,10 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] 
     the analysis even under 0.5 % of world supply, and pass the crisis reserve from severity 2 (CLAUDE.md, Budget)."""
     out = []
     anomalies = anomalous_materials(conn)
-    for e in conn.execute("SELECT * FROM events WHERE analysis_state NOT IN ('queued') ORDER BY first_seen_at"):
+    # An archived material gets no AI call (docs/SPEC.md, section 2).
+    for e in conn.execute("SELECT e.* FROM events e JOIN materials m ON m.id = e.material_id "
+                          "WHERE m.status = 'validated' AND e.analysis_state NOT IN ('queued') "
+                          "ORDER BY e.first_seen_at"):
         priced = e["material_id"] in anomalies and e["confirmation"] == "confirmed"
         personal = e["id"] in weighs and (e["confirmation"] == "confirmed"
                                           or e["severity_hint"] >= analysis.URGENT_SEVERITY)

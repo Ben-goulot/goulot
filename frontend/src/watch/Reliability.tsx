@@ -105,6 +105,7 @@ export function Reliability(props: { materialId: string | null }) {
                 <td className="mono muted">{a.seq}</td>
                 <td className="mono">{a.at.slice(0, 10)}</td>
                 <td>
+                  {a.material_deleted && <span className="badge neutral">matière supprimée</span>}{" "}
                   {a.kind === "verdict" && (a.label ?? a.verdict)}
                   {a.kind === "pressure" && `Pression ${signed(a.pressure ?? 0, 0)}`}
                   {a.kind === "hypothesis" &&

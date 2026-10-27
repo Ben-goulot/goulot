@@ -10,6 +10,7 @@ next ones complete it.
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from collections.abc import Callable
@@ -152,14 +153,25 @@ def catch_up_links(db: Database) -> int:
     return len(missing)
 
 
+def watched_instruments(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Instruments of the validated materials, and of the archived ones while one of their advices waits for an
+    outcome (silence is never a success: without prices the advice could only end « non résolu »)."""
+    from goulot.chain import lifecycle
+
+    kept = [r[0] for r in conn.execute("SELECT id FROM materials WHERE status = 'archived'")
+            if lifecycle.keeps_prices(conn, r[0])]
+    return conn.execute(
+        "SELECT DISTINCT i.* FROM instruments i JOIN instrument_links l ON l.instrument_id = i.id "
+        "JOIN materials m ON m.id = l.material_id WHERE m.status = 'validated' "
+        "OR m.id IN (SELECT value FROM json_each(?))", (json.dumps(kept),)).fetchall()
+
+
 def run(db: Database, client: httpx2.Client, secret: SecretGetter, now: datetime | None = None) -> dict[str, int]:
     """Fetch every due series linked to a validated material. Returns points written per instrument."""
     now = now or datetime.now(UTC)
     catch_up_links(db)
     with db.connect() as conn:
-        rows = conn.execute(
-            "SELECT DISTINCT i.* FROM instruments i JOIN instrument_links l ON l.instrument_id = i.id "
-            "JOIN materials m ON m.id = l.material_id WHERE m.status = 'validated'").fetchall()
+        rows = watched_instruments(conn)
     written: dict[str, int] = {}
     if enabled(nbs.SOURCE) and any(r["source"] == nbs.SOURCE for r in rows) and any(
             r["source"] == nbs.SOURCE and _due(r["last_fetch_at"], "tenday", now) for r in rows):

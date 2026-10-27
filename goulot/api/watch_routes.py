@@ -159,7 +159,8 @@ def build_router(ctx: AppContext) -> APIRouter:
                 out.append({**m, "verdict": _verdict(conn, m["id"]), "personal": locked_summary(ctx, m["id"]),
                             "watch": material_watch(conn, m, at),
                             "series": {**series, "points": series["points"][-40:]} if series else None})
-        return {"freshness": fresh, "materials": out}
+            archived = [{**m, "open_advice": outcomes.open_advice(conn, m["id"])} for m in store.list_archived(conn)]
+        return {"freshness": fresh, "materials": out, "archived": archived}
 
     @router.get("/materials/{material_id}/sheet")
     def sheet(material_id: str) -> dict[str, Any]:
@@ -299,8 +300,12 @@ def build_router(ctx: AppContext) -> APIRouter:
             entries = chain.entries(conn, material_id=material_id)
             by_seq = {e["seq"]: e for e in entries}
             outcome_of = {e["of_seq"]: e for e in entries if e["kind"] == "outcome"}
-            advices = [{**e, "outcome": outcome_of.get(e["seq"])} for e in entries
-                       if e["kind"] in ("verdict", "hypothesis", "pressure", "missed_move")]
+            names = {r[0]: r[1] for r in conn.execute("SELECT id, name FROM materials")}
+            # A deleted material keeps its advices in the ledger (CLAUDE.md, rule 12): shown as such.
+            advices = [{**e, "outcome": outcome_of.get(e["seq"]),
+                        "material_name": names.get(e["material_id"], "matière supprimée") if e["material_id"] else "",
+                        "material_deleted": bool(e["material_id"]) and e["material_id"] not in names}
+                       for e in entries if e["kind"] in ("verdict", "hypothesis", "pressure", "missed_move")]
             series = _series_payload(prices.best_series(conn, material_id), 12) if material_id else None
         return {
             "ledger": {"ok": check.ok, "entries": check.entries, "head": check.head[:16], "problem": check.problem,

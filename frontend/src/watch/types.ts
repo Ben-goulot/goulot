@@ -216,6 +216,8 @@ export type LedgerAdvice = {
   probability?: number;
   day?: string;
   outcome: { result: string; observed_pct: number | null; on_index: boolean; lead_weeks: number | null } | null;
+  material_name?: string;
+  material_deleted?: boolean;
 };
 
 export type Reliability = {

@@ -67,6 +67,14 @@ def _resolved(conn: sqlite3.Connection) -> set[int]:
     return {int(e["of_seq"]) for e in chain.entries(conn, kinds=("outcome",))}
 
 
+def open_advice(conn: sqlite3.Connection, material_id: str) -> int:
+    """Advices of a material still waiting for their outcome (« Non vérifié » is not an advice)."""
+    done = _resolved(conn)
+    return sum(1 for e in chain.entries(conn, material_id=material_id, kinds=("verdict", "hypothesis", "pressure"))
+               if e["seq"] not in done and not e.get("superseded")
+               and not (e["kind"] == "verdict" and e.get("verdict") not in ("ant", "pot", "ras")))
+
+
 def resolve(conn: sqlite3.Connection, today: date, series_for: SeriesFor, at: datetime | None = None) -> int:
     """Append an outcome to every matured advice. Returns the number of outcomes written."""
     done = _resolved(conn)

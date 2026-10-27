@@ -3,6 +3,7 @@ import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
 import { PersonalCard } from "../private/PersonalCard";
 import { Comparables } from "./Comparables";
+import { DeleteMaterial, setWatched } from "./Lifecycle";
 import { ChainMap, type MapData } from "../map/ChainMap";
 import { EVENT_LOOK } from "../map/style";
 import { Pressure } from "./Markets";
@@ -90,11 +91,19 @@ export function Sheet(props: {
           {data.freshness.last_ok_cycle ? `Vérifié le ${new Date(data.freshness.last_ok_cycle).toLocaleString("fr-FR")}` : "Jamais vérifié"}
         </span>
         {v?.break_in ? <span className="badge neutral">rodage</span> : null}
+        {data.material.status === "validated" && (
+          <button className="tab" onClick={async () => setMessage(await setWatched(props.materialId, false))}>
+            Arrêter le suivi
+          </button>
+        )}
       </header>
       {message && <p className="banner">{message}</p>}
 
       <div className="sheet-grid">
         <section className="panel">
+        <DeleteMaterial materialId={props.materialId} name={data.material.name} onDone={props.onBack} />
+      </section>
+      <section className="panel">
           <div className="row spread">
             <h3 className="title">{data.series ? `${clip(data.series.name, 60)} · ${RANK_LABEL[data.series.rank]}` : "Aucune série de prix"}</h3>
             {data.series && <span className={`mono ${(data.series.change_pct ?? 0) >= 0 ? "up" : "down"}`}>{signed(data.series.change_pct)} % sur 6 mois</span>}

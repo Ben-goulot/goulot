@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
+import { DeleteMaterial, setWatched } from "./Lifecycle";
 import { RANK_LABEL, signed, verdictClass, watchLabel, type Freshness, type MarketRow, type SeriesPayload } from "./types";
 
 const POLL_MS = 60_000;
@@ -22,14 +23,16 @@ export function Sparkline(props: { series: SeriesPayload }) {
 
 export function Markets(props: { onOpen: (id: string) => void; onChain: (id: string) => void; onAdd: () => void }) {
   const [rows, setRows] = useState<MarketRow[] | null>(null);
+  const [archived, setArchived] = useState<{ id: string; name: string; cas: string; open_advice: number }[]>([]);
   const [fresh, setFresh] = useState<Freshness | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () =>
-      api.get<{ materials: MarketRow[]; freshness: Freshness }>("/api/markets").then(
+      api.get<{ materials: MarketRow[]; freshness: Freshness; archived: typeof archived }>("/api/markets").then(
         (d) => {
           setRows(d.materials);
+          setArchived(d.archived ?? []);
           setFresh(d.freshness);
         },
         (e) => setError(e instanceof ApiError ? e.message : "Erreur."),
@@ -114,6 +117,21 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
       <button className="primary" onClick={props.onAdd}>
         Ajouter une matière
       </button>
+      {archived.length > 0 && (
+        <>
+          <h3>Archivées</h3>
+          <ul className="plain">
+            {archived.map((m) => (
+              <li key={m.id}>
+                {clip(m.name, 60)} <span className="mono muted">{m.cas}</span>
+                {m.open_advice > 0 && <span className="muted"> · prix suivis jusqu'à l'échéance de {m.open_advice} conseil(s)</span>}{" "}
+                <button onClick={async () => { setError(await setWatched(m.id, true)); window.location.reload(); }}>Reprendre le suivi</button>
+                <DeleteMaterial materialId={m.id} name={m.name} onDone={() => window.location.reload()} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

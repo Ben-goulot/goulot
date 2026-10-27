@@ -75,6 +75,12 @@ def list_materials(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def list_archived(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT id, name, cas, status, updated_at FROM materials WHERE status = 'archived' ORDER BY name").fetchall()
+    return [dict(r) for r in rows]
+
+
 def set_status(conn: sqlite3.Connection, material_id: str, status: str) -> None:
     conn.execute("UPDATE materials SET status = ?, updated_at = ? WHERE id = ?", (status, utcnow(), material_id))
 
