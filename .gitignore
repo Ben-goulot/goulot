@@ -46,3 +46,6 @@ _to_delete/
 frontend/src/**/*.js
 frontend/vite.config.js
 frontend/*.tsbuildinfo
+
+# Working notes addressed to Claude Code: personal, never published
+docs/RETOURS_*.md

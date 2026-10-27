@@ -1,4 +1,4 @@
-"""Lot 2 of 27 October 2026: GDELT pacing after a 429, pooled queries, and the watch diagnostic. No network."""
+"""27 October 2026: GDELT pacing after a 429, pooled queries, and the watch diagnostic. No network."""
 
 from __future__ import annotations
 

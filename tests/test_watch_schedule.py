@@ -1,4 +1,4 @@
-"""The watch keeps running when the Mac sleeps (docs/RETOURS_2026-10-27.md, lot 1). Simulated clock, no network."""
+"""The watch keeps running when the Mac sleeps (docs/DECISIONS.md, 27 October 2026). Simulated clock, no network."""
 
 from __future__ import annotations
 

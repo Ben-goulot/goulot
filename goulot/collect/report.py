@@ -1,4 +1,4 @@
-"""Watch diagnostic (docs/RETOURS_2026-10-27.md, lot 2): why nothing is kept. No AI, no private data.
+"""Watch diagnostic (docs/DECISIONS.md, 27 October 2026): why nothing is kept. No AI, no private data.
 
 `history`: what the recorded runs say, per source and per material, over the last days. Runs recorded before
 migration 0013 have no `matched` count: rejected items and duplicates cannot be told apart for them.
