@@ -20,7 +20,7 @@ import httpx2
 
 from goulot.chain import store
 from goulot.collect import sources
-from goulot.collect.base import Item, enabled, iso, load_sources
+from goulot.collect.base import Item, enabled, fold, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names
 from goulot.db.connection import Database
 
@@ -40,6 +40,7 @@ MAX_ITEMS_PER_SOURCE = 1_000  # bounded queue: a flooding feed cannot fill the d
 BACKOFF_BASE = timedelta(hours=3)
 BACKOFF_MAX = timedelta(hours=24)
 SITES_PER_QUERY = 8
+NAMES_PER_GDELT_QUERY = 12
 MISSING_KEY = "missing key"  # error of a source whose key is not in the keychain
 
 SecretGetter = Callable[[str], str | None]
@@ -55,28 +56,56 @@ class CycleResult:
 
 
 def _q(term: str) -> str:
-    term = term.replace('"', "")
+    """A term as a GDELT or Google News phrase. Parentheses and quotes inside a name would break the query syntax
+    (GDELT accepts parentheses only around OR'd terms): they become spaces."""
+    term = " ".join(term.translate(str.maketrans('"()', "   ")).split())
     return f'"{term}"' if " " in term or "-" in term else term
+
+
+def _any(terms: list[str]) -> str:
+    """GDELT accepts parentheses only around OR'd terms."""
+    return _q(terms[0]) if len(terms) == 1 else "(" + " OR ".join(_q(t) for t in terms) + ")"
+
+
+def _public_terms(conn: sqlite3.Connection) -> list[tuple[str, list[str], list[str]]]:
+    """(material id, names, site names) of each validated material, from the stored public rules only."""
+    out = []
+    for m in store.list_materials(conn):
+        if m["status"] != "validated":
+            continue
+        material = store.get_material(conn, m["id"]) or {}
+        sites = [r["value"] for r in conn.execute(
+            "SELECT value FROM watch_rules WHERE material_id = ? AND active = 1 AND kind = 'keyword' "
+            "AND node_key IS NOT NULL AND node_key IN (SELECT node_key FROM chain_nodes WHERE material_id = ? "
+            "AND valid_to IS NULL AND node_type != 'country')", (m["id"], m["id"]))]
+        out.append((m["id"], material_names(material), sites))
+    return out
 
 
 def queries(conn: sqlite3.Connection) -> list[tuple[str, list[str]]]:
     """(query, material ids) for the news sources: one per material on its names, and one per group of sites
     combined with disruption terms. Built from the stored public rules only."""
     out: list[tuple[str, list[str]]] = []
-    for m in store.list_materials(conn):
-        if m["status"] != "validated":
-            continue
-        material = store.get_material(conn, m["id"]) or {}
-        names = material_names(material)
+    for material_id, names, sites in _public_terms(conn):
         if names:
-            out.append(("(" + " OR ".join(_q(n) for n in names) + ")", [m["id"]]))
-        sites = [r["value"] for r in conn.execute(
-            "SELECT value FROM watch_rules WHERE material_id = ? AND active = 1 AND kind = 'keyword' "
-            "AND node_key IS NOT NULL AND node_key IN (SELECT node_key FROM chain_nodes WHERE material_id = ? "
-            "AND valid_to IS NULL AND node_type != 'country')", (m["id"], m["id"]))]
+            out.append((_any(names), [material_id]))
         for i in range(0, len(sites), SITES_PER_QUERY):
-            group = sites[i:i + SITES_PER_QUERY]
-            out.append(("(" + " OR ".join(_q(s) for s in group) + f") ({DISRUPTION_TERMS})", [m["id"]]))
+            out.append((f"{_any(sites[i:i + SITES_PER_QUERY])} ({DISRUPTION_TERMS})", [material_id]))
+    return out
+
+
+def gdelt_queries(conn: sqlite3.Connection) -> list[str]:
+    """The same terms pooled across materials, for GDELT and its rate limit: fewer, fuller queries. Which material
+    an article concerns is decided by the rule filter, not by the query that found it."""
+    names: dict[str, str] = {}
+    sites: dict[str, str] = {}
+    for _, n, st in _public_terms(conn):
+        names.update((fold(t), t) for t in n)
+        sites.update((fold(t), t) for t in st)
+    pooled, located = list(names.values()), list(sites.values())
+    out = [_any(pooled[i:i + NAMES_PER_GDELT_QUERY]) for i in range(0, len(pooled), NAMES_PER_GDELT_QUERY)]
+    out += [f"{_any(located[i:i + SITES_PER_QUERY])} ({DISRUPTION_TERMS})"
+            for i in range(0, len(located), SITES_PER_QUERY)]
     return out
 
 
@@ -103,13 +132,15 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
               private_queries: list[tuple[str, list[str]]] | None = None
               ) -> dict[str, Callable[[httpx2.Client, datetime], list[Item]]]:
     qs = queries(conn) + (private_queries or [])
+    # Ma chaîne's queries go to GDELT alone, as before: never pooled with the public ones.
+    gdelt_qs = gdelt_queries(conn) + [q for q, _ in private_queries or []]
     boxes = [(r["node_key"], r["lat"], r["lon"]) for r in conn.execute(
         "SELECT DISTINCT node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone'")]
     terms = sorted({r["value"] for r in conn.execute(
         "SELECT value FROM watch_rules WHERE active = 1 AND kind = 'keyword' AND node_key IS NULL")})
 
     def news_gdelt(c: httpx2.Client, since: datetime) -> list[Item]:
-        return [it for q, _ in qs for it in sources.gdelt(c, q, since, now)]
+        return sources.gdelt_many(c, gdelt_qs, since, now)
 
     def news_google(c: httpx2.Client, since: datetime) -> list[Item]:
         return [it for q, _ in qs for lang, cc in (("en", "US"), ("fr", "FR"))
@@ -161,6 +192,19 @@ def _due(conn: sqlite3.Connection, source: str, now: datetime) -> bool:
     return now - last >= (DAILY if frequency.startswith("daily") else timedelta(hours=2, minutes=45))
 
 
+def ensure_rules(conn: sqlite3.Connection) -> int:
+    """A validated material without any active rule is not watched at all: its rules are generated again from its
+    current chain (free, no AI). Returns how many materials were repaired."""
+    missing = [r[0] for r in conn.execute(
+        "SELECT id FROM materials m WHERE status = 'validated' AND NOT EXISTS "
+        "(SELECT 1 FROM watch_rules w WHERE w.material_id = m.id AND w.active = 1)")]
+    for material_id in missing:
+        store.refresh_rules(conn, material_id)
+    if missing:
+        log.warning("watch rules regenerated: materials=%s", len(missing))
+    return len(missing)
+
+
 def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: datetime | None = None,
               private: PrivateWatch | None = None) -> CycleResult:
     """`private`: rules and queries of Ma chaîne, built in memory by the caller; never stored nor logged."""
@@ -168,6 +212,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
     cycle_id = str(uuid.uuid4())
     with db.transaction() as conn:
         conn.execute("INSERT INTO cycles (id, started_at) VALUES (?, ?)", (cycle_id, iso(now)))
+        ensure_rules(conn)
         fetchers = _fetchers(conn, now, secret, private.queries if private else None)
         rules = active_rules(conn) + (private.rules if private else [])
         country_nodes = {r[0] for r in conn.execute(
@@ -185,15 +230,20 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                     families_ok[family] = True  # answered less than 3 hours ago: the family is covered
                 continue
             since = (_last_success(conn, source_id) or now - FIRST_LOOKBACK) - OVERLAP
-        started, error, fetched, kept = iso(now), "", 0, 0
+        started, error, fetched, matched, kept = iso(now), "", 0, 0, 0
         try:
-            items = fetch(http, since)[:MAX_ITEMS_PER_SOURCE]
+            try:
+                items = fetch(http, since)[:MAX_ITEMS_PER_SOURCE]
+            except sources.PartialFailure as exc:
+                items, error = exc.items[:MAX_ITEMS_PER_SOURCE], f"SourceError: {exc}"
+                log.warning("source failed midway: source=%s error=%s kept_items=%s", source_id, error, len(items))
             fetched = len(items)
             with db.transaction() as conn:
                 for item in items:
                     hits = match(item, rules, {k: k for k in country_nodes})
-                    if hits and _store(conn, item, hits, now):
-                        kept += 1
+                    if hits:
+                        matched += 1
+                        kept += int(_store(conn, item, hits, now))
         except (httpx2.HTTPError, sources.SourceError, ValueError) as exc:
             error = type(exc).__name__ + (f": {exc}" if isinstance(exc, sources.SourceError) else "")
             log.warning("source failed: source=%s error=%s", source_id, error)
@@ -205,9 +255,10 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
         result.kept += kept
         with db.transaction() as conn:
             conn.execute(
-                "INSERT INTO collect_runs (cycle_id, source, family, started_at, finished_at, ok, error, fetched, kept)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (cycle_id, source_id, family, started, iso(datetime.now(UTC)), int(ok), error[:120], fetched, kept),
+                "INSERT INTO collect_runs (cycle_id, source, family, started_at, finished_at, ok, error, fetched, "
+                "matched, kept) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (cycle_id, source_id, family, started, iso(datetime.now(UTC)), int(ok), error[:120], fetched, matched,
+                 kept),
             )
     result.ok = all(families_ok.get(f, False) for f in REQUIRED_FAMILIES)
     with db.transaction() as conn:

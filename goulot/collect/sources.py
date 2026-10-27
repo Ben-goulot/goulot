@@ -10,9 +10,11 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -21,6 +23,8 @@ import httpx2
 from goulot.collect.base import Item, clean_text, domain_of, iso, parse_datetime
 from goulot.net.client import fetch
 from goulot.net.xml import parse_xml
+
+log = logging.getLogger("goulot.collect")
 
 GDELT = "https://api.gdeltproject.org/api/v2/doc/doc"
 GOOGLE_NEWS = "https://news.google.com/rss/search"
@@ -37,8 +41,12 @@ GDELT_MAX_WINDOW = timedelta(days=90)
 # VIIRS on NOAA-21 and NOAA-20: Suomi NPP observations end on 2 November 2026 (FIRMS notice of October 2026).
 FIRMS_PRODUCTS = ("VIIRS_NOAA21_NRT", "VIIRS_NOAA20_NRT")
 # GDELT answers HTTP 429 to more than one request every 5 seconds: its queries are spaced out (a cycle runs in the
-# background, a minute or two more costs nothing).
+# background, a minute or two more costs nothing). After a 429, the query is retried once after Retry-After, and the
+# following ones wait longer; a second refusal or a timeout ends GDELT for this cycle, keeping what was read.
 GDELT_PAUSE_S = 6.0
+GDELT_PAUSE_AFTER_429_S = 20.0
+GDELT_RETRY_AFTER_DEFAULT_S = 30.0
+GDELT_RETRY_AFTER_MAX_S = 120.0
 _gdelt_last = 0.0
 KAUB_LOW_WATER_CM = 100  # below 1 m at Kaub, Rhine barges load partially (78 cm: critical)
 PORTWATCH_DROP = 0.6  # a day under 60 % of the 30-day mean counts as a disruption signal
@@ -52,6 +60,38 @@ NS = {
 
 class SourceError(RuntimeError):
     pass
+
+
+class Throttled(SourceError):
+    """HTTP 429, with the wait the server asked for (seconds, bounded)."""
+
+    def __init__(self, retry_after: float) -> None:
+        super().__init__("HTTP 429")
+        self.retry_after = retry_after
+
+
+class PartialFailure(SourceError):
+    """The source stopped answering midway: the items read before are kept, the run still counts as failed."""
+
+    def __init__(self, message: str, items: list[Item]) -> None:
+        super().__init__(message)
+        self.items = items
+
+
+def retry_after_seconds(value: str, now: datetime, default: float, ceiling: float) -> float:
+    """Retry-After as seconds or as an HTTP date, bounded to [0, ceiling]; `default` when absent or unreadable."""
+    value = value.strip()
+    if not value:
+        return default
+    if value.isdigit():
+        return min(float(value), ceiling)
+    try:
+        when = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return default
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return min(max((when - now).total_seconds(), 0.0), ceiling)
 
 
 def _json(client: httpx2.Client, url: str, params: dict[str, str] | None = None) -> Any:
@@ -77,17 +117,27 @@ def _text(node: Any, path: str) -> str:
 
 
 # --- news -------------------------------------------------------------------------------------------------
-def gdelt(client: httpx2.Client, query: str, since: datetime, now: datetime) -> list[Item]:
+def gdelt(client: httpx2.Client, query: str, since: datetime, now: datetime, pause: float | None = None) -> list[Item]:
     global _gdelt_last
     start = max(since, now - GDELT_MAX_WINDOW)
-    wait = _gdelt_last + GDELT_PAUSE_S - time.monotonic()
-    if GDELT_PAUSE_S > 0 and wait > 0:
+    pause = GDELT_PAUSE_S if pause is None else pause
+    wait = _gdelt_last + pause - time.monotonic()
+    if pause > 0 and wait > 0:
         time.sleep(wait)
     _gdelt_last = time.monotonic()
-    data = _json(client, GDELT, {
+    result = fetch(client, GDELT, params={
         "query": query, "mode": "artlist", "format": "json", "maxrecords": "250", "sort": "datedesc",
         "startdatetime": start.strftime("%Y%m%d%H%M%S"), "enddatetime": now.strftime("%Y%m%d%H%M%S"),
     })
+    if result.status == 429:
+        raise Throttled(retry_after_seconds(result.retry_after, datetime.now(UTC), GDELT_RETRY_AFTER_DEFAULT_S,
+                                            GDELT_RETRY_AFTER_MAX_S))
+    if result.status != 200:
+        raise SourceError(f"HTTP {result.status}")
+    try:
+        data = json.loads(result.content)
+    except json.JSONDecodeError as exc:
+        raise SourceError("invalid JSON") from exc
     items = []
     for a in (data or {}).get("articles", []) or []:
         url = str(a.get("url") or "")
@@ -98,6 +148,29 @@ def gdelt(client: httpx2.Client, query: str, since: datetime, now: datetime) -> 
             published_at=parse_datetime(a.get("seendate")), lang=str(a.get("language") or "")[:20],
             domain=domain_of(url), details={"source_country": str(a.get("sourcecountry") or "")[:40]},
         ))
+    return items
+
+
+def gdelt_many(client: httpx2.Client, queries: list[str], since: datetime, now: datetime) -> list[Item]:
+    """All GDELT queries of a cycle, paced. One retry after a 429; then, or after a timeout, a PartialFailure."""
+    items: list[Item] = []
+    pause, retried = GDELT_PAUSE_S, False
+    for query in queries:
+        try:
+            try:
+                items += gdelt(client, query, since, now, pause)
+            except Throttled as exc:
+                pause = max(pause, GDELT_PAUSE_AFTER_429_S)
+                if retried:
+                    raise
+                retried = True
+                log.info("gdelt: HTTP 429, retry in %.0f s", exc.retry_after)
+                time.sleep(exc.retry_after)
+                items += gdelt(client, query, since, now, pause)
+        except Throttled as exc:
+            raise PartialFailure("HTTP 429", items) from exc
+        except httpx2.TimeoutException as exc:
+            raise PartialFailure(type(exc).__name__, items) from exc
     return items
 
 

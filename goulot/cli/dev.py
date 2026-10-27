@@ -409,6 +409,37 @@ def fetch_cities(settings: Settings) -> None:
     print("Terminé. Copiez ce résultat à Claude.")
 
 
+def watch_report(settings: Settings, days: int, live: bool) -> None:
+    """Read-only: the base is opened without migrating it, so the installed app's base is never changed."""
+    import sqlite3
+    from datetime import UTC, datetime
+
+    from goulot.collect import report
+    from goulot.net.allowlist import load_allowlist
+    from goulot.net.client import build_client
+    from goulot.security.secrets import get_secret
+
+    if not settings.db_path.exists():
+        sys.exit("Base absente : Goulot n'est pas installé sur ce Mac.")
+    conn = sqlite3.connect(f"{settings.db_path.as_uri()}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        now = datetime.now(UTC)
+        found = report.history(conn, now, max(1, min(days, 90)))
+        sample = None
+        if live:
+            print("Essai à blanc des sources (une à deux minutes, sans IA, rien n'est enregistré)…")
+            client = build_client(load_allowlist(settings.config_dir))
+            try:
+                sample = report.live(conn, client, get_secret, now)
+            finally:
+                client.close()
+        print(report.render(found, sample))
+    finally:
+        conn.close()
+    print("Terminé. Copiez ce résultat à Claude.")
+
+
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
     if args.dev_action == "record":
         record(settings, args)
@@ -426,3 +457,5 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         print("Terminé. Copiez ce résultat à Claude.")
     elif args.dev_action == "fetch-cities":
         fetch_cities(settings)
+    elif args.dev_action == "watch-report":
+        watch_report(settings, args.days, args.live)

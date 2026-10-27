@@ -42,6 +42,7 @@ class FetchResult:
     content_type: str
     content: bytes
     final_url: str
+    retry_after: str = ""  # Retry-After header of a 429 or 503 answer, as sent
 
 
 def fetch(
@@ -66,6 +67,7 @@ def fetch(
             content_type=response.headers.get("content-type", ""),
             content=b"".join(chunks),
             final_url=str(response.url),
+            retry_after=response.headers.get("retry-after", "")[:64],
         )
 
 
