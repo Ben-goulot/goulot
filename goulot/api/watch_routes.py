@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from goulot.api.context import AppContext
 from goulot.api.private_routes import locked_summary
 from goulot.chain import store
-from goulot.collect.runner import freshness
+from goulot.collect.runner import freshness, material_watch
 from goulot.db.connection import set_setting
 from goulot.ledger import chain, outcomes
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
@@ -104,13 +104,15 @@ def build_router(ctx: AppContext) -> APIRouter:
 
     @router.get("/markets")
     def markets() -> dict[str, Any]:
-        fresh = freshness(ctx.db, now())
+        at = now()
+        fresh = freshness(ctx.db, at)
         out = []
         with ctx.db.connect() as conn:
             for m in store.list_materials(conn):
                 best = prices.best_series(conn, m["id"]) if m["status"] == "validated" else None
                 series = _series_payload(best, 2)
                 out.append({**m, "verdict": _verdict(conn, m["id"]), "personal": locked_summary(ctx, m["id"]),
+                            "watch": material_watch(conn, m, at),
                             "series": {**series, "points": series["points"][-40:]} if series else None})
         return {"freshness": fresh, "materials": out}
 

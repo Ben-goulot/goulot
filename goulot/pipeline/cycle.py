@@ -1,4 +1,4 @@
-"""The watch cycle, every 3 hours and at start-up (catch-up after sleep). One cycle at a time:
+"""The watch cycle, about every 3 hours. One cycle at a time:
 
 collection and rule filter → prices → events from measurements → triage (Batch) → grouping and corroboration
 → impact analyses (Batch, or standard when serious) → market verdicts → outcomes in the ledger → alerts → weekly
@@ -7,6 +7,9 @@ digest → external heartbeat → purge of old irrelevant articles.
 The watch budget sets what the AI may do (CLAUDE.md, Budget): normal; economy at 80 % (corroborated severity ≥ 2
 only, one Batch a day, no AI digest); crisis reserve at 90 % (severity ≥ 3 only); rules only at 100 %. Without an
 API key, the AI steps wait and verdicts are computed from what exists.
+
+A 10-minute tick starts a cycle when the last finished one is older than 2 h 45 (docs/DECISIONS.md, 27 October
+2026): the tick is checked against the wall clock, so a Mac that slept gets its cycle within 10 minutes of waking.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from goulot.alerts import digest, service
 from goulot.alerts.channels import send_email, send_telegram
 from goulot.api.context import AppContext, MissingAPIKey
 from goulot.collect.runner import DISRUPTION_TERMS, CycleResult, freshness, run_cycle
-from goulot.db.connection import get_setting, set_setting
+from goulot.db.connection import Database, get_setting, set_setting
 from goulot.llm.budget import (
     CRISIS,
     ECONOMY,
@@ -51,6 +54,8 @@ from goulot.vault.keys import VaultError
 
 log = logging.getLogger("goulot.pipeline")
 _lock = threading.Lock()
+DUE_AFTER = timedelta(hours=2, minutes=45)
+RETRY_AFTER = timedelta(minutes=30)  # a cycle that crashed before finishing is retried, but not every tick
 
 
 def allowance_for(mode: str) -> Allowance:
@@ -226,12 +231,30 @@ def private_watch(ctx: AppContext) -> PrivateWatch | None:
         return build_private_watch(conn, chains, DISRUPTION_TERMS)
 
 
-def run(ctx: AppContext) -> CycleResult | None:
+def due(db: Database, now: datetime) -> bool:
+    """True when the last finished cycle started more than DUE_AFTER ago (wall clock), or there is none."""
+    with db.connect() as conn:
+        done, tried = conn.execute(
+            "SELECT MAX(CASE WHEN finished_at IS NOT NULL THEN started_at END), MAX(started_at) FROM cycles").fetchone()
+    if tried and now - datetime.fromisoformat(tried) < RETRY_AFTER:
+        return False
+    return done is None or now - datetime.fromisoformat(done) >= DUE_AFTER
+
+
+def tick(ctx: AppContext) -> CycleResult | None:
+    """Scheduler entry point, every 10 minutes: a cycle only when one is due."""
+    return run(ctx, only_if_due=True)
+
+
+def run(ctx: AppContext, only_if_due: bool = False) -> CycleResult | None:
     if not _lock.acquire(blocking=False):
         log.info("cycle skipped: another one is running")
         return None
     try:
         now = datetime.fromtimestamp(ctx.clock.time(), UTC)
+        # Checked under the lock: a tick that waited on a running cycle sees it finished and does not start another.
+        if only_if_due and not due(ctx.db, now):
+            return None
         http = ctx.http_client()
         try:
             result = run_cycle(ctx.db, http, get_secret, now, private=private_watch(ctx))

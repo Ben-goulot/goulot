@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CENSUS_NOTICE, RANK_LABEL, RESULT_LABEL, scale, signed, sourceCredit, verdictClass, type Verdict } from "./types";
+import { CENSUS_NOTICE, RANK_LABEL, RESULT_LABEL, scale, signed, sourceCredit, verdictClass, watchLabel, type Verdict } from "./types";
 
 const verdict = (v: Verdict["verdict"]) => ({ verdict: v }) as Verdict;
 
@@ -41,5 +41,19 @@ describe("source credits (terms of service)", () => {
     expect(sourceCredit("eia")).toContain("U.S. Energy Information Administration");
     expect(sourceCredit("goulot")).toContain("calculé par Goulot");
     expect(sourceCredit(undefined)).toBeNull();
+  });
+});
+
+describe("watch state of a material", () => {
+  it("says plainly when a material is not watched", () => {
+    expect(watchLabel({ state: "chain_to_validate", last_cycle: null, hours_ago: null })).toEqual({
+      text: "Chaîne à valider : pas de veille",
+      warn: true,
+    });
+  });
+  it("gives the age of the last watch, and warns when it is late", () => {
+    expect(watchLabel({ state: "active", last_cycle: "x", hours_ago: 2 }).text).toBe("Veille active · dernière veille il y a 2 h");
+    expect(watchLabel({ state: "active", last_cycle: "x", hours_ago: 0 }).text).toContain("moins d'1 h");
+    expect(watchLabel({ state: "late", last_cycle: "x", hours_ago: 15 }).warn).toBe(true);
   });
 });

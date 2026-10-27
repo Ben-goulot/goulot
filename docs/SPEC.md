@@ -9,7 +9,7 @@
 5. La validation génère les règles de veille et télécharge l'historique des prix des séries liées (section 6) ; l'utilisateur peut lancer, avec devis, la préparation des cas comparables. Les sources sont relues toutes les 3 heures.
 6. L'IA n'est appelée que si un événement touche un maillon qui pèse, pour le marché ou pour l'utilisateur. Elle juge l'événement à l'échelle du marché ; le code calcule sur le Mac ce qu'il change pour l'utilisateur, le verdict et le délai X ; une alerte part si le verdict change.
 
-Le Mac peut dormir : au réveil, l'ordonnanceur rattrape les collectes manquées (GDELT et la plupart des flux gardent un historique), puis les alertes partent. « Rien à signaler » ne s'affiche que si la veille a vraiment tourné récemment (section 5).
+Le Mac peut dormir : toutes les 10 minutes, un contrôle lance un cycle si le dernier cycle terminé a commencé il y a plus de 2 h 45 (heure murale). Au réveil, un cycle part donc dans les 10 minutes et rattrape les collectes manquées (GDELT et la plupart des flux gardent un historique), puis les alertes partent. La sauvegarde quotidienne suit le même principe. « Rien à signaler » ne s'affiche que si la veille a vraiment tourné récemment (section 5).
 
 ## 2. Modèle de données (SQLite)
 
@@ -235,7 +235,7 @@ Thème sombre façon terminal de trading ; polices IBM Plex Sans et IBM Plex Mon
 
 | Écran | Contenu |
 | --- | --- |
-| Marchés (accueil) | liste de suivi (matière, CAS, prix ou indice, variation, mini-courbe, verdict) ; au clic : fiche matière |
+| Marchés (accueil) | liste de suivi (matière, CAS, prix ou indice, variation, mini-courbe, verdict) ; sous chaque matière, son état de veille : « Veille active · dernière veille il y a X h », « Veille en retard » (plus de 12 h) ou « Chaîne à valider : pas de veille » ; au clic : fiche matière |
 | Fiche matière | en-tête (prix, type de cotation, lien vers la chaîne, heure de la dernière vérification, mention « rodage ») ; graphique de 6 mois avec les événements marqués ; carte « Analyse IA » (verdict, pression de prix, explication, impact estimé, couverture, fiabilité, ce qui changerait l'avis ; coffre ouvert : exposition, X personnel et plan B) ; carte « Cas comparables » (section 6) ; rang de la série affichée ; bouton « Signal fournisseur » (section 11) ; liste des événements (lettre, titre, lieu, maillon, statut, sources, impact en %, horizon, probabilité) ; carte du monde (événements colorés par statut, sites de la chaîne en gris), synchronisée avec la liste ; bandeau « Goulots en préparation » |
 | Chaîne | graphe et panneau de maillon (section 3) ; bascule « Chaîne type / Ma chaîne » : Ma chaîne en surimpression, épaisseur des liens selon la part de volume, maillons non utilisés estompés, encart « concentration cachée » (section 11) |
 | Fiabilité | indicateurs de la section 7, en colonnes « Marché » et « Ma matière », avec taux de résolution, dont les pressions de prix ; graphique du prix réel avec les conseils datés : losange à l'émission, fourchette p10–p90 en éventail jusqu'à l'échéance, résultat juste ou manqué, hausses manquées, ruban des verdicts sous la courbe ; dossier du jour (ce que Goulot savait ce jour-là, sources, empreinte) ; registre filtrable, synchronisé avec le graphique ; diagramme de calibration ; export de l'historique (CSV, PDF) |

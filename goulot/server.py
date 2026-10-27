@@ -1,4 +1,4 @@
-"""Server start-up: loopback sockets only, port check, daily backup job."""
+"""Server start-up: loopback sockets only, port check, scheduled jobs (watch cycle, daily backup)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.base import BaseScheduler
 
 from goulot.api.app import create_app
 from goulot.api.context import AppContext, build_context
@@ -19,6 +20,7 @@ from goulot.settings import LOOPBACK_V6, Settings, validate_bind_hosts
 
 log = logging.getLogger("goulot.server")
 BACKUP_INTERVAL_HOURS = 24
+TICK_MINUTES = 10
 
 
 class PortBusy(RuntimeError):
@@ -59,19 +61,27 @@ def _backup_if_due(ctx: AppContext) -> None:
         log.info("daily backup written: %s", path.name)
 
 
+def schedule(scheduler: BaseScheduler, ctx: AppContext, watch: bool) -> None:
+    """Jobs tick every 10 minutes and decide from the wall clock whether their work is due. APScheduler waits on the
+    monotonic clock, which stops while the Mac sleeps, and drops a run missed by more than its grace time (1 s by
+    default): a long interval would be skipped after a sleep. Here a missed tick runs on waking, once."""
+    tick = {"trigger": "interval", "minutes": TICK_MINUTES, "args": [ctx], "max_instances": 1, "coalesce": True,
+            "misfire_grace_time": None}
+    scheduler.add_job(_backup_if_due, id="daily_backup", **tick)
+    # GOULOT_WATCH=off (development previews only) keeps a server from collecting or calling the AI.
+    if watch:
+        scheduler.add_job(cycle.tick, id="watch_cycle", next_run_time=datetime.now(UTC) + timedelta(seconds=30),
+                          **tick)
+    else:
+        log.warning("watch cycle disabled (GOULOT_WATCH=off)")
+
+
 def run(settings: Settings) -> None:
     sockets = bind_sockets(settings.bind_hosts, settings.port)
     ctx = build_context(settings)
     app = create_app(ctx)
     scheduler = BackgroundScheduler(timezone="UTC")
-    scheduler.add_job(_backup_if_due, "interval", hours=1, args=[ctx], id="daily_backup", max_instances=1)
-    # Watch cycle: at start-up (catch-up after the Mac slept), then every 3 hours. GOULOT_WATCH=off (development
-    # previews only) keeps a server from collecting or calling the AI.
-    if os.environ.get("GOULOT_WATCH") != "off":
-        scheduler.add_job(cycle.run, "interval", hours=3, args=[ctx], id="watch_cycle", max_instances=1,
-                          coalesce=True, next_run_time=datetime.now(UTC) + timedelta(seconds=30))
-    else:
-        log.warning("watch cycle disabled (GOULOT_WATCH=off)")
+    schedule(scheduler, ctx, watch=os.environ.get("GOULOT_WATCH") != "off")
     scheduler.start()
     _backup_if_due(ctx)
     config = uvicorn.Config(

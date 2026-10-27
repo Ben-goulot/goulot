@@ -224,3 +224,23 @@ def freshness(db: Database, now: datetime) -> dict[str, Any]:
         row = conn.execute("SELECT MAX(started_at) FROM cycles WHERE ok = 1").fetchone()
     last = datetime.fromisoformat(row[0]) if row and row[0] else None
     return {"last_ok_cycle": iso(last), "verified": bool(last and now - last <= FRESHNESS_LIMIT)}
+
+
+def material_watch(conn: sqlite3.Connection, material: dict[str, Any], now: datetime) -> dict[str, Any]:
+    """Watch state of one material for the dashboard. Only a validated chain with active rules is watched
+    (`queries()`); `last_cycle` is the last successful cycle since its validation."""
+    if material["status"] != "validated":
+        return {"state": "chain_to_validate", "last_cycle": None, "hours_ago": None}
+    if conn.execute("SELECT 1 FROM watch_rules WHERE material_id = ? AND active = 1 LIMIT 1",
+                    (material["id"],)).fetchone() is None:
+        return {"state": "no_rules", "last_cycle": None, "hours_ago": None}
+    row = conn.execute(
+        "SELECT MAX(c.started_at) FROM cycles c, materials m WHERE m.id = ? AND c.ok = 1 "
+        "AND c.finished_at IS NOT NULL AND (m.validated_at IS NULL OR c.started_at >= m.validated_at)",
+        (material["id"],)).fetchone()
+    last = datetime.fromisoformat(row[0]) if row and row[0] else None
+    if last is None:
+        return {"state": "pending", "last_cycle": None, "hours_ago": None}
+    hours = max(0, int((now - last).total_seconds() // 3600))
+    return {"state": "active" if now - last <= FRESHNESS_LIMIT else "late", "last_cycle": iso(last),
+            "hours_ago": hours}

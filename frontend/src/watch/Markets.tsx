@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
-import { RANK_LABEL, signed, verdictClass, type Freshness, type MarketRow, type SeriesPayload } from "./types";
+import { RANK_LABEL, signed, verdictClass, watchLabel, type Freshness, type MarketRow, type SeriesPayload } from "./types";
 
 const POLL_MS = 60_000;
 
@@ -74,9 +74,13 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
             {rows.map((r) => {
               const last = r.series?.points[r.series.points.length - 1];
               const ready = r.status === "validated";
+              const watch = watchLabel(r.watch);
               return (
                 <tr key={r.id} className={ready ? "clickable" : ""} onClick={() => (ready ? props.onOpen(r.id) : props.onChain(r.id))}>
-                  <td>{clip(r.name, 60)}</td>
+                  <td>
+                    {clip(r.name, 60)}
+                    <div className={`small ${watch.warn ? "warn" : "muted"}`}>{watch.text}</div>
+                  </td>
                   <td className="mono muted">{r.cas}</td>
                   <td className="mono">
                     {last ? last.value.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) : "—"}

@@ -59,6 +59,12 @@ export type LockedPersonal = {
   reason: string;
 };
 
+export type MaterialWatch = {
+  state: "active" | "late" | "pending" | "no_rules" | "chain_to_validate";
+  last_cycle: string | null;
+  hours_ago: number | null;
+};
+
 export type MarketRow = {
   id: string;
   name: string;
@@ -67,7 +73,18 @@ export type MarketRow = {
   verdict: Verdict | null;
   personal: LockedPersonal | null;
   series: SeriesPayload | null;
+  watch: MaterialWatch;
 };
+
+/** Watch state of a material, in words: whether it is watched at all, then how long ago it last was. */
+export function watchLabel(w: MaterialWatch): { text: string; warn: boolean } {
+  if (w.state === "chain_to_validate") return { text: "Chaîne à valider : pas de veille", warn: true };
+  if (w.state === "no_rules") return { text: "Aucune règle de veille", warn: true };
+  if (w.state === "pending") return { text: "Veille active · premier passage à venir", warn: false };
+  const ago = w.hours_ago === 0 ? "il y a moins d'1 h" : `il y a ${w.hours_ago} h`;
+  if (w.state === "late") return { text: `Veille en retard · dernière veille ${ago}`, warn: true };
+  return { text: `Veille active · dernière veille ${ago}`, warn: false };
+}
 
 export type SheetEvent = {
   id: string;
