@@ -1,10 +1,14 @@
 """World hot spots (docs/SPEC.md, section 8, « Zones d'alerte »): chokepoints whose traffic collapsed (IMF
-PortWatch) and orange or red GDACS alerts. Shown on every map, masked at will; they never change a verdict by
-themselves: a flow or a node of the chain inside one is only shown as exposed.
+PortWatch), chokepoints the general press still reports in crisis (Google News), and orange or red GDACS alerts.
+Shown on every map, masked at will; they never change a verdict by themselves: a flow or a node of the chain inside
+one is only shown as exposed.
 
 Traffic drop: the mean of the last 7 days under 50 % of the usual traffic, the median of the daily transits over the
 3 years before the last 90 days (docs/DECISIONS.md, 27 October 2026). A one-year median would miss a long closure:
-Hormuz, nearly closed since March 2026, would have made its own low traffic the norm.
+Hormuz, nearly closed since March 2026, would have made its own low traffic the norm. A crisis that lasts longer
+than about 18 months becomes the norm in turn (Suez since late 2023): the press check covers it. A strait is reported
+in crisis when, over 7 days, at least 3 headlines name it with a crisis word, from at least 2 publishers, one of them
+reliable (0.7 or more, config/reliability.yaml): a headline is counted, never interpreted, and no AI is involved.
 """
 
 from __future__ import annotations
@@ -37,6 +41,29 @@ MAX_PAGES = 30
 GDACS_RADIUS_KM = {"EQ": 100, "TC": 300, "FL": 100, "VO": 50, "WF": 50, "DR": 300, "TS": 150}
 GDACS_LEVELS = ("orange", "red")
 PORTWATCH_PAGE_URL = "https://portwatch.imf.org/pages/chokepoints"
+NEWS_STRAITS = ("hormuz", "bab_el_mandeb", "suez", "malacca", "panama", "bosporus", "gibraltar", "taiwan", "kerch",
+                "dover", "oresund", "cape_good_hope")
+NEWS_DAYS = 7
+NEWS_MIN_HEADLINES = 3
+NEWS_MIN_PUBLISHERS = 2
+NEWS_MIN_RELIABILITY = 0.7
+CRISIS_WORDS = frozenset({
+    "attack", "attacks", "attacked", "closed", "closure", "closes", "blockade", "blocked", "disruption", "disrupted",
+    "suspended", "suspends", "seized", "seizure", "mine", "mines", "missile", "missiles", "drone", "drones",
+    "crisis", "halt", "halted", "diverted", "diversions", "war", "strike", "strikes", "explosion", "explosions",
+    "attaque", "attaques", "ferme", "fermeture", "blocus", "bloque", "perturbation", "perturbations", "suspendu",
+    "suspendue", "saisi", "crise", "frappe", "frappes", "guerre", "detournes",
+})
+
+
+def news_queries() -> list[tuple[str, str, str]]:
+    """(query, language, country): one English and one French query naming the watched straits."""
+    names_en = [places.chokepoints()[s]["portwatch_name"] for s in NEWS_STRAITS]
+    names_fr = [places.chokepoints()[s]["name_fr"] for s in NEWS_STRAITS]
+    def query(names: list[str]) -> str:
+        return "(" + " OR ".join(f'"{n}"' for n in names) + ") when:7d"
+
+    return [(query(names_en), "en", "US"), (query(names_fr), "fr", "FR")]
 
 
 def fetch_traffic(client: httpx2.Client, since: date) -> list[tuple[str, str, str, float]]:
@@ -131,6 +158,39 @@ def strait_hotspots(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return out
 
 
+def news_hotspots(items: list[Item], now: datetime) -> list[dict[str, Any]]:
+    from goulot.collect.rules import _names_strait
+    from goulot.pipeline.corroborate import domain_reliability
+
+    recent = [it for it in items if it.published_at is None or now - it.published_at <= timedelta(days=NEWS_DAYS)]
+    out = []
+    for strait in NEWS_STRAITS:
+        c = places.chokepoints()[strait]
+        found: dict[str, Item] = {}
+        for it in recent:
+            text = fold(it.title)
+            words = set(text.replace("'", " ").split())
+            if words & CRISIS_WORDS and any(_names_strait(text, n) for n in c["names"]):
+                found.setdefault(fold(it.title), it)  # the same headline twice counts once
+        publishers = {(it.provider_domain or it.domain) for it in found.values()} - {""}
+        if len(found) < NEWS_MIN_HEADLINES or len(publishers) < NEWS_MIN_PUBLISHERS:
+            continue
+        best = max(found.values(), key=lambda it: domain_reliability(it.provider_domain or it.domain))
+        if domain_reliability(best.provider_domain or best.domain) < NEWS_MIN_RELIABILITY:
+            continue
+        short = c["name_fr"].replace("Détroit d'", "").replace("Détroit de ", "").replace("Détroit du ", "")
+        first = min((it.published_at for it in found.values() if it.published_at), default=now)
+        out.append({
+            "id": f"strait_news:{strait}", "kind": "strait_news",
+            "label": f"{short} : crise signalée par la presse ({len(found)} titres)"[:60],
+            "status": "en cours", "lat": c["lat"], "lon": c["lon"],
+            "rings": [places.circle(c["lat"], c["lon"], c["radius_km"])],
+            "source_url": best.url if best.url.startswith("https://") else "",
+            "source_name": best.provider_domain or best.domain, "started_at": first.date().isoformat(),
+        })
+    return out
+
+
 def gdacs_hotspots(items: list[Item]) -> list[dict[str, Any]]:
     out = []
     for it in items:
@@ -158,11 +218,19 @@ def _replace(conn: sqlite3.Connection, kind: str, spots: list[dict[str, Any]], n
 
 
 def refresh(db: Database, http: httpx2.Client, now: datetime, fetched: dict[str, list[Item]]) -> int:
-    """After the collection: GDACS hot spots from this cycle's answer, traffic drops from the stored history (updated
-    once a day). A failure keeps the previous hot spots: they are a display, never a verdict."""
+    """After the collection: GDACS hot spots from this cycle's answer, straits in crisis in the press (two Google
+    News queries), traffic drops from the stored history (updated once a day). A failure keeps the previous hot
+    spots: they are a display, never a verdict."""
     with db.transaction() as conn:
         if "gdacs" in fetched:
             _replace(conn, "gdacs", gdacs_hotspots(fetched["gdacs"]), now)
+    if enabled("google_news_rss"):
+        try:
+            headlines = [it for q, lang, cc in news_queries() for it in sources.google_news(http, q, lang, cc)]
+            with db.transaction() as conn:
+                _replace(conn, "strait_news", news_hotspots(headlines, now), now)
+        except (httpx2.HTTPError, sources.SourceError, ValueError) as exc:
+            log.warning("hotspots: news check failed: %s", type(exc).__name__)
     if enabled("imf_portwatch_chokepoints"):
         try:
             with db.transaction() as conn:

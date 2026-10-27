@@ -150,3 +150,37 @@ def test_hot_spots_do_not_change_the_verdict(client: TestClient, ctx: AppContext
     assess.refresh_verdicts(ctx.db, ctx.vault, NOW, verified=True, last_ok_cycle=NOW.isoformat())
     after = client.get("/api/markets").json()["materials"][0]["verdict"]
     assert {k: before[k] for k in ("verdict", "x_weeks")} == {k: after[k] for k in ("verdict", "x_weeks")}
+
+
+def headline(title: str, publisher: str, days_ago: int = 1) -> Item:
+    return Item(source="google_news_rss", kind="news", url=f"https://news.google.com/rss/articles/{abs(hash(title))}",
+                title=title, published_at=NOW - timedelta(days=days_ago), domain="news.google.com",
+                provider_domain=publisher)
+
+
+def test_the_press_keeps_a_long_crisis_on_the_map() -> None:
+    """Suez traffic has been low for so long that it is the norm: the headlines still say crisis."""
+    items = [
+        headline("Houthi missiles hit tanker near Bab el-Mandeb, Suez Canal traffic diverted", "reuters.com"),
+        headline("Suez Canal: shipping lines extend diversions around the Cape", "lloydslist.com", 3),
+        headline("Canal de Suez : la crise du transport maritime s'éternise", "lemonde.fr", 5),
+        headline("Suez Canal Authority reports record revenue", "example.org"),  # no crisis word
+        headline("Suez Canal: new attacks on ships", "reuters.com", 12),  # older than 7 days
+    ]
+    spots = {s["id"]: s for s in hotspots.news_hotspots(items, NOW)}
+    suez = spots["strait_news:suez"]
+    assert suez["label"] == "Canal de Suez : crise signalée par la presse (3 titres)"
+    assert suez["source_name"] in ("reuters.com", "lloydslist.com") and suez["kind"] == "strait_news"
+    assert "strait_news:bab_el_mandeb" not in spots  # one headline only
+
+
+def test_unreliable_or_single_publisher_headlines_are_not_enough() -> None:
+    blogs = [headline(f"Hormuz closed again, part {i}", "blog.example") for i in range(5)]
+    assert hotspots.news_hotspots(blogs, NOW) == []  # one publisher
+    unknown = [headline(f"Strait of Hormuz attack {i}", f"site{i}.example") for i in range(5)]
+    assert hotspots.news_hotspots(unknown, NOW) == []  # nobody reliable
+
+
+def test_news_queries_name_the_straits_in_both_languages() -> None:
+    (en, _, _), (fr, lang, _) = hotspots.news_queries()
+    assert '"Strait of Hormuz"' in en and '"Détroit d\'Ormuz"' in fr and lang == "fr" and en.endswith("when:7d")

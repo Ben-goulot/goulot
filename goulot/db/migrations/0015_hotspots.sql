@@ -10,7 +10,7 @@ CREATE TABLE chokepoint_traffic (
 -- World hot spots, shown on every map. They never feed a verdict by themselves.
 CREATE TABLE hotspots (
     id TEXT PRIMARY KEY,                 -- kind:key
-    kind TEXT NOT NULL CHECK (kind IN ('strait_traffic', 'gdacs', 'copernicus')),
+    kind TEXT NOT NULL CHECK (kind IN ('strait_traffic', 'strait_news', 'gdacs', 'copernicus')),
     label TEXT NOT NULL,                 -- external text, shown as text
     status TEXT NOT NULL,
     lat REAL NOT NULL,
