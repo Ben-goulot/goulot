@@ -2,6 +2,7 @@ import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } fro
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
+import { ChainMap, type MapData, type MineSite } from "../map/ChainMap";
 import { MyChainSide, overlay, useMyChain } from "../private/MyChainSide";
 import { Locked, usePrivacy } from "../private/privacy";
 import { HEADER_Y, layout } from "./layout";
@@ -113,12 +114,15 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
   const [ack, setAck] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<"type" | "mine">("type");
+  const [view, setView] = useState<"graph" | "map">("graph");
+  const [map, setMap] = useState<MapData | null>(null);
   const { vaultOpen, presenting } = usePrivacy();
   const my = useMyChain(props.materialId);
 
   const load = useCallback(async () => {
     try {
       setChain(await api.get<Chain>(`/api/materials/${props.materialId}/chain`));
+      setMap(await api.get<MapData>(`/api/materials/${props.materialId}/map`));
     } catch (e) {
       setMessage(e instanceof ApiError ? e.message : "Erreur.");
     }
@@ -178,6 +182,13 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
   if (!chain) return <section className="panel">{message ?? "Chargement…"}</section>;
 
   const node = chain.nodes.find((n) => n.node_key === selected) ?? null;
+  // Ma chaîne on the map: vault open, « Ma chaîne » chosen, not while presenting.
+  const mineSites: MineSite[] | null =
+    mode === "mine" && vaultOpen && !presenting && my.data
+      ? my.data.chain.sites
+          .filter((x) => x.lat !== null && x.lon !== null)
+          .map((x) => ({ id: x.id, name: x.name, role: x.role, city: x.city, country_iso2: x.country_iso2, lat: x.lat!, lon: x.lon! }))
+      : null;
   const lowCount = chain.nodes.filter((n) => n.confidence === "low").length;
   const editable = chain.material.status === "review" || chain.material.status === "validated";
 
@@ -239,7 +250,15 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             Ma chaîne
           </button>
         </div>
-        {mode === "mine" && vaultOpen && (
+        <div className="segmented" role="group" aria-label="Présentation">
+          <button className={view === "graph" ? "tab active" : "tab"} aria-pressed={view === "graph"} onClick={() => setView("graph")}>
+            Graphe
+          </button>
+          <button className={view === "map" ? "tab active" : "tab"} aria-pressed={view === "map"} onClick={() => setView("map")}>
+            Carte
+          </button>
+        </div>
+        {mode === "mine" && vaultOpen && view === "graph" && (
           <span className="legend">
             <span className="swatch mine" /> Ma chaîne (épaisseur = part) <span className="swatch private" /> Site privé{" "}
             <span className="swatch faded" /> Pas chez toi
@@ -254,6 +273,23 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
         </p>
       )}
       <div className="chain-layout">
+        {view === "map" ? (
+          <div className="chain-map-view">
+            {map ? (
+              <ChainMap
+                data={map}
+                mine={mineSites}
+                onShowInGraph={(key) => {
+                  setView("graph");
+                  setSelected(key);
+                  setDraft(null);
+                }}
+              />
+            ) : (
+              <p className="muted">Carte en cours de chargement…</p>
+            )}
+          </div>
+        ) : (
         <div className="chain-graph">
           <ReactFlow
             nodes={flow.nodes}
@@ -271,6 +307,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             <Controls showInteractive={false} />
           </ReactFlow>
         </div>
+        )}
         <aside className="panel side">
           {mode === "mine" ? (
             vaultOpen ? (

@@ -92,7 +92,7 @@ export type SheetEvent = {
   title: string;
   place: string;
   status_label: string;
-  status: "ongoing" | "preparing" | "early";
+  status: "ongoing" | "preparing" | "early" | "ended";
   c_fait: number;
   lineages: number;
   nodes: string[];

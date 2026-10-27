@@ -5,7 +5,7 @@ import { api } from "../api";
 import { MODE } from "../chain/types";
 import { WATCH_HELP, type City, type Link, type MyChain, type Site } from "./types";
 
-const STYLE = "https://tiles.openfreemap.org/styles/dark";
+const STYLE = "https://tiles.openfreemap.org/styles/positron";
 const ROLES: [Site["role"], string][] = [
   ["producer", "Producteur"],
   ["processor", "Transformateur"],

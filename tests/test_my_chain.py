@@ -153,7 +153,7 @@ def test_revisions_are_append_only(ctx: AppContext) -> None:
 def test_exposure_flows_and_hidden_concentration(ctx: AppContext) -> None:
     material_id = with_my_chain(ctx)
     m = model_for(ctx, material_id)
-    assert m.exposure["beta"] == pytest.approx(0.63417) and m.exposure["europe"] == pytest.approx(0.36583)
+    assert m.exposure["beta"] == pytest.approx(0.634173) and m.exposure["europe"] == pytest.approx(0.365827)
     assert m.weighs("beta") and m.weighs("europe")
     flows = {(f["source"], f["target"]): f["flow_pct"] for f in m.link_flows()}
     assert flows[("beta", "alpha")] == pytest.approx(63.42, abs=0.01)
@@ -268,7 +268,7 @@ def test_small_private_supplier_on_fire_triggers_analysis_and_personal_verdict(c
     (mid, p), = changed
     assert mid == material_id and p.verdict.verdict in (POTENTIAL, ANTICIPATE)
     assert p.exposures[fire]["exposure_pct"] == 80.0 and p.exposures[fire]["s_perso"] == 3
-    assert p.verdict.x_weeks == round((35 + 37.29) / 7, 1)  # sea to Antwerp, then the distributor's stock
+    assert p.verdict.x_weeks == round((35 + 37.2917) / 7, 1)  # sea to Antwerp, then the distributor's stock
     assert p.plan_b and p.plan_b[0]["status"] == "qualifiée"
     with ctx.db.connect() as conn:
         market = conn.execute("SELECT 1 FROM verdicts WHERE scope = 'market' AND event_ids LIKE ?",
@@ -311,7 +311,7 @@ def test_force_majeure_upstream_counts_its_delay_not_zero(ctx: AppContext) -> No
     m = model_for(ctx, material_id, (80, 20))
     upstream = {"id": "s2", "type": "force_majeure", "date": "2026-11-02", "site_id": "beta"}
     p = personal_for(ctx, material_id, m, [upstream], [])
-    assert p.verdict.x_weeks == round((35 + 37.29) / 7, 1) and p.verdict.x_weeks > 0
+    assert p.verdict.x_weeks == round((35 + 37.2917) / 7, 1) and p.verdict.x_weeks > 0
     assert p.exposures["s2"]["s_perso"] == 3
     direct = {"id": "s3", "type": "force_majeure", "date": "2026-11-02", "site_id": "alpha"}
     assert personal_for(ctx, material_id, m, [direct], []).verdict.x_weeks == 0.0

@@ -14,7 +14,7 @@ from tests import chain_fixtures as fx
 from tests.conftest import unsafe_headers
 from tests.test_chain import mock_http
 
-CANARIES = ("CANARY-QUOTE-4217.93", "CANARY-SITE-7F3A", "37.29", "63.417", "613")
+CANARIES = ("CANARY-QUOTE-4217.93", "CANARY-SITE-7F3A", "37.2917", "63.4173", "613")
 
 
 def _reconstruct(ctx: AppContext, backend: ReplayBackend) -> str:
@@ -70,7 +70,7 @@ def test_no_user_data_in_prompts(client: TestClient, ctx: AppContext, opened: tu
     csrf, vault_token = opened
     # Private coverage with canary values, and a non-private setting, exist before the reconstruction.
     r = client.put("/api/private/coverage/acrylonitrile",
-                   json={"stock_weeks": 37.29, "supplier_lead_time_days": 613, "price_threshold_pct": 63.417},
+                   json={"stock_weeks": 37.2917, "supplier_lead_time_days": 613, "price_threshold_pct": 63.4173},
                    headers=unsafe_headers(csrf, vault_token))
     assert r.status_code == 200, r.text
     with ctx.db.transaction() as conn:
@@ -87,6 +87,6 @@ def test_no_user_data_in_prompts(client: TestClient, ctx: AppContext, opened: tu
     fields = [line.split(":", 1)[0] for line in material_block.splitlines()[1:-1]]
     assert fields == ["name", "cas", "formula", "purchased_form"]
     # The builder ignores any extra field it is given.
-    extra = service.material_for_prompt({"name": "x", "cas": fx.CAS, "formula": "", "stock_weeks": 37.29,
+    extra = service.material_for_prompt({"name": "x", "cas": fx.CAS, "formula": "", "stock_weeks": 37.2917,
                                          "quote": "CANARY-QUOTE-4217.93"})
     assert set(extra) == {"name", "cas", "formula", "purchased_form"}

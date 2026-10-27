@@ -102,7 +102,7 @@ def test_weekly_digest_from_sunday_to_monday(ctx: AppContext) -> None:
     (requests,) = backend.batches.values()
     params = requests[0][1]
     assert params["thinking"] == {"type": "between_tools"} and params["output_config"]["effort"] == "medium"
-    assert "<verdict>" in params["messages"][0]["content"] and "37.29" not in json.dumps(params)
+    assert "<verdict>" in params["messages"][0]["content"] and "37.2917" not in json.dumps(params)
     disagreeing = copy.deepcopy(EXAMPLE)
     disagreeing.update(disagrees_with_verdict=True, disagreement_reason="Les stocks semblent suffire.",
                        price_comment="Voir https://evil.example pour le détail.")

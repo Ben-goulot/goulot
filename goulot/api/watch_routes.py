@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext
 from goulot.api.private_routes import locked_summary
-from goulot.chain import store
+from goulot.chain import mapdata, store
 from goulot.collect.runner import freshness, material_watch
 from goulot.db.connection import set_setting
 from goulot.ledger import chain, outcomes
@@ -33,7 +33,7 @@ CODE_RE = re.compile(r"^[A-Za-z0-9_.=^|&\-]{1,80}$")
 USER_SOURCES = {"fred": 1, "bls_ppi": 4, "eurostat": 4, "yahoo_chart": 6, "stooq": 6}
 ROLE_RANK = {"direct": None, "official": 2, "index": 4, "input": None}
 STATUS = {"confirmed_ongoing": ("En cours", "ongoing"), "preparing": ("En préparation", "preparing"),
-          "early": ("Signal précoce", "early")}
+          "early": ("Signal précoce", "early"), "ended": ("Terminé", "ended")}
 
 
 class RaiseBody(BaseModel):
@@ -56,6 +56,8 @@ class LinkBody(BaseModel):
 
 
 def _status(e: dict[str, Any]) -> tuple[str, str]:
+    if e["event_status"] == "resolved":
+        return STATUS["ended"]
     if e["confirmation"] != "confirmed":
         return STATUS["early"]
     if e["event_status"] in ("threatened", "announced"):
@@ -86,6 +88,40 @@ def _series_payload(s: Any, months: int) -> dict[str, Any] | None:
     last = points[-1]["value"] if points else None
     return {"name": s.name, "rank": s.rank, "frequency": s.frequency, "source": s.source, "points": points,
             "change_pct": round(100 * (last / first - 1), 2) if first and last else None}
+
+
+def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today: datetime) -> list[dict[str, Any]]:
+    """Events of the last 60 days, lettered in order; an event without a place sits on its first located node."""
+    events = []
+    rows = conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
+                        "ORDER BY first_seen_at", (material_id,
+                                                   (today - timedelta(days=60)).isoformat())).fetchall()
+    for i, e in enumerate(rows):
+        label, kind = _status(dict(e))
+        links = [r[0] for r in conn.execute("SELECT node_key FROM event_links WHERE event_id = ?", (e["id"],))]
+        result = analysis.latest_valid(conn, e["id"])
+        hyp = next((h for h in (result or {}).get("hypotheses", []) if h["horizon"] == "20d"
+                    and h["metric"] == "outright_price"), None)
+        publishers = [r[0] for r in conn.execute(
+            "SELECT DISTINCT COALESCE(NULLIF(a.provider_domain, ''), a.domain) FROM event_articles ea "
+            "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? LIMIT 5", (e["id"],))]
+        lat, lon = e["lat"], e["lon"]
+        if lat is None:
+            located = [nodes[k] for k in links if k in nodes and nodes[k]["lat"] is not None]
+            lat, lon = (located[0]["lat"], located[0]["lon"]) if located else (None, None)
+        events.append({
+            "id": e["id"], "letter": chr(ord("A") + i % 26), "title": e["title"], "place": e["place"],
+            "status_label": label, "status": kind, "c_fait": e["c_fait"], "lineages": e["lineages"],
+            "nodes": [nodes[k]["name"] for k in links if k in nodes], "node_keys": [k for k in links if k in nodes],
+            "publishers": publishers,
+            "first_seen": e["first_seen_at"], "lat": lat, "lon": lon,
+            "analysis_state": e["analysis_state"],
+            "impact": {"p10": hyp["move_p10"], "p90": hyp["move_p90"], "probability": hyp["probability"],
+                       "unit": hyp["move_unit"]} if hyp else None,
+            "headline": (result or {}).get("headline", ""),
+            "future_dates": json.loads(e["future_dates"]),
+        })
+    return events
 
 
 def build_router(ctx: AppContext) -> APIRouter:
@@ -122,34 +158,7 @@ def build_router(ctx: AppContext) -> APIRouter:
         with ctx.db.connect() as conn:
             m = material_or_404(conn, material_id)
             nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
-            events = []
-            rows = conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
-                                "ORDER BY first_seen_at", (material_id,
-                                                           (today - timedelta(days=60)).isoformat())).fetchall()
-            for i, e in enumerate(rows):
-                label, kind = _status(dict(e))
-                links = [r[0] for r in conn.execute("SELECT node_key FROM event_links WHERE event_id = ?", (e["id"],))]
-                result = analysis.latest_valid(conn, e["id"])
-                hyp = next((h for h in (result or {}).get("hypotheses", []) if h["horizon"] == "20d"
-                            and h["metric"] == "outright_price"), None)
-                publishers = [r[0] for r in conn.execute(
-                    "SELECT DISTINCT COALESCE(NULLIF(a.provider_domain, ''), a.domain) FROM event_articles ea "
-                    "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? LIMIT 5", (e["id"],))]
-                lat, lon = e["lat"], e["lon"]
-                if lat is None:
-                    located = [nodes[k] for k in links if k in nodes and nodes[k]["lat"] is not None]
-                    lat, lon = (located[0]["lat"], located[0]["lon"]) if located else (None, None)
-                events.append({
-                    "id": e["id"], "letter": chr(ord("A") + i % 26), "title": e["title"], "place": e["place"],
-                    "status_label": label, "status": kind, "c_fait": e["c_fait"], "lineages": e["lineages"],
-                    "nodes": [nodes[k]["name"] for k in links if k in nodes], "publishers": publishers,
-                    "first_seen": e["first_seen_at"], "lat": lat, "lon": lon,
-                    "analysis_state": e["analysis_state"],
-                    "impact": {"p10": hyp["move_p10"], "p90": hyp["move_p90"], "probability": hyp["probability"],
-                               "unit": hyp["move_unit"]} if hyp else None,
-                    "headline": (result or {}).get("headline", ""),
-                    "future_dates": json.loads(e["future_dates"]),
-                })
+            events = _events(conn, material_id, nodes, today)
             latest = conn.execute("SELECT result FROM analyses a JOIN events e ON e.id = a.event_id "
                                   "WHERE e.material_id = ? AND a.state = 'done' ORDER BY a.done_at DESC LIMIT 1",
                                   (material_id,)).fetchone()
@@ -179,6 +188,17 @@ def build_router(ctx: AppContext) -> APIRouter:
             "margin": {"trend": margin_trend[0], "change_pct_20": margin_trend[1],
                        "series": _series_payload(margin_series, 6)} if margin_trend else None,
         }
+
+    @router.get("/materials/{material_id}/map")
+    def material_map(material_id: str) -> dict[str, Any]:
+        with ctx.db.connect() as conn:
+            material_or_404(conn, material_id)
+            data = mapdata.build(conn, material_id)
+            nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
+            events = _events(conn, material_id, nodes, now())
+        data["events"] = [{k: e[k] for k in ("id", "letter", "title", "place", "status", "status_label", "lat",
+                                              "lon", "nodes", "node_keys")} for e in events]
+        return data
 
     @router.post("/materials/{material_id}/links")
     def add_link(material_id: str, body: LinkBody) -> dict[str, str]:

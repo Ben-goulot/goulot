@@ -100,7 +100,7 @@ def test_private_canary_never_leaves(client: TestClient, ctx: AppContext, opened
     assert not raw_contains_canary(backup_file.read_bytes())
     # The vault, open, does give them back.
     mine = client.get(f"/api/private/materials/{world['material_id']}/my-chain", headers=world["headers"]).text
-    assert "CANARY-SITE-7F3A" in mine and "63.417" in mine
+    assert "CANARY-SITE-7F3A" in mine and "63.4173" in mine
 
 
 def test_locked_view_leaks_nothing(client: TestClient, ctx: AppContext, opened: tuple[str, str]) -> None:

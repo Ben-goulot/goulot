@@ -61,7 +61,7 @@ def analyses_by_custom_id(ctx: AppContext, make: Any) -> dict[str, dict[str, Any
 def test_dossier_has_only_public_whitelisted_data(client: TestClient, ctx: AppContext,
                                                   opened: tuple[str, str]) -> None:
     csrf, vault_token = opened
-    client.put("/api/private/coverage/acrylonitrile", json={"stock_weeks": 37.29, "supplier_lead_time_days": 613},
+    client.put("/api/private/coverage/acrylonitrile", json={"stock_weeks": 37.2917, "supplier_lead_time_days": 613},
                headers=unsafe_headers(csrf, vault_token))
     event_id = suez_event(ctx)
     backend = ReplayBatchBackend()
@@ -70,7 +70,7 @@ def test_dossier_has_only_public_whitelisted_data(client: TestClient, ctx: AppCo
     params = next(p for _, p in requests if event_id in p["messages"][0]["content"])
     text = params["messages"][0]["content"]
     assert event_id in text and "<reference_data>" in text and "chokepoint_suez" in text
-    assert "37.29" not in json.dumps(params) and "613" not in json.dumps(params)
+    assert "37.2917" not in json.dumps(params) and "613" not in json.dumps(params)
     assert "tools" not in params and params["output_config"]["effort"] == "high"
     assert "Aucun instrument de prix disponible" in text
 

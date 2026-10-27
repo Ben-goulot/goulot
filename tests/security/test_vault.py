@@ -38,7 +38,7 @@ from tests.conftest import (
 
 # Canary values recognisable byte for byte (docs/SPEC.md, section 13).
 CANARY_TEXT = ["CANARY-SITE-7F3A", "CANARY-CITY-9Q2X"]
-CANARY_COVERAGE = {"stock_weeks": 37.29, "supplier_lead_time_days": 417, "price_threshold_pct": 63.417}
+CANARY_COVERAGE = {"stock_weeks": 37.2917, "supplier_lead_time_days": 417, "price_threshold_pct": 63.4173}
 
 
 def _put_canaries(client: TestClient, ctx: AppContext, csrf: str, vault_token: str) -> None:
@@ -58,7 +58,7 @@ def _put_canaries(client: TestClient, ctx: AppContext, csrf: str, vault_token: s
 def _assert_no_canary(raw: bytes, where: str) -> None:
     for text in CANARY_TEXT:
         assert text.encode() not in raw, (where, text)
-    for number in ("37.29", "63.417", '"supplier_lead_time_days":417'):
+    for number in ("37.2917", "63.4173", '"supplier_lead_time_days":417'):
         assert number.encode() not in raw, (where, number)
 
 

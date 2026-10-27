@@ -3,12 +3,14 @@ import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
 import { PersonalCard } from "../private/PersonalCard";
 import { Comparables } from "./Comparables";
-import { EventMap } from "./EventMap";
+import { ChainMap, type MapData } from "../map/ChainMap";
+import { EVENT_LOOK } from "../map/style";
 import { Pressure } from "./Markets";
 import { PriceChart, type ChartMark } from "./PriceChart";
 import { RANK_LABEL, signed, verdictClass, type Sheet as SheetData } from "./types";
 
-const STATUS_COLOR: Record<string, string> = { ongoing: "#FF8A4C", preparing: "#F5B841", early: "#B8C2CF" };
+// Events on the price chart: vermilion for ongoing and preparing (told apart by the shape), grey otherwise.
+const STATUS_SHAPE: Record<string, ChartMark["shape"]> = { ongoing: "circle", preparing: "square", early: "circle", ended: "circle" };
 const SOURCES = [
   ["fred", "FRED"],
   ["bls_ppi", "BLS (indice)"],
@@ -34,10 +36,12 @@ export function Sheet(props: {
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState({ source: "fred", code: "", role: "direct", name: "" });
+  const [map, setMap] = useState<MapData | null>(null);
 
   const load = useCallback(async () => {
     try {
       setData(await api.get<SheetData>(`/api/materials/${props.materialId}/sheet`));
+      setMap(await api.get<MapData>(`/api/materials/${props.materialId}/map`));
     } catch (e) {
       setMessage(e instanceof ApiError ? e.message : "Erreur.");
     }
@@ -48,7 +52,7 @@ export function Sheet(props: {
   }, [load]);
 
   const marks = useMemo<ChartMark[]>(
-    () => (data?.events ?? []).map((e) => ({ day: e.first_seen.slice(0, 10), text: e.letter, color: STATUS_COLOR[e.status], shape: "circle" })),
+    () => (data?.events ?? []).map((e) => ({ day: e.first_seen.slice(0, 10), text: e.letter, color: (EVENT_LOOK[e.status] ?? EVENT_LOOK.early).color, shape: STATUS_SHAPE[e.status] ?? "circle" })),
     [data],
   );
 
@@ -206,7 +210,7 @@ export function Sheet(props: {
           )}
         </section>
         <section className="panel">
-          <EventMap events={data.events} sites={data.sites} selected={selected} onSelect={setSelected} />
+          {map ? <ChainMap data={map} selectedEvent={selected} onEvent={setSelected} onShowInGraph={() => props.onChain()} /> : <p className="muted">Carte en cours de chargement…</p>}
         </section>
       </div>
 
