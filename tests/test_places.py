@@ -231,3 +231,18 @@ def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch
         Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(lambda r: httpx2.Response(200, json=answer))))
     unknown, missing = check_sources.portwatch_names(settings)
     assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"]
+
+
+def test_candidate_sources_are_tried_from_check_sources_only() -> None:
+    """The three hosts approved on 27 October 2026 are asked by the dev check, not by the app's watch."""
+    from datetime import date
+
+    from goulot.cli import check_sources
+    from goulot.net.allowlist import load_allowlist
+    from goulot.settings import REPO_ROOT
+
+    hosts = {"echa.europa.eu", "mapping.emergency.copernicus.eu", "eur-lex.europa.eu"}
+    targets = {url.split("/")[2] for _, url in check_sources.targets(date(2026, 10, 27))}
+    assert hosts <= targets and hosts <= set(check_sources.EXTRA_HOSTS)
+    app = load_allowlist(REPO_ROOT / "config")
+    assert not any(app.allows(h) for h in hosts)

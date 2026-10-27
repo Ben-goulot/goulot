@@ -21,7 +21,9 @@ from goulot.settings import REPO_ROOT, Settings
 
 SAMPLES = REPO_ROOT / ".samples"
 MAX_BYTES = 2 * 1024 * 1024
-EXTRA_HOSTS = ("www.gfex.com.cn",)  # disabled in sources.yaml since 15 October: checked again here
+# Hosts asked here only, not by the app: www.gfex.com.cn (disabled in sources.yaml since 15 October) and the three
+# candidate sources of 27 October 2026 (REACH, Copernicus EMS, EUR-Lex), approved by the user for this trial.
+EXTRA_HOSTS = ("www.gfex.com.cn", "echa.europa.eu", "mapping.emergency.copernicus.eu", "eur-lex.europa.eu")
 
 
 def _last_weekday(today: date) -> date:
@@ -45,6 +47,18 @@ def targets(today: date) -> list[tuple[str, str]]:
         ("nbs_liste", "https://www.stats.gov.cn/sj/zxfb/"),
         ("ecics_acrylonitrile", "https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_list.jsp"
                                 "?Lang=en&offset=0&Cas=107-13-1&sortOrder=1"),
+        # Candidate sources (27 October 2026): automated access, formats and terms, read from the user's Mac.
+        ("echa_liste_candidate", "https://echa.europa.eu/candidate-list-table"),
+        ("echa_annexe_xiv", "https://echa.europa.eu/authorisation-list"),
+        ("echa_annexe_xvii", "https://echa.europa.eu/substances-restricted-under-reach"),
+        ("echa_intentions", "https://echa.europa.eu/registry-of-restriction-intentions"),
+        ("echa_mentions_legales", "https://echa.europa.eu/legal-notice"),
+        ("cems_activations", "https://mapping.emergency.copernicus.eu/activations/api/activations/?limit=5"),
+        ("cems_api_doc", "https://mapping.emergency.copernicus.eu/api/redoc/"),
+        ("cems_citation", "https://mapping.emergency.copernicus.eu/about/citations-guidelines/"),
+        ("eurlex_flux_jo_l", "https://eur-lex.europa.eu/EN/display-feed.rss?rssId=165"),
+        ("eurlex_reutilisation", "https://eur-lex.europa.eu/content/help/data-reuse/reuse-contents-eurlex-details.html"),
+        ("eurlex_mentions_legales", "https://eur-lex.europa.eu/content/legal-notice/legal-notice.html"),
     ]
 
 
