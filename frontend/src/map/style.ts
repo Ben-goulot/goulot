@@ -9,7 +9,7 @@ export const FLOW = "#3D3D3D";
 export const COUNTRY = "#0072B2";
 
 export type Shape = "square" | "circle" | "triangle" | "diamond" | "hexagon" | "ring";
-export type LegendKey = "plant" | "port" | "mine" | "recycler" | "passage" | "trader" | "country" | "flow" | "event" | "zone";
+export type LegendKey = "plant" | "port" | "mine" | "recycler" | "passage" | "trader" | "country" | "flow" | "event" | "zone" | "hotspot";
 
 export const KIND: Record<string, { legend: LegendKey; shape: Shape; color: string }> = {
   plant: { legend: "plant", shape: "square", color: "#0072B2" },
@@ -42,6 +42,7 @@ export const LEGEND: { key: LegendKey; label: string }[] = [
   { key: "flow", label: "Flux" },
   { key: "event", label: "Événement" },
   { key: "zone", label: "Zone d'alerte" },
+  { key: "hotspot", label: "Point chaud mondial" },
 ];
 
 export const EVENT_LOOK: Record<string, { filled: boolean; dashed: boolean; color: string; label: string }> = {
@@ -97,23 +98,6 @@ export function saveHidden(hidden: Set<LegendKey>): void {
   } catch {
     // private window or blocked storage: the choice lasts for this page only
   }
-}
-
-type Ring = number[][];
-
-export function insideRing(lon: number, lat: number, ring: Ring): boolean {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi || 1e-12) + xi) inside = !inside;
-  }
-  return inside;
-}
-
-/** A flow is exposed when one of its points lies in an alert zone (outer rings, [lon, lat]). */
-export function exposed(coords: number[][], zones: Ring[]): boolean {
-  return coords.some(([lon, lat]) => zones.some((ring) => insideRing(lon, lat, ring) || insideRing(lon + 360, lat, ring) || insideRing(lon - 360, lat, ring)));
 }
 
 /** Country fill: one blue, more opaque for a larger world share. */

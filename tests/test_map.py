@@ -42,7 +42,10 @@ def test_map_payload(client: TestClient, ctx: AppContext) -> None:
     assert west <= 4.14 <= east and south <= 51.95 <= north
     (event,) = [e for e in data["events"] if e["id"] == event_id]
     assert event["status"] == "ongoing" and "chokepoint_suez" in event["node_keys"]
-    assert data["zones"] == []
+    (zone,) = [z for z in data["zones"] if z["event_id"] == event_id]
+    assert zone["kind"] == "event" and zone["status"] == "En cours" and len(zone["label"]) <= 40
+    assert zone["id"].endswith(":chokepoint_suez")  # the strait's outline from the table
+    assert any(f["exposed_by"] == [zone["id"]] for f in data["flows"])
     assert client.get("/api/materials/not-a-uuid/map").status_code == 404
 
 

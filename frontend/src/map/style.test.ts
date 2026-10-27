@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { counts, countryOpacity, EVENT_LOOK, exposed, KIND, LEGEND, loadHidden, saveHidden, VERMILION } from "./style";
+import { counts, countryOpacity, EVENT_LOOK, KIND, LEGEND, loadHidden, saveHidden, VERMILION } from "./style";
 
 describe("map conventions", () => {
   it("gives every type its own shape, so color is never the only code", () => {
@@ -22,13 +22,6 @@ describe("map conventions", () => {
     expect(c.passage).toBe(2);
     expect(c.flow).toBe(3);
     expect(Object.keys(c)).toHaveLength(LEGEND.length);
-  });
-  it("finds flows crossing an alert zone, across the antimeridian too", () => {
-    const hormuz = [[55.5, 26], [57, 26], [57, 27], [55.5, 27], [55.5, 26]];
-    expect(exposed([[50, 27], [56.3, 26.5], [60, 25]], [hormuz])).toBe(true);
-    expect(exposed([[50, 27], [52, 28]], [hormuz])).toBe(false);
-    const pacific = [[178, -1], [182, -1], [182, 1], [178, 1], [178, -1]];
-    expect(exposed([[-179, 0]], [pacific])).toBe(true);
   });
   it("shades countries by world share", () => {
     expect(countryOpacity(40, 40)).toBe(0.55);

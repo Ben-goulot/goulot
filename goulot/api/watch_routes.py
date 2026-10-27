@@ -90,6 +90,13 @@ def _series_payload(s: Any, months: int) -> dict[str, Any] | None:
             "change_pct": round(100 * (last / first - 1), 2) if first and last else None}
 
 
+def _hazard_details(conn: Any, event_id: str) -> dict[str, Any]:
+    """The structured fields of the hazard item behind an event (GDACS event type), for the size of its zone."""
+    row = conn.execute("SELECT a.details FROM event_articles ea JOIN articles a ON a.id = ea.article_id "
+                       "WHERE ea.event_id = ? ORDER BY a.id LIMIT 1", (event_id,)).fetchone()
+    return json.loads(row[0]) if row else {}
+
+
 def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today: datetime) -> list[dict[str, Any]]:
     """Events of the last 60 days, lettered in order; an event without a place sits on its first located node."""
     events = []
@@ -120,6 +127,8 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
                        "unit": hyp["move_unit"]} if hyp else None,
             "headline": (result or {}).get("headline", ""),
             "future_dates": json.loads(e["future_dates"]),
+            "event_type": e["event_type"], "origin": e["origin"], "country_iso2": e["country_iso2"],
+            "details": _hazard_details(conn, e["id"]) if e["origin"] == "hazard" else {},
         })
     return events
 
@@ -196,9 +205,10 @@ def build_router(ctx: AppContext) -> APIRouter:
             data = mapdata.build(conn, material_id)
             nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
             events = _events(conn, material_id, nodes, now())
+            data["zones"] = mapdata.zones(conn, material_id, events)
         data["events"] = [{k: e[k] for k in ("id", "letter", "title", "place", "status", "status_label", "lat",
                                               "lon", "nodes", "node_keys")} for e in events]
-        return data
+        return mapdata.mark_exposure(data)
 
     @router.post("/materials/{material_id}/links")
     def add_link(material_id: str, body: LinkBody) -> dict[str, str]:

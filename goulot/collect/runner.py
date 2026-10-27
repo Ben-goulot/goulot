@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from goulot.chain import store
-from goulot.collect import sources
+from goulot.collect import hotspots, sources
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names
 from goulot.db.connection import Database
@@ -229,6 +229,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
         country_nodes |= private.needs_material if private else set()
     result = CycleResult(cycle_id, ok=False)
     families_ok: dict[str, bool] = {}
+    fetched_items: dict[str, list[Item]] = {}  # answers the world hot spots need (GDACS)
     for source_id, fetch in fetchers.items():
         if not enabled(source_id):
             continue
@@ -247,6 +248,8 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 items, error = exc.items[:MAX_ITEMS_PER_SOURCE], f"SourceError: {exc}"
                 log.warning("source failed midway: source=%s error=%s kept_items=%s", source_id, error, len(items))
             fetched = len(items)
+            if source_id == "gdacs" and not error:
+                fetched_items[source_id] = items
             with db.transaction() as conn:
                 for item in items:
                     hits = match(item, rules, {k: k for k in country_nodes})
@@ -269,6 +272,10 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 (cycle_id, source_id, family, started, iso(datetime.now(UTC)), int(ok), error[:120], fetched, matched,
                  kept),
             )
+    try:
+        hotspots.refresh(db, http, now, fetched_items)
+    except sqlite3.Error:
+        log.exception("hotspots refresh failed")
     result.ok = all(families_ok.get(f, False) for f in REQUIRED_FAMILIES)
     with db.transaction() as conn:
         conn.execute("UPDATE cycles SET finished_at = ?, ok = ?, summary = ? WHERE id = ?", (

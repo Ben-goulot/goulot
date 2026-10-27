@@ -120,12 +120,19 @@ button:disabled { opacity: 0.55; cursor: default; }
 .map-marker { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: none; border-radius: 50%; background: transparent; cursor: pointer; }
 .map-marker:focus-visible, .map-marker.selected { outline: 3px solid #000; outline-offset: 1px; background: rgba(255, 255, 255, 0.85); }
 .map-marker.mine { width: 32px; height: 32px; }
-.map-badge { position: absolute; top: -10px; left: 18px; padding: 0 4px; border-radius: 6px; background: #000; color: #fff; font-size: 12px; line-height: 16px; font-weight: 600; }
+.map-badge { position: absolute; top: -10px; left: 18px; padding: 0 4px; border-radius: 6px; background: #000; color: #fff; font-size: 14px; line-height: 16px; font-weight: 600; }
 .map-tip .maplibregl-popup-content { color: #1a1a1a; font-size: 14px; line-height: 1.4; padding: 8px 10px; }
 .map-tip strong { display: block; margin-bottom: 2px; }
 .map-detail { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--row); font-size: 14px; }
 .map-detail h3 { margin: 0 0 4px; font-size: 16px; }
 .map-detail p { margin: 0; }
+.map-marker.exposed { outline: 3px dashed #D55E00; outline-offset: 1px; }
+.map-zone-label { display: grid; gap: 1px; min-height: 0; max-width: 280px; padding: 3px 8px; border: 2px solid #D55E00; border-radius: 6px; background: #fff; color: #1a1a1a; font-size: 14px; line-height: 1.25; text-align: left; cursor: pointer; }
+.map-zone-label.hotspot { border-style: dashed; }
+.map-zone-stack { display: grid; gap: 4px; justify-items: start; }
+.map-zone-sub { font-size: 14px; color: #3d3d3d; }
+.map-zone-label:focus-visible { outline: 3px solid #000; }
+.map.zoomed-out .map-zone-text, .map.zoomed-out .map-zone-sub { display: none; }
 .band .inline { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .events .event { width: 100%; display: flex; gap: 12px; text-align: left; align-items: flex-start; padding: 10px; min-height: 44px; }
 .events .event.selected { border-color: var(--accent); }
