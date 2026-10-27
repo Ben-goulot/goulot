@@ -1,0 +1,271 @@
+{
+ "source": "Un point représentatif par fleuve et par pays traversé, saisi à la main le 27 octobre 2026.",
+ "waterways": [
+  {
+   "id": "rhin",
+   "name_fr": "Rhin",
+   "names": [
+    "Rhin",
+    "Rhine",
+    "Rhein",
+    "Rijn"
+   ],
+   "points": {
+    "DE": [
+     50.085,
+     7.765
+    ],
+    "NL": [
+     51.85,
+     5.87
+    ],
+    "FR": [
+     48.58,
+     7.79
+    ],
+    "CH": [
+     47.56,
+     7.59
+    ]
+   },
+   "default": "DE",
+   "note": "Kaub (niveau suivi par PEGELONLINE)"
+  },
+  {
+   "id": "danube",
+   "name_fr": "Danube",
+   "names": [
+    "Danube",
+    "Donau",
+    "Dunărea",
+    "Duna"
+   ],
+   "points": {
+    "DE": [
+     49.02,
+     12.1
+    ],
+    "AT": [
+     48.22,
+     16.4
+    ],
+    "SK": [
+     48.14,
+     17.11
+    ],
+    "HU": [
+     47.5,
+     19.04
+    ],
+    "HR": [
+     45.35,
+     19.0
+    ],
+    "RS": [
+     44.82,
+     20.45
+    ],
+    "RO": [
+     43.9,
+     25.97
+    ],
+    "BG": [
+     43.83,
+     25.96
+    ]
+   },
+   "default": "HU",
+   "note": ""
+  },
+  {
+   "id": "yangtse",
+   "name_fr": "Yangtsé",
+   "names": [
+    "Yangtsé",
+    "Yangtze",
+    "Yangzi",
+    "Chang Jiang"
+   ],
+   "points": {
+    "CN": [
+     32.06,
+     118.78
+    ]
+   },
+   "default": "CN",
+   "note": "Nankin"
+  },
+  {
+   "id": "zhujiang",
+   "name_fr": "Rivière des Perles",
+   "names": [
+    "Rivière des Perles",
+    "Pearl River",
+    "Zhujiang"
+   ],
+   "points": {
+    "CN": [
+     23.1,
+     113.3
+    ]
+   },
+   "default": "CN",
+   "note": "Canton"
+  },
+  {
+   "id": "mississippi",
+   "name_fr": "Mississippi",
+   "names": [
+    "Mississippi"
+   ],
+   "points": {
+    "US": [
+     30.45,
+     -91.19
+    ]
+   },
+   "default": "US",
+   "note": "Baton Rouge"
+  },
+  {
+   "id": "saint_laurent",
+   "name_fr": "Saint-Laurent",
+   "names": [
+    "Saint-Laurent",
+    "St. Lawrence",
+    "Saint Lawrence"
+   ],
+   "points": {
+    "CA": [
+     45.5,
+     -73.55
+    ]
+   },
+   "default": "CA",
+   "note": "Montréal"
+  },
+  {
+   "id": "elbe",
+   "name_fr": "Elbe",
+   "names": [
+    "Elbe",
+    "Labe"
+   ],
+   "points": {
+    "DE": [
+     52.13,
+     11.64
+    ],
+    "CZ": [
+     50.78,
+     14.21
+    ]
+   },
+   "default": "DE",
+   "note": "Magdebourg"
+  },
+  {
+   "id": "rhone",
+   "name_fr": "Rhône",
+   "names": [
+    "Rhône",
+    "Rhone"
+   ],
+   "points": {
+    "FR": [
+     45.76,
+     4.83
+    ]
+   },
+   "default": "FR",
+   "note": "Lyon"
+  },
+  {
+   "id": "seine",
+   "name_fr": "Seine",
+   "names": [
+    "Seine"
+   ],
+   "points": {
+    "FR": [
+     49.44,
+     1.1
+    ]
+   },
+   "default": "FR",
+   "note": "Rouen"
+  },
+  {
+   "id": "volga",
+   "name_fr": "Volga",
+   "names": [
+    "Volga"
+   ],
+   "points": {
+    "RU": [
+     48.71,
+     44.51
+    ]
+   },
+   "default": "RU",
+   "note": "Volgograd"
+  },
+  {
+   "id": "parana",
+   "name_fr": "Paraná",
+   "names": [
+    "Paraná",
+    "Parana"
+   ],
+   "points": {
+    "AR": [
+     -32.95,
+     -60.64
+    ]
+   },
+   "default": "AR",
+   "note": "Rosario"
+  },
+  {
+   "id": "amazone",
+   "name_fr": "Amazone",
+   "names": [
+    "Amazone",
+    "Amazon",
+    "Amazonas"
+   ],
+   "points": {
+    "BR": [
+     -3.13,
+     -60.02
+    ]
+   },
+   "default": "BR",
+   "note": "Manaus"
+  },
+  {
+   "id": "mekong",
+   "name_fr": "Mékong",
+   "names": [
+    "Mékong",
+    "Mekong"
+   ],
+   "points": {
+    "VN": [
+     10.03,
+     105.78
+    ],
+    "KH": [
+     11.57,
+     104.92
+    ],
+    "LA": [
+     17.97,
+     102.6
+    ]
+   },
+   "default": "VN",
+   "note": ""
+  }
+ ]
+}

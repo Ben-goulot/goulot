@@ -120,17 +120,23 @@ def save_chain(
             (material_id, s["ref"], s["url"], s.get("title", ""), s.get("publisher", ""), s.get("page_age", ""), now),
         )
         source_ids[s["ref"]] = int(cur.lastrowid or 0)
+    from goulot.chain.places import computed_position
+
     for n in chain["nodes"]:
         anomalies = [*n.get("anomalies", []), *node_anomalies.get(n["node_id"], [])]
         confidence = "low" if anomalies else n["confidence"]
+        lat, lon, coord_source = n["lat"], n["lon"], "ai"
+        if lat is None or lon is None:
+            lat, lon, coord_source = computed_position(n)
         cur = conn.execute(
             "INSERT INTO chain_nodes (material_id, node_key, node_type, name, product, tier, country_iso2, place, lat, "
             "lon, global_share_pct, buffer_days, buffer_is_default, capacity_text, confidence, notes, anomalies, "
-            "valid_from, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "valid_from, recorded_at, coord_source) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (material_id, n["node_id"], n["node_type"], n["name"], n["product"], n["tier"], n["country_iso2"],
-             n["place"], n["lat"], n["lon"], n["global_share_pct"], n["buffer_days"],
+             n["place"], lat, lon, n["global_share_pct"], n["buffer_days"],
              int(bool(n.get("buffer_is_default"))), n["capacity_text"], confidence, n["notes"], _j(anomalies),
-             now, now),
+             now, now, coord_source),
         )
         for ref in n["source_ids"]:
             if ref in source_ids:
@@ -198,7 +204,7 @@ SOURCES_OF = {
 NODE_COLUMNS = (
     "material_id", "node_key", "node_type", "name", "product", "tier", "country_iso2", "place", "lat", "lon",
     "global_share_pct", "buffer_days", "buffer_is_default", "capacity_text", "confidence", "notes", "anomalies",
-    "user_modified", "valid_from", "valid_to", "recorded_at",
+    "user_modified", "valid_from", "valid_to", "recorded_at", "coord_source", "added_by",
 )
 EDGE_COLUMNS = (
     "material_id", "from_key", "to_key", "relation", "transport_mode", "lead_time_days", "lead_time_basis",
@@ -207,7 +213,8 @@ EDGE_COLUMNS = (
 INSERT_NODE = (
     "INSERT INTO chain_nodes (material_id, node_key, node_type, name, product, tier, country_iso2, place, lat, lon, "
     "global_share_pct, buffer_days, buffer_is_default, capacity_text, confidence, notes, anomalies, user_modified, "
-    "valid_from, valid_to, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "valid_from, valid_to, recorded_at, coord_source, added_by) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 INSERT_EDGE = (
     "INSERT INTO chain_edges (material_id, from_key, to_key, relation, transport_mode, lead_time_days, "
@@ -269,8 +276,25 @@ def load_chain(conn: sqlite3.Connection, material_id: str) -> dict[str, Any]:
     }
 
 
+def revise_node(conn: sqlite3.Connection, row: sqlite3.Row, changes: dict[str, Any], *, by_user: bool = False
+                ) -> None:
+    """Closes the current row and inserts its revision (bitemporal), with the same sources."""
+    now = utcnow()
+    new = {**dict(row), **changes}
+    conn.execute("UPDATE chain_nodes SET valid_to = ? WHERE id = ?", (now, row["id"]))
+    new.update({"valid_from": now, "valid_to": None, "recorded_at": now})
+    if by_user:
+        new.update({"user_modified": 1, "anomalies": "[]"})
+    cur = conn.execute(INSERT_NODE, [new[c] for c in NODE_COLUMNS])
+    conn.execute("INSERT INTO node_sources SELECT ?, source_id FROM node_sources WHERE node_id = ?",
+                 (cur.lastrowid, row["id"]))
+
+
 def correct_node(conn: sqlite3.Connection, material_id: str, node_key: str, changes: dict[str, Any]) -> None:
-    """User correction: closes the current row and inserts the corrected one (bitemporal)."""
+    """User correction: closes the current row and inserts the corrected one (bitemporal). A position given by the
+    user must lie in the node's country (straits excepted); a new place or country is located again."""
+    from goulot.chain import geo, places
+
     unknown = set(changes) - set(EDITABLE_NODE_FIELDS)
     if unknown:
         raise ChainStateError(f"champs non modifiables : {sorted(unknown)}")
@@ -279,15 +303,25 @@ def correct_node(conn: sqlite3.Connection, material_id: str, node_key: str, chan
     ).fetchone()
     if row is None:
         raise ChainStateError("maillon introuvable")
-    now = utcnow()
-    new = {**dict(row), **changes}
+    changes = dict(changes)
     if "buffer_days" in changes:
-        new["buffer_is_default"] = 0
-    conn.execute("UPDATE chain_nodes SET valid_to = ? WHERE id = ?", (now, row["id"]))
-    new.update({"user_modified": 1, "valid_from": now, "valid_to": None, "recorded_at": now, "anomalies": "[]"})
-    cur = conn.execute(INSERT_NODE, [new[c] for c in NODE_COLUMNS])
-    conn.execute("INSERT INTO node_sources SELECT ?, source_id FROM node_sources WHERE node_id = ?",
-                 (cur.lastrowid, row["id"]))
+        changes["buffer_is_default"] = 0
+    new = {**dict(row), **changes}
+    if changes.get("lat") is not None and changes.get("lon") is not None:
+        if not (-90 <= new["lat"] <= 90 and -180 <= new["lon"] <= 180):
+            raise ChainStateError("position invalide")
+        found = geo.country_at(new["lat"], new["lon"])
+        if (new["node_type"] != "chokepoint" and new["country_iso2"] != "unknown" and found is not None
+                and found != new["country_iso2"] and not geo._near(new["lat"], new["lon"], new["country_iso2"], None)):
+            raise ChainStateError(f"cette position est en {found}, pas en {new['country_iso2']}")
+        changes["coord_source"] = "user"
+    elif "lat" in changes or "lon" in changes or (
+            {"place", "country_iso2", "name"} & set(changes) and row["coord_source"] != "user"):
+        changes.update({"lat": None, "lon": None, "coord_source": ""})
+    if changes.get("coord_source") == "":
+        lat, lon, source = places.computed_position({**dict(row), **changes})
+        changes.update({"lat": lat, "lon": lon, "coord_source": source})
+    revise_node(conn, row, changes, by_user=True)
     refresh_rules(conn, material_id)
 
 
@@ -333,9 +367,11 @@ def validate_material(conn: sqlite3.Connection, material_id: str, *, acknowledge
 
 def refresh_rules(conn: sqlite3.Connection, material_id: str) -> int:
     """Watch rules of a validated chain (step 7 « Armer la veille »); nothing is watched before validation."""
+    from goulot.chain.places import apply_routes
     from goulot.collect.rules import generate
 
     material = get_material(conn, material_id)
     if material is None or material["status"] != "validated":
         return 0
+    apply_routes(conn, material_id)
     return generate(conn, material, load_chain(conn, material_id)["nodes"])

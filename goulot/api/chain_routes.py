@@ -16,11 +16,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext, MissingAPIKey
-from goulot.chain import service, store
+from goulot.chain import places, service, store
 from goulot.chain.delays import delays_to_material
 from goulot.chain.identify import IdentificationError, identify
 from goulot.chain.quote import confirm_quote, reconstruction_quote, save_quote
 from goulot.chain.store import ChainStateError
+from goulot.db.connection import set_setting
+from goulot.geo import cities
 from goulot.llm.budget import BUDGETS
 from goulot.security.secrets import get_secret
 
@@ -61,6 +63,10 @@ class EdgeChanges(_Strict):
     lead_time_days: float | None = Field(default=None, ge=0, le=365)
     share_pct: float | None = Field(default=None, ge=0, le=100)
     confidence: str | None = Field(default=None, pattern=r"^(high|medium|low)$")
+
+
+class ZoneBody(_Strict):
+    zone: str = Field(max_length=20)
 
 
 class ValidateBody(_Strict):
@@ -216,6 +222,30 @@ def build_router(ctx: AppContext) -> APIRouter:
         except ChainStateError as exc:
             raise HTTPException(409, str(exc)) from None
         return {"ok": True}
+
+    @router.get("/places/cities")
+    def city_search(q: str = "", country: str = "") -> dict[str, Any]:
+        """Offline city list (GeoNames), to place a node of the typical chain: nothing leaves the Mac."""
+        if len(q) > 60 or (country and not re.fullmatch(r"[A-Z]{2}", country)):
+            raise HTTPException(422, "Données invalides.")
+        return {"available": cities.available(), "results": cities.search(q, country or None),
+                "attribution": cities.ATTRIBUTION}
+
+    @router.get("/settings/delivery-zone")
+    def delivery_zone_get() -> dict[str, Any]:
+        with ctx.db.connect() as conn:
+            return {"zone": places.delivery_zone(conn), "choices": places.DELIVERY_ZONES}
+
+    @router.put("/settings/delivery-zone")
+    def delivery_zone_put(body: ZoneBody) -> dict[str, Any]:
+        """The probable route straits of every validated chain follow the delivery zone."""
+        if body.zone not in places.DELIVERY_ZONES:
+            raise HTTPException(422, "Zone inconnue.")
+        with ctx.db.transaction() as conn:
+            set_setting(conn, "delivery_zone", body.zone)
+            for m in store.list_materials(conn):
+                store.refresh_rules(conn, m["id"])
+        return {"zone": body.zone}
 
     @router.get("/watch/status")
     def watch_status() -> dict[str, Any]:

@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+import httpx2
+
 from goulot.chain import service, store
 from goulot.chain.identify import IdentificationError, identify
 from goulot.chain.quote import reconstruction_quote
@@ -454,6 +456,12 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
 
         print("Interrogation des sources depuis votre Mac (sans IA, sans clé) ; réponses gardées dans .samples/.")
         check_sources.run(settings)
+        try:
+            unknown, missing = check_sources.portwatch_names(settings)
+            print(f"  PortWatch : {len(unknown)} détroit(s) absent(s) de la table {unknown} ; "
+                  f"{len(missing)} nom(s) de la table introuvable(s) {missing}")
+        except (httpx2.HTTPError, ValueError, KeyError) as exc:
+            print(f"  ❌ PortWatch : {type(exc).__name__}")
         print("Terminé. Copiez ce résultat à Claude.")
     elif args.dev_action == "fetch-cities":
         fetch_cities(settings)

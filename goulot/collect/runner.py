@@ -193,16 +193,25 @@ def _due(conn: sqlite3.Connection, source: str, now: datetime) -> bool:
 
 
 def ensure_rules(conn: sqlite3.Connection) -> int:
-    """A validated material without any active rule is not watched at all: its rules are generated again from its
-    current chain (free, no AI). Returns how many materials were repaired."""
+    """Catch-up, free and without AI. Nodes recorded before positions existed (27 October 2026) are located; a
+    validated material whose nodes were just located, or that has no active rule at all, gets its probable route
+    straits and its rules generated again. Returns how many materials got new rules."""
+    from goulot.chain.places import locate_chain
+
+    unplaced = [r[0] for r in conn.execute(
+        "SELECT DISTINCT material_id FROM chain_nodes WHERE valid_to IS NULL AND coord_source = ''")]
+    for material_id in unplaced:
+        locate_chain(conn, material_id)
     missing = [r[0] for r in conn.execute(
         "SELECT id FROM materials m WHERE status = 'validated' AND NOT EXISTS "
         "(SELECT 1 FROM watch_rules w WHERE w.material_id = m.id AND w.active = 1)")]
-    for material_id in missing:
+    validated = {r[0] for r in conn.execute("SELECT id FROM materials WHERE status = 'validated'")}
+    todo = list(dict.fromkeys([*missing, *(m for m in unplaced if m in validated)]))
+    for material_id in todo:
         store.refresh_rules(conn, material_id)
-    if missing:
-        log.warning("watch rules regenerated: materials=%s", len(missing))
-    return len(missing)
+    if unplaced or todo:
+        log.warning("chain catch-up: located=%s rules_regenerated=%s", len(unplaced), len(todo))
+    return len(todo)
 
 
 def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: datetime | None = None,

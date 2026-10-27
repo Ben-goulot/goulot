@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { column, layout } from "./layout";
-import { clip, safeHref, weeks, type ChainNode } from "./types";
+import { approximate, clip, COORD_SOURCE, safeHref, weeks, type ChainNode } from "./types";
 
 const node = (key: string, type: string, tier: number): ChainNode => ({
   node_key: key, node_type: type, name: key, product: "", tier, country_iso2: "unknown", place: "unknown",
   lat: null, lon: null, global_share_pct: null, buffer_days: null, buffer_is_default: 0, capacity_text: "unknown",
   confidence: "high", notes: "", anomalies: [], user_modified: 0, source_refs: [], delay: null,
+  coord_source: "none", added_by: "",
 });
 
 describe("chain layout", () => {
@@ -38,5 +39,14 @@ describe("display helpers", () => {
     expect(clip("x".repeat(600)).length).toBe(501);
     expect(weeks(3)).toBe("3 j");
     expect(weeks(35)).toBe("≈ 5,0 sem.");
+  });
+});
+
+describe("node positions", () => {
+  it("says where a position comes from, and flags approximate ones", () => {
+    expect(COORD_SOURCE.country).toContain("approximative");
+    expect(approximate({ coord_source: "country" })).toBe(true);
+    expect(approximate({ coord_source: "city" })).toBe(false);
+    expect(approximate({ coord_source: "user" })).toBe(false);
   });
 });

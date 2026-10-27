@@ -50,6 +50,8 @@ def material_names(material: dict[str, Any]) -> list[str]:
 
 def generate(conn: sqlite3.Connection, material: dict[str, Any], nodes: list[dict[str, Any]]) -> int:
     """Replace the active rules of a material by those of its current validated chain. Returns the count."""
+    from goulot.chain import places
+
     now = utcnow()
     conn.execute("UPDATE watch_rules SET active = 0 WHERE material_id = ?", (material["id"],))
     rows: list[tuple[Any, ...]] = []
@@ -73,12 +75,16 @@ def generate(conn: sqlite3.Connection, material: dict[str, Any], nodes: list[dic
                     add("keyword", name, n["node_key"])
         if n["node_type"] in ("chokepoint", "waterway") and _usable(n["name"]):
             add("strait", n["name"], n["node_key"])
+            known = places.match_chokepoint(n["name"], n["place"]) if n["node_type"] == "chokepoint" else None
+            for name in (known["name_fr"], known["portwatch_name"]) if known else ():
+                add("strait", name, n["node_key"])
         if n["node_type"] == "country" and n["country_iso2"] != "unknown":
             add("country", n["country_iso2"], n["node_key"])
             if _usable(n["name"]):
                 add("keyword", n["name"], n["node_key"])  # country name, used only together with the material
-        if n["lat"] is not None and n["lon"] is not None and n["node_type"] != "country":
-            add("zone", n["node_key"], n["node_key"], n["lat"], n["lon"], ZONE_RADIUS_KM)
+        # A position known only to the country would raise false alerts all over it: no zone (docs/SPEC.md, sec. 3).
+        if n["lat"] is not None and n["lon"] is not None and n.get("coord_source") in places.PRECISE:
+            add("zone", n["node_key"], n["node_key"], n["lat"], n["lon"], places.zone_radius(n))
     for hs in material.get("hs_codes", []):
         add("hs_code", str(hs["code"]))
     conn.executemany(

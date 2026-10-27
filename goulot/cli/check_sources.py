@@ -69,3 +69,21 @@ def run(settings: Settings, today: date | None = None) -> list[dict[str, object]
         report.append(entry)
     (SAMPLES / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return report
+
+
+def portwatch_names(settings: Settings) -> tuple[list[str], list[str]]:
+    """Names of the IMF PortWatch chokepoints compared with the embedded table (goulot/data/chokepoints.json):
+    (in PortWatch but not in the table, in the table but not in PortWatch)."""
+    from goulot.chain.places import chokepoints
+    from goulot.collect.sources import PORTWATCH
+
+    client = build_client(load_allowlist(settings.config_dir))
+    try:
+        result = fetch(client, PORTWATCH, params={"where": "1=1", "outFields": "portname",
+                                                  "returnDistinctValues": "true", "returnGeometry": "false",
+                                                  "f": "json"})
+    finally:
+        client.close()
+    found = {str(f["attributes"]["portname"]) for f in json.loads(result.content).get("features", [])}
+    table = {c["portwatch_name"] for c in chokepoints().values()}
+    return sorted(found - table), sorted(table - found)

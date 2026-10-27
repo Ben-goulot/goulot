@@ -1,0 +1,349 @@
+{
+ "source": "Liste des 28 points de passage suivis par IMF PortWatch (portwatch.imf.org) ; positions et rayons approximatifs, saisis à la main le 27 octobre 2026 ; contour = cercle simplifié autour du point.",
+ "chokepoints": [
+  {
+   "id": "suez",
+   "name_fr": "Canal de Suez",
+   "portwatch_name": "Suez Canal",
+   "names": [
+    "Canal de Suez",
+    "Suez Canal"
+   ],
+   "lat": 30.6,
+   "lon": 32.33,
+   "radius_km": 90
+  },
+  {
+   "id": "panama",
+   "name_fr": "Canal de Panama",
+   "portwatch_name": "Panama Canal",
+   "names": [
+    "Canal de Panama",
+    "Panama Canal"
+   ],
+   "lat": 9.12,
+   "lon": -79.75,
+   "radius_km": 50
+  },
+  {
+   "id": "bosporus",
+   "name_fr": "Détroit du Bosphore",
+   "portwatch_name": "Bosporus Strait",
+   "names": [
+    "Détroit du Bosphore",
+    "Bosporus Strait",
+    "Bosphore",
+    "Bosphorus"
+   ],
+   "lat": 41.12,
+   "lon": 29.07,
+   "radius_km": 30
+  },
+  {
+   "id": "bab_el_mandeb",
+   "name_fr": "Détroit de Bab el-Mandeb",
+   "portwatch_name": "Bab el-Mandeb Strait",
+   "names": [
+    "Détroit de Bab el-Mandeb",
+    "Bab el-Mandeb Strait"
+   ],
+   "lat": 12.6,
+   "lon": 43.35,
+   "radius_km": 60
+  },
+  {
+   "id": "malacca",
+   "name_fr": "Détroit de Malacca",
+   "portwatch_name": "Malacca Strait",
+   "names": [
+    "Détroit de Malacca",
+    "Malacca Strait",
+    "Strait of Malacca"
+   ],
+   "lat": 2.5,
+   "lon": 101.3,
+   "radius_km": 250
+  },
+  {
+   "id": "hormuz",
+   "name_fr": "Détroit d'Ormuz",
+   "portwatch_name": "Strait of Hormuz",
+   "names": [
+    "Détroit d'Ormuz",
+    "Strait of Hormuz",
+    "Hormuz Strait"
+   ],
+   "lat": 26.55,
+   "lon": 56.3,
+   "radius_km": 80
+  },
+  {
+   "id": "cape_good_hope",
+   "name_fr": "Cap de Bonne-Espérance",
+   "portwatch_name": "Cape of Good Hope",
+   "names": [
+    "Cap de Bonne-Espérance",
+    "Cape of Good Hope"
+   ],
+   "lat": -34.8,
+   "lon": 19.0,
+   "radius_km": 150
+  },
+  {
+   "id": "gibraltar",
+   "name_fr": "Détroit de Gibraltar",
+   "portwatch_name": "Gibraltar Strait",
+   "names": [
+    "Détroit de Gibraltar",
+    "Gibraltar Strait",
+    "Strait of Gibraltar"
+   ],
+   "lat": 35.95,
+   "lon": -5.55,
+   "radius_km": 40
+  },
+  {
+   "id": "dover",
+   "name_fr": "Pas de Calais",
+   "portwatch_name": "Dover Strait",
+   "names": [
+    "Pas de Calais",
+    "Dover Strait",
+    "Strait of Dover"
+   ],
+   "lat": 51.0,
+   "lon": 1.45,
+   "radius_km": 40
+  },
+  {
+   "id": "oresund",
+   "name_fr": "Øresund",
+   "portwatch_name": "Oresund Strait",
+   "names": [
+    "Øresund",
+    "Oresund Strait",
+    "Oresund",
+    "Öresund"
+   ],
+   "lat": 55.85,
+   "lon": 12.7,
+   "radius_km": 40
+  },
+  {
+   "id": "taiwan",
+   "name_fr": "Détroit de Taïwan",
+   "portwatch_name": "Taiwan Strait",
+   "names": [
+    "Détroit de Taïwan",
+    "Taiwan Strait"
+   ],
+   "lat": 24.3,
+   "lon": 119.5,
+   "radius_km": 150
+  },
+  {
+   "id": "korea",
+   "name_fr": "Détroit de Corée",
+   "portwatch_name": "Korea Strait",
+   "names": [
+    "Détroit de Corée",
+    "Korea Strait"
+   ],
+   "lat": 34.4,
+   "lon": 129.3,
+   "radius_km": 100
+  },
+  {
+   "id": "tsugaru",
+   "name_fr": "Détroit de Tsugaru",
+   "portwatch_name": "Tsugaru Strait",
+   "names": [
+    "Détroit de Tsugaru",
+    "Tsugaru Strait"
+   ],
+   "lat": 41.5,
+   "lon": 140.6,
+   "radius_km": 50
+  },
+  {
+   "id": "luzon",
+   "name_fr": "Détroit de Luçon",
+   "portwatch_name": "Luzon Strait",
+   "names": [
+    "Détroit de Luçon",
+    "Luzon Strait"
+   ],
+   "lat": 20.5,
+   "lon": 121.0,
+   "radius_km": 150
+  },
+  {
+   "id": "lombok",
+   "name_fr": "Détroit de Lombok",
+   "portwatch_name": "Lombok Strait",
+   "names": [
+    "Détroit de Lombok",
+    "Lombok Strait"
+   ],
+   "lat": -8.75,
+   "lon": 115.75,
+   "radius_km": 40
+  },
+  {
+   "id": "ombai",
+   "name_fr": "Détroit d'Ombai",
+   "portwatch_name": "Ombai Strait",
+   "names": [
+    "Détroit d'Ombai",
+    "Ombai Strait"
+   ],
+   "lat": -8.4,
+   "lon": 125.0,
+   "radius_km": 60
+  },
+  {
+   "id": "bohai",
+   "name_fr": "Détroit de Bohai",
+   "portwatch_name": "Bohai Strait",
+   "names": [
+    "Détroit de Bohai",
+    "Bohai Strait"
+   ],
+   "lat": 38.3,
+   "lon": 121.0,
+   "radius_km": 60
+  },
+  {
+   "id": "torres",
+   "name_fr": "Détroit de Torres",
+   "portwatch_name": "Torres Strait",
+   "names": [
+    "Détroit de Torres",
+    "Torres Strait"
+   ],
+   "lat": -10.3,
+   "lon": 142.3,
+   "radius_km": 80
+  },
+  {
+   "id": "sunda",
+   "name_fr": "Détroit de la Sonde",
+   "portwatch_name": "Sunda Strait",
+   "names": [
+    "Détroit de la Sonde",
+    "Sunda Strait"
+   ],
+   "lat": -6.0,
+   "lon": 105.8,
+   "radius_km": 50
+  },
+  {
+   "id": "makassar",
+   "name_fr": "Détroit de Makassar",
+   "portwatch_name": "Makassar Strait",
+   "names": [
+    "Détroit de Makassar",
+    "Makassar Strait"
+   ],
+   "lat": -2.0,
+   "lon": 118.3,
+   "radius_km": 150
+  },
+  {
+   "id": "magellan",
+   "name_fr": "Détroit de Magellan",
+   "portwatch_name": "Magellan Strait",
+   "names": [
+    "Détroit de Magellan",
+    "Magellan Strait"
+   ],
+   "lat": -53.5,
+   "lon": -70.5,
+   "radius_km": 100
+  },
+  {
+   "id": "yucatan",
+   "name_fr": "Canal du Yucatán",
+   "portwatch_name": "Yucatan Channel",
+   "names": [
+    "Canal du Yucatán",
+    "Yucatan Channel"
+   ],
+   "lat": 21.6,
+   "lon": -85.8,
+   "radius_km": 80
+  },
+  {
+   "id": "windward",
+   "name_fr": "Passage du Vent",
+   "portwatch_name": "Windward Passage",
+   "names": [
+    "Passage du Vent",
+    "Windward Passage"
+   ],
+   "lat": 20.0,
+   "lon": -73.8,
+   "radius_km": 50
+  },
+  {
+   "id": "mona",
+   "name_fr": "Passage de la Mona",
+   "portwatch_name": "Mona Passage",
+   "names": [
+    "Passage de la Mona",
+    "Mona Passage"
+   ],
+   "lat": 18.2,
+   "lon": -67.7,
+   "radius_km": 50
+  },
+  {
+   "id": "balabac",
+   "name_fr": "Détroit de Balabac",
+   "portwatch_name": "Balabac Strait",
+   "names": [
+    "Détroit de Balabac",
+    "Balabac Strait"
+   ],
+   "lat": 7.7,
+   "lon": 117.0,
+   "radius_km": 50
+  },
+  {
+   "id": "bering",
+   "name_fr": "Détroit de Béring",
+   "portwatch_name": "Bering Strait",
+   "names": [
+    "Détroit de Béring",
+    "Bering Strait"
+   ],
+   "lat": 65.8,
+   "lon": -169.0,
+   "radius_km": 60
+  },
+  {
+   "id": "kerch",
+   "name_fr": "Détroit de Kertch",
+   "portwatch_name": "Kerch Strait",
+   "names": [
+    "Détroit de Kertch",
+    "Kerch Strait"
+   ],
+   "lat": 45.3,
+   "lon": 36.55,
+   "radius_km": 25
+  },
+  {
+   "id": "mindoro",
+   "name_fr": "Détroit de Mindoro",
+   "portwatch_name": "Mindoro Strait",
+   "names": [
+    "Détroit de Mindoro",
+    "Mindoro Strait"
+   ],
+   "lat": 12.3,
+   "lon": 120.4,
+   "radius_km": 60
+  }
+ ]
+}

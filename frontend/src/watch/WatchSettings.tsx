@@ -11,6 +11,7 @@ type Budget = {
   serious_event: boolean;
   raise_headroom_usd: number;
 };
+type DeliveryZone = { zone: string; choices: Record<string, string> };
 type SentAlert = { kind: string; text: string; created_at: string; sent_at: string | null; error: string };
 
 const MODE: Record<Budget["mode"], string> = {
@@ -26,11 +27,13 @@ export function WatchSettings() {
   const [alerts, setAlerts] = useState<SentAlert[]>([]);
   const [extra, setExtra] = useState("1");
   const [message, setMessage] = useState<string | null>(null);
+  const [zone, setZone] = useState<DeliveryZone | null>(null);
 
   const load = useCallback(async () => {
     try {
       setBudget(await api.get<Budget>("/api/budget"));
       setAlerts(await api.get<SentAlert[]>("/api/alerts"));
+      setZone(await api.get<DeliveryZone>("/api/settings/delivery-zone"));
     } catch (e) {
       setMessage(e instanceof ApiError ? e.message : "Erreur.");
     }
@@ -96,6 +99,30 @@ export function WatchSettings() {
         Discrètes : « Goulot : un verdict a changé, ouvre l'app », sans nom de matière. Aucune alerte ne contient de lien ni de donnée
         privée.
       </p>
+      {zone && (
+        <>
+          <h3>Zone de livraison</h3>
+          <label>
+            Les flux maritimes vers toi passent par les détroits de cette route
+            <select
+              value={zone.zone}
+              onChange={(e) =>
+                act(() => api.put("/api/settings/delivery-zone", { zone: e.target.value }), "Zone de livraison enregistrée : routes recalculées.")
+              }
+            >
+              {Object.entries(zone.choices).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted">
+            Goulot ajoute à tes chaînes les détroits probables (Ormuz, Malacca, Suez…) et les surveille. Ce réglage n'indique qu'une
+            grande région ; il apparaît dans la chaîne type, donc dans ce que lit l'IA.
+          </p>
+        </>
+      )}
       <h3>Alerte de vie externe (facultative)</h3>
       <div className="row">
         <button onClick={() => act(() => api.put("/api/settings/heartbeat", { enabled: true }), "Alerte de vie activée.")}>Activer</button>

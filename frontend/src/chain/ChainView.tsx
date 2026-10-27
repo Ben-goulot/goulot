@@ -5,7 +5,7 @@ import { api, ApiError } from "../api";
 import { MyChainSide, overlay, useMyChain } from "../private/MyChainSide";
 import { Locked, usePrivacy } from "../private/privacy";
 import { HEADER_Y, layout } from "./layout";
-import { BASIS, clip, CONFIDENCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
+import { approximate, BASIS, clip, CONFIDENCE, COORD_SOURCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
 
 type Draft = {
   name: string;
@@ -15,7 +15,55 @@ type Draft = {
   buffer_days: string;
   confidence: "high" | "medium" | "low";
   notes: string;
+  city: string;
+  position: { lat: number; lon: number; label: string } | null | "reset";
 };
+
+type City = { name: string; country_iso2: string; lat: number; lon: number };
+
+/** Offline city list (GeoNames): the query never leaves the Mac. */
+function PlacePicker(props: { country: string; onPick: (c: City) => void }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<City[]>([]);
+  useEffect(() => {
+    const query = q.trim();
+    if (query.length < 2) {
+      setResults([]);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      const country = /^[A-Z]{2}$/.test(props.country) ? `&country=${props.country}` : "";
+      api.get<{ results: City[] }>(`/api/places/cities?q=${encodeURIComponent(query)}${country}`).then(
+        (r) => setResults(r.results),
+        () => setResults([]),
+      );
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [q, props.country]);
+  return (
+    <>
+      <input value={q} maxLength={60} onChange={(e) => setQ(e.target.value)} aria-label="Ville où placer le maillon" />
+      {results.length > 0 && (
+        <ul className="plain suggestions">
+          {results.map((c) => (
+            <li key={`${c.name}-${c.lat}-${c.lon}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  props.onPick(c);
+                  setResults([]);
+                  setQ(c.name);
+                }}
+              >
+                {c.name} ({c.country_iso2})
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
 
 function toDraft(n: ChainNode): Draft {
   return {
@@ -26,6 +74,8 @@ function toDraft(n: ChainNode): Draft {
     buffer_days: n.buffer_days === null ? "" : String(n.buffer_days),
     confidence: n.confidence,
     notes: n.notes,
+    city: "",
+    position: null,
   };
 }
 
@@ -143,6 +193,11 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
         buffer_days: num(draft.buffer_days),
         confidence: draft.confidence,
         notes: draft.notes,
+        ...(draft.position === "reset"
+          ? { lat: null, lon: null }
+          : draft.position
+            ? { lat: draft.position.lat, lon: draft.position.lon }
+            : {}),
       });
       setDraft(null);
       setMessage("Maillon corrigé.");
@@ -241,6 +296,11 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                   {node.place !== "unknown" ? clip(node.place, 120) : "non précisé"}
                   {node.country_iso2 !== "unknown" ? ` (${node.country_iso2})` : ""}
                 </dd>
+                <dt>Position</dt>
+                <dd className={approximate(node) ? "muted" : undefined}>
+                  {COORD_SOURCE[node.coord_source]}
+                  {node.added_by === "goulot" ? " · route probable, ajoutée par Goulot" : ""}
+                </dd>
                 {node.global_share_pct !== null && (
                   <>
                     <dt>Part mondiale</dt>
@@ -310,6 +370,25 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                     Lieu
                     <input value={draft.place} maxLength={200} onChange={(e) => setDraft({ ...draft, place: e.target.value })} />
                   </label>
+                  <label>
+                    Placer sur une ville
+                    <PlacePicker
+                      country={draft.country_iso2.trim().toUpperCase()}
+                      onPick={(c) => setDraft({ ...draft, position: { lat: c.lat, lon: c.lon, label: c.name } })}
+                    />
+                  </label>
+                  <p className="muted small">
+                    {draft.position === "reset"
+                      ? "Position recalculée par Goulot à l'enregistrement."
+                      : draft.position
+                        ? `Nouvelle position : ${draft.position.label}.`
+                        : `Position actuelle : ${COORD_SOURCE[node.coord_source]}.`}{" "}
+                    {node.coord_source === "user" && draft.position !== "reset" && (
+                      <button type="button" onClick={() => setDraft({ ...draft, position: "reset" })}>
+                        Rendre la position à Goulot
+                      </button>
+                    )}
+                  </p>
                   <label>
                     Part mondiale, en %
                     <input value={draft.global_share_pct} inputMode="decimal" onChange={(e) => setDraft({ ...draft, global_share_pct: e.target.value })} />

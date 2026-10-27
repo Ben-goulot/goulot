@@ -51,7 +51,26 @@ export type ChainNode = {
   user_modified: number;
   source_refs: string[];
   delay: { days: number; low: number; high: number } | null;
+  coord_source: CoordSource;
+  added_by: "" | "goulot";
 };
+
+export type CoordSource = "user" | "ai" | "reference" | "city" | "country" | "none" | "";
+
+/** Where a node's position comes from, from the most to the least precise. A country-level position is approximate. */
+export const COORD_SOURCE: Record<CoordSource, string> = {
+  user: "placée par toi",
+  ai: "donnée par la reconstruction",
+  reference: "table de référence (détroits, fleuves)",
+  city: "ville du lieu indiqué",
+  country: "approximative : centre du pays",
+  none: "inconnue",
+  "": "pas encore calculée",
+};
+
+export function approximate(n: { coord_source: CoordSource }): boolean {
+  return n.coord_source === "country" || n.coord_source === "none" || n.coord_source === "";
+}
 
 export type ChainEdge = {
   id: number;
@@ -60,7 +79,7 @@ export type ChainEdge = {
   relation: string;
   transport_mode: string;
   lead_time_days: number | null;
-  lead_time_basis: "source" | "sea_estimate" | "default" | "user";
+  lead_time_basis: "source" | "sea_estimate" | "default" | "user" | "route";
   share_pct: number | null;
   confidence: "high" | "medium" | "low";
   anomalies: string[];
@@ -113,6 +132,7 @@ export const BASIS: Record<string, string> = {
   source: "donné par les sources",
   sea_estimate: "estimé : distance entre ports × 1,3 à 13 nœuds",
   default: "valeur par défaut (hypothèse)",
+  route: "route probable, ajoutée par Goulot",
   user: "corrigé par toi",
 };
 
