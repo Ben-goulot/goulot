@@ -272,7 +272,8 @@ def create_app(ctx: AppContext) -> FastAPI:
     def _index() -> Response:
         index = dist / "index.html"
         if index.is_file():
-            return FileResponse(index, media_type="text/html")
+            # Revalidated on every visit: after an update, the page must name the new assets (hashed names, cached).
+            return FileResponse(index, media_type="text/html", headers={"Cache-Control": "no-cache"})
         return HTMLResponse(_PLACEHOLDER)
 
     @app.get("/auth")

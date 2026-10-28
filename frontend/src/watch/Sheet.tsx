@@ -92,7 +92,13 @@ export function Sheet(props: {
         </span>
         {v?.break_in ? <span className="badge neutral">rodage</span> : null}
         {data.material.status === "validated" && (
-          <button className="tab" onClick={async () => setMessage(await setWatched(props.materialId, false))}>
+          <button
+            className="tab"
+            onClick={async () => {
+              setMessage(await setWatched(props.materialId, false));
+              await load();
+            }}
+          >
             Arrêter le suivi
           </button>
         )}
@@ -101,9 +107,6 @@ export function Sheet(props: {
 
       <div className="sheet-grid">
         <section className="panel">
-        <DeleteMaterial materialId={props.materialId} name={data.material.name} onDone={props.onBack} />
-      </section>
-      <section className="panel">
           <div className="row spread">
             <h3 className="title">{data.series ? `${clip(data.series.name, 60)} · ${RANK_LABEL[data.series.rank]}` : "Aucune série de prix"}</h3>
             {data.series && <span className={`mono ${(data.series.change_pct ?? 0) >= 0 ? "up" : "down"}`}>{signed(data.series.change_pct)} % sur 6 mois</span>}
@@ -259,6 +262,10 @@ export function Sheet(props: {
             Ajouter
           </button>
         </div>
+      </section>
+      <section className="panel">
+        <h3>Supprimer cette matière</h3>
+        <DeleteMaterial materialId={props.materialId} name={data.material.name} onDone={props.onBack} />
       </section>
     </div>
   );

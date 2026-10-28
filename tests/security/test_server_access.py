@@ -172,6 +172,7 @@ def test_security_headers(client: TestClient, ctx: AppContext) -> None:
             assert r.headers.get(header) == value, (name, header)
     for name in ("healthz", "auth", "api", "api_error", "private_closed", "post"):
         assert responses[name].headers["cache-control"] == "no-store", name
+    assert responses["page"].headers["cache-control"] in ("no-cache", "no-store")  # never an outdated page
     assert responses["healthz"].json().keys() == {"status", "version"}
     page = responses["page"].text
     assert "<script>" not in page and " style=" not in page  # no inline script or style attribute
