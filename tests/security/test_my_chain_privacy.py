@@ -123,6 +123,17 @@ def test_locked_view_leaks_nothing(client: TestClient, ctx: AppContext, opened: 
             assert not raw_contains_canary(body), (url, vault_open)
             assert world["private_event"] not in body, (url, vault_open)
             assert not CHAIN_MARKS.search(body), (url, vault_open)
+        # Each ledger entry through the advice routes (dossier, replay): a personal one is not found at all.
+        with ctx.db.connect() as conn:
+            ledger = {r[0]: json.loads(r[1]).get("scope") for r in conn.execute("SELECT seq, content FROM ledger")}
+        assert "personal" in ledger.values()
+        for seq, scope in ledger.items():
+            for url in (f"/api/reliability/advice/{seq}", f"/api/reliability/advice/{seq}/replay"):
+                r = client.get(url, headers=headers)
+                assert not raw_contains_canary(r.text) and not CHAIN_MARKS.search(r.text), (url, vault_open)
+                assert world["private_event"] not in r.text, (url, vault_open)
+                if scope == "personal":
+                    assert r.status_code in (404, 409), (url, vault_open)
     # What a closed vault does show: the personal verdict's label and window, « motif dans le coffre », no X.
     sheet = client.get(f"/api/materials/{world['material_id']}/sheet").json()
     personal = sheet["personal"]

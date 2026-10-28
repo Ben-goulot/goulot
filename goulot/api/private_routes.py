@@ -21,6 +21,7 @@ from goulot.chain import lifecycle, store
 from goulot.collect.runner import freshness
 from goulot.ledger import chain as ledger_chain
 from goulot.ledger import personal as ledger_personal
+from goulot.ledger import replay as ledger_replay
 from goulot.pipeline import assess
 from goulot.private import cities, coverage, matching, records
 from goulot.private import refresh as private_refresh
@@ -304,6 +305,18 @@ def build_router(ctx: AppContext) -> APIRouter:
                 return {"indicators": ledger_personal.indicators(conn, ctx.vault, today, material_id),
                         "entries": ledger_personal.entries(conn, ctx.vault, material_id)[-200:],
                         "questions": ledger_personal.questions(conn, ctx.vault, today, material_id)}
+
+        return guarded(read)  # type: ignore[no-any-return]
+
+    @router.get("/private/reliability/advice/{seq}/inputs-check")
+    def inputs_check(seq: int) -> dict[str, Any]:
+        """« Rejouer cette journée », vault open: the kept inputs of a market verdict against the ledger's digest."""
+        def read() -> dict[str, Any]:
+            with ctx.db.connect() as conn:
+                try:
+                    return ledger_replay.inputs_check(conn, ctx.vault, seq)
+                except ledger_replay.ReplayError as exc:
+                    raise HTTPException(409, str(exc)) from exc
 
         return guarded(read)  # type: ignore[no-any-return]
 

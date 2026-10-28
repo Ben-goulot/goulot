@@ -213,3 +213,58 @@ button:disabled { opacity: 0.55; cursor: default; }
 .file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.danger { border-color: #ff7b7b; color: #ff7b7b; margin-top: 12px; }
 .personal .card { margin-top: 12px; }
+/* Fiabilité (design/maquette/Fiabilite.dc.html) */
+.reliability .lead { max-width: 70ch; margin: 4px 0 8px; }
+.reliability h3 { margin: 6px 0; }
+a.button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--row); color: var(--text); text-decoration: none; }
+a.button:hover { border-color: var(--accent); }
+.tabs-wrap { flex-wrap: wrap; justify-self: start; }
+.badge.miss { border-color: #ff7b7b; color: #ff7b7b; }
+.result { font-size: 0.9rem; white-space: nowrap; }
+.result.good { color: #3ccb91; }
+.result.bad { color: #ff7b7b; }
+.filters { margin: 8px 0; }
+.ledger-grid { grid-template-columns: minmax(0, 5fr) minmax(300px, 3fr); }
+@media (max-width: 1000px) { .ledger-grid { grid-template-columns: 1fr; } }
+.sheet-grid > * { min-width: 0; }
+.table-scroll { overflow-x: auto; }
+.content.wide .ledger-table td { font-size: 0.9rem; white-space: normal; }
+.ledger-table .badge { white-space: nowrap; }
+.content.wide .ledger-table td.mono { white-space: nowrap; }
+.content.wide .ledger-table td.observed { white-space: normal; }
+.ledger-table tr.picked { background: var(--row); box-shadow: inset 3px 0 0 var(--accent); }
+.dossier h3 { margin: 4px 0 0; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 14px 0; }
+.facts dt { color: var(--text-2); }
+.facts dd { margin: 0; }
+.knew { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.dossier hr { border: none; border-top: 1px solid var(--border); margin: 14px 0 8px; }
+.replay { margin-top: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--row); }
+.replay p { margin: 4px 0; }
+.replay.same { border-color: #3ccb91; }
+.replay.differs { border-color: #ff7b7b; }
+.legend-line { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; padding: 0; margin: 10px 0 0; color: var(--text-2); font-size: 0.85rem; }
+.legend-line li { display: inline-flex; align-items: center; gap: 6px; }
+.lg-diamond { width: 10px; height: 10px; transform: rotate(45deg); background: var(--amber); border: 1px solid #0b0e13; }
+.lg-fan { width: 18px; height: 10px; background: rgba(245, 184, 65, 0.35); clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+.lg-dot { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; color: #0b0e13; font-size: 9px; font-weight: 700; }
+.lg-dot.good { background: #3ccb91; }
+.lg-dot.bad { background: #ff7b7b; }
+.lg-ring { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #ff7b7b; }
+.lg-ribbon { width: 22px; height: 6px; border-radius: 2px; background: linear-gradient(90deg, #3a4656 0 40%, #f5b841 40% 70%, #ff8a4c 70%); }
+.calibration { width: 100%; max-width: 320px; display: block; margin: 8px 0; }
+.calibration text { fill: var(--text-2); font-size: 10px; font-family: "IBM Plex Mono", monospace; }
+.calibration .axis-label { font-family: "IBM Plex Sans", sans-serif; font-size: 10px; }
+.calibration .axis { stroke: var(--border); }
+.calibration .diag { stroke: #5c6b7e; stroke-dasharray: 4 4; }
+.calibration .bin { fill: rgba(108, 178, 255, 0.35); stroke: var(--accent); stroke-width: 1.5; }
+.how { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--text-2); font-size: 0.85rem; }
+@media (max-width: 900px) { .facts { grid-template-columns: 1fr; gap: 2px; } .facts dd { margin-bottom: 8px; } }
+@media print {
+  .topbar, .no-print, .sources-footer, .banner { display: none !important; }
+  :root, body, .panel, .kpi { background: #fff !important; color: #000 !important; }
+  .panel { border-color: #999; break-inside: avoid; }
+  .muted, .facts dt, .how { color: #333 !important; }
+  .sheet-grid { grid-template-columns: 1fr; }
+  .table-scroll { overflow: visible; }
+}

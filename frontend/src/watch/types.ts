@@ -215,9 +215,48 @@ export type LedgerAdvice = {
   move_p90?: number;
   probability?: number;
   day?: string;
-  outcome: { result: string; observed_pct: number | null; on_index: boolean; lead_weeks: number | null } | null;
+  outcome: { result: string; observed_pct: number | null; on_index: boolean; lead_weeks: number | null; detail?: string } | null;
+  material_id?: string | null;
   material_name?: string;
   material_deleted?: boolean;
+  event_ids?: string[];
+  announced?: string;
+  deadline?: string | null;
+  deadline_estimated?: boolean;
+  observed?: string;
+  good?: boolean | null;
+  band?: { seq: number; p10: number; p90: number; probability: number; start: string; observed_pct: number | null; hit: boolean | null } | null;
+  version?: string;
+  hash?: string;
+  prev_hash?: string;
+};
+
+export type Calibration = {
+  resolved: number;
+  show_brier: boolean;
+  show_diagram: boolean;
+  brier: number | null;
+  base_brier: number | null;
+  base_rate: number | null;
+  bins: { p: number; observed: number; n: number }[];
+  verdict: string;
+};
+
+export type AdviceDossier = {
+  seq: number;
+  knew: { id: string; title: string; place: string; first_seen: string; confirmed: boolean | null; sources: { title: string; url: string; publisher: string }[] }[];
+  inputs_digest: boolean;
+};
+
+export type Replay = {
+  seq: number;
+  same: boolean;
+  differences: string[];
+  recorded: string;
+  replayed: string;
+  events: number;
+  chain_nodes: number;
+  caveat: string;
 };
 
 export type Reliability = {
@@ -236,6 +275,10 @@ export type Reliability = {
   };
   advices: LedgerAdvice[];
   series: SeriesPayload | null;
+  materials: { id: string; name: string; deleted: boolean }[];
+  calibration: Calibration;
+  version_changes: { day: string; version: string }[];
+  today: string;
 };
 
 export const RANK_LABEL: Record<number, string> = {

@@ -10,7 +10,7 @@ import re
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext
@@ -18,7 +18,7 @@ from goulot.api.private_routes import locked_summary
 from goulot.chain import mapdata, store
 from goulot.collect.runner import freshness, material_watch
 from goulot.db.connection import set_setting
-from goulot.ledger import chain, outcomes
+from goulot.ledger import chain, outcomes, replay, report
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS
@@ -297,21 +297,49 @@ def build_router(ctx: AppContext) -> APIRouter:
                 material_or_404(conn, material_id)
             check = chain.verify(conn)
             stats = outcomes.indicators(conn, today, material_id)
-            entries = chain.entries(conn, material_id=material_id)
-            by_seq = {e["seq"]: e for e in entries}
-            outcome_of = {e["of_seq"]: e for e in entries if e["kind"] == "outcome"}
-            names = {r[0]: r[1] for r in conn.execute("SELECT id, name FROM materials")}
             # A deleted material keeps its advices in the ledger (CLAUDE.md, rule 12): shown as such.
-            advices = [{**e, "outcome": outcome_of.get(e["seq"]),
-                        "material_name": names.get(e["material_id"], "matière supprimée") if e["material_id"] else "",
-                        "material_deleted": bool(e["material_id"]) and e["material_id"] not in names}
-                       for e in entries if e["kind"] in ("verdict", "hypothesis", "pressure", "missed_move")]
+            advices = report.rows(conn, material_id, lambda m: prices.best_series(conn, m))
+            names = {r[0]: r[1] for r in conn.execute("SELECT id, name FROM materials")}
+            tabs = []
+            for (m,) in conn.execute("SELECT DISTINCT material_id FROM ledger WHERE material_id IS NOT NULL "
+                                     "ORDER BY material_id"):
+                tabs.append({"id": m, "name": names.get(m, "matière supprimée"), "deleted": m not in names})
             series = _series_payload(prices.best_series(conn, material_id), 12) if material_id else None
+            calib = report.calibration(conn, material_id)
+        tabs.sort(key=lambda t: (t["deleted"], t["name"].casefold()))
         return {
             "ledger": {"ok": check.ok, "entries": check.entries, "head": check.head[:16], "problem": check.problem,
                        "at_seq": check.at_seq},
-            "indicators": stats, "advices": advices[-200:], "series": series,
-            "known_entries": len(by_seq), "today": date.isoformat(today),
+            "indicators": stats, "advices": advices[-300:], "series": series, "materials": tabs,
+            "calibration": calib, "version_changes": report.version_changes(advices),
+            "today": date.isoformat(today),
         }
+
+    @router.get("/reliability/advice/{seq}")
+    def advice_dossier(seq: int) -> dict[str, Any]:
+        """What Goulot knew the day of a market advice: its events and the sources read by then."""
+        with ctx.db.connect() as conn:
+            entry = next((e for e in chain.entries(conn, kinds=report.ADVICE_KINDS) if e["seq"] == seq), None)
+            if entry is None:
+                raise HTTPException(status_code=404, detail="conseil introuvable")
+            return {"seq": seq, "knew": report.knew(conn, entry), "inputs_digest": bool(entry.get("inputs_digest"))}
+
+    @router.get("/reliability/advice/{seq}/replay")
+    def advice_replay(seq: int) -> dict[str, Any]:
+        with ctx.db.connect() as conn:
+            try:
+                return replay.replay(conn, seq)
+            except replay.ReplayError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.get("/reliability/export.csv")
+    def reliability_export(material_id: str | None = None) -> Response:
+        """Public history: market advices only, never the « Ma matière » column."""
+        with ctx.db.connect() as conn:
+            if material_id is not None:
+                material_or_404(conn, material_id)
+            advices = report.rows(conn, material_id, lambda m: prices.best_series(conn, m))
+        return Response(report.export_csv(advices), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": 'attachment; filename="goulot-registre.csv"'})
 
     return router

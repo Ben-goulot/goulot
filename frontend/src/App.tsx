@@ -199,7 +199,7 @@ export default function App() {
           />
         )}
         {page.startsWith("cas/") && <CaseLibrary materialId={page.slice(4)} onBack={() => go(`matiere/${page.slice(4)}`)} />}
-        {page.startsWith("fiabilite") && <Reliability key={String(vaultOpen)} materialId={page.length > 10 ? page.slice(10) : null} />}
+        {page.startsWith("fiabilite") && <Reliability key={String(vaultOpen)} materialId={page.length > 10 ? page.slice(10) : null} onMaterial={(id) => go(id ? `fiabilite/${id}` : "fiabilite")} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
         {page === "coffre" && (
