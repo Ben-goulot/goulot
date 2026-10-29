@@ -231,7 +231,7 @@ def notifier(settings: Settings) -> Any:
             ctx.jobs.shutdown(wait=False)
         except Exception as exc:  # an alert must never break an update or a rollback
             print(f"alerte non envoyée ({type(exc).__name__})")
-        print(text)
+        # The text itself is printed once, by the command, with the outcome.
 
     return notify
 

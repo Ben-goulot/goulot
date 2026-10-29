@@ -107,7 +107,8 @@ def check_installable(manifest: Manifest, *, highest_installed: str | None, reje
     """Strictly above the highest version ever installed, never a rejected one, a compatible updater."""
     version = parse_version(manifest.version)
     if manifest.version in set(rejected):
-        raise UpdateRefused(f"la version {manifest.version} a déjà été rejetée")
+        raise UpdateRefused(f"la version {manifest.version} a déjà été écartée (retour arrière ou test de santé "
+                            "raté) : seule une version plus récente s'installera")
     if highest_installed is not None and version <= parse_version(highest_installed):
         raise UpdateRefused(f"la version {manifest.version} n'est pas plus récente que {highest_installed}")
     if manifest.min_updater_version > UPDATER_PROTOCOL:
