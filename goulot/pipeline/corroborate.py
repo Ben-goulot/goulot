@@ -81,6 +81,20 @@ def jaccard(a: set[str], b: set[str]) -> float:
     return len(a & b) / len(a | b) if a and b else 0.0
 
 
+def same_title(a: str, b: str) -> bool:
+    """The same headline, long enough not to be a coincidence: one article read twice (by Google News and by the
+    publisher's own feed) or a wire story reprinted as is."""
+    words = re.findall(r"[a-z0-9]+", fold(a))
+    minimum = int(config()["lineage"].get("same_title", {}).get("min_words", 6))
+    return len(words) >= minimum and words == re.findall(r"[a-z0-9]+", fold(b))
+
+
+def same_story(title_a: str, grams_a: set[str], title_b: str, grams_b: set[str]) -> bool:
+    """Near-identical text (5-word shingles of title and excerpt) or the same headline."""
+    threshold = float(config()["lineage"]["text_similarity"]["threshold"])
+    return jaccard(grams_a, grams_b) >= threshold or same_title(title_a, title_b)
+
+
 @dataclass
 class ArticleRef:
     article_id: int
@@ -94,9 +108,8 @@ class ArticleRef:
 
 
 def lineages(articles: Sequence[ArticleRef]) -> dict[int, str]:
-    """article_id -> lineage key. Same canonical URL, near-identical text (5-word shingles, Jaccard ≥ 0.6), same
-    cited origin or same press group put two articles in the same lineage (union-find)."""
-    threshold = float(config()["lineage"]["text_similarity"]["threshold"])
+    """article_id -> lineage key. Same canonical URL, near-identical text (5-word shingles, Jaccard ≥ 0.6) or the
+    same headline, same cited origin or same press group put two articles in the same lineage (union-find)."""
     parent = {a.article_id: a.article_id for a in articles}
 
     def find(x: int) -> int:
@@ -113,7 +126,7 @@ def lineages(articles: Sequence[ArticleRef]) -> dict[int, str]:
         for b in articles[i + 1:]:
             same = (
                 canonical_url(a.url) == canonical_url(b.url)
-                or jaccard(grams[a.article_id], grams[b.article_id]) >= threshold
+                or same_story(a.title, grams[a.article_id], b.title, grams[b.article_id])
                 or (a.cited_origin not in ("", "unknown") and fold(a.cited_origin) == fold(b.cited_origin))
                 or (press_group(a.domain) and press_group(a.domain) == press_group(b.domain))
             )

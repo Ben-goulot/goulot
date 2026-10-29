@@ -48,6 +48,18 @@ def material_names(material: dict[str, Any]) -> list[str]:
     return out[:MAX_MATERIAL_NAMES]
 
 
+def foreign_names(material: dict[str, Any]) -> list[str]:
+    """Names in German, Spanish and Italian (Wikidata labels), added for the European media feeds: rules of the
+    filter, never search terms (the queries keep `material_names`)."""
+    known = {fold(n) for n in material_names(material)}
+    out: list[str] = []
+    for name in (material.get("labels") or {}).values():
+        if _usable(name) and not re.search(r"\d{3,}", name) and fold(name) not in known:
+            known.add(fold(name))
+            out.append(name.strip())
+    return out
+
+
 def generate(conn: sqlite3.Connection, material: dict[str, Any], nodes: list[dict[str, Any]]) -> int:
     """Replace the active rules of a material by those of its current validated chain. Returns the count."""
     from goulot.chain import places
@@ -65,7 +77,7 @@ def generate(conn: sqlite3.Connection, material: dict[str, Any], nodes: list[dic
         seen.add(key)
         rows.append((material["id"], kind, value, node_key, lat, lon, radius, now))
 
-    for name in material_names(material):
+    for name in [*material_names(material), *foreign_names(material)]:
         add("keyword", name)
     for n in nodes:
         if n["node_type"] in SITE_TYPES:
@@ -109,7 +121,10 @@ GENERIC_WORDS = frozenset({
     "channel", "passage", "cape", "cap", "bab", "el", "al", "fleuve", "river", "riviere", "voie", "fluviale",
 })
 ALIASES = {"ormuz": "hormuz", "malaca": "malacca", "rhein": "rhin", "rhine": "rhin", "panama": "panama",
-           "bosphore": "bosporus", "bosphorus": "bosporus", "gibraltar": "gibraltar", "mandeb": "mandeb"}
+           "bosphore": "bosporus", "bosphorus": "bosporus", "gibraltar": "gibraltar", "mandeb": "mandeb",
+           # German, Spanish and Italian spellings of the European media feeds
+           "hormus": "hormuz", "malakka": "malacca", "suezkanal": "suez", "panamakanal": "panama",
+           "gibilterra": "gibraltar", "bosforo": "bosporus"}
 
 
 def proper_tokens(name: str) -> set[str]:
@@ -134,16 +149,61 @@ def _other_rule_hit(r: Rule, item: Item, text: str) -> bool:
     return r.kind == "hs_code" and item.kind == "policy" and _has_hs(text, r.value)
 
 
+# Words of a disruption, folded (no accents), in the five languages of the feeds: a whole media feed is not chosen
+# by a query, so a site, company or strait name alone (« BASF », « Rotterdam ») does not make an article a
+# candidate; with one of these words, it does. Prefixes, except the short ambiguous words of `DISRUPTION_WORDS`;
+# German « Brand » alone is left out, being an English word too.
+DISRUPTION_STEMS = (
+    # English
+    "strike", "fire", "blaze", "explosion", "blast", "shutdown", "shut down", "outage", "closure", "flood",
+    "sanction", "export ban", "export control", "export restriction", "shortage", "disrupt", "accident", "leak",
+    "force majeure", "blockade", "tariff", "anti-dumping", "antidumping", "price hike", "price surge", "soar",
+    "rationing", "evacuat", "attack", "earthquake", "storm", "halt", "suspend", "curtail", "production cut",
+    "low water", "derail", "collapse", "bankrupt", "insolven",
+    # French
+    "greve", "incendie", "explos", "arret", "fermeture", "inondation", "interdiction d'export", "penurie",
+    "rupture", "panne", "fuite", "suspen", "blocage", "droits de douane", "flambee", "envol", "rationnement",
+    "attaque", "seisme", "tempete", "faillite", "redressement judiciaire", "basses eaux",
+    # German
+    "streik", "grossbrand", "stillstand", "stilllegung", "schliessung", "hochwasser", "uberschwemmung", "sanktion",
+    "exportverbot", "exportkontroll", "engpass", "knappheit", "ausfall", "storung", "unfall", "hohere gewalt",
+    "strafzoll", "zolle", "preisanstieg", "preissprung", "rationier", "evakuier", "angriff", "erdbeben",
+    "niedrigwasser", "abschalt", "drossel", "insolvenz", "pleite",
+    # Spanish
+    "huelga", "incendio", "cierre", "inundacion", "sancion", "prohibicion de export", "escasez", "desabastec",
+    "averia", "accidente", "fuerza mayor", "bloqueo", "arancel", "subida de precio", "racionamiento", "terremoto",
+    "quiebra",
+    # Italian
+    "sciopero", "esplosion", "chiusura", "alluvione", "inondazion", "sanzion", "divieto di esport", "carenza",
+    "scarsita", "guasto", "incidente", "forza maggiore", "blocco", "dazi", "rincar", "impennata", "razionament",
+    "attacco", "fallimento",
+)
+DISRUPTION_WORDS = frozenset({"fuga", "alza", "duties", "zoll"})  # whole words only
+_DISRUPTION = re.compile(r"(?<![a-z0-9])(?:" + "|".join(re.escape(s) for s in DISRUPTION_STEMS) + ")")
+
+
+def disrupted(text: str) -> bool:
+    """`text` already folded (« ß » is kept by the folding: « Großbrand » is read « grossbrand »)."""
+    text = text.replace("ß", "ss")
+    return _DISRUPTION.search(text) is not None or not DISRUPTION_WORDS.isdisjoint(re.findall(r"[a-z]+", text))
+
+
 def match(item: Item, rules: list[Rule], country_nodes: dict[str, str] | None = None) -> list[Rule]:
-    """Rules an item triggers. `country_nodes`: node_key -> country name, for the country + material rule."""
+    """Rules an item triggers. `country_nodes`: node_key -> country name, for the country + material rule.
+
+    An item of a whole media feed (`queried` False) needs the material's name, or a disruption word next to the
+    site, company, country or strait it names: the search sources got that selection from their query."""
     text = fold(f"{item.title} {item.excerpt} {json.dumps(item.details, ensure_ascii=False)}")
     hits: list[Rule] = []
     by_material: dict[str, list[Rule]] = {}
     for r in rules:
         by_material.setdefault(r.material_id, []).append(r)
+    needs_disruption = not item.queried and not disrupted(text)
     for material_rules in by_material.values():
         material_kw = [r for r in material_rules if r.kind == "keyword" and r.node_key is None]
         material_named = any(_contains(text, r.value) for r in material_kw)
+        if needs_disruption and not material_named:
+            continue
         for r in material_rules:
             if r.kind == "zone" and item.lat is not None and item.lon is not None and r.lat is not None:
                 if great_circle_km(item.lat, item.lon, r.lat, r.lon or 0.0) <= (r.radius_km or ZONE_RADIUS_KM):

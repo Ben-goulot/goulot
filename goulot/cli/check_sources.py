@@ -17,6 +17,7 @@ import httpx2
 
 from goulot.net.allowlist import load_allowlist
 from goulot.net.client import build_client, fetch
+from goulot.net.transport import OutboundBlocked
 from goulot.settings import REPO_ROOT, Settings
 
 SAMPLES = REPO_ROOT / ".samples"
@@ -48,11 +49,31 @@ def targets(today: date) -> list[tuple[str, str]]:
     ]
 
 
+def media_targets() -> list[tuple[str, str]]:
+    """The European media feeds of config/sources.yaml, enabled or not: they are enabled once checked here."""
+    from goulot.collect.base import load_sources
+
+    return [(sid, str(s["url"])) for sid, s in load_sources().items() if s.get("family") == "media"]
+
+
+def redirect_target(client: httpx2.Client, url: str) -> str:
+    """Where a source redirects to, when the client refused to follow (host outside the allowlist): only the first
+    hop, on the allowed host, is asked; the address is shown as text, to be checked before it enters the config."""
+    try:
+        response = client.get(url, follow_redirects=False)
+    except httpx2.HTTPError:
+        return ""
+    location = response.headers.get("location", "") if response.is_redirect else ""
+    return "".join(ch for ch in location if ch.isprintable())[:200]
+
+
 def run(settings: Settings, today: date | None = None) -> list[dict[str, object]]:
-    client = build_client(load_allowlist(settings.config_dir, EXTRA_HOSTS))
+    media = media_targets()
+    hosts = (*EXTRA_HOSTS, *sorted({str(urlsplit(url).hostname) for _, url in media}))
+    client = build_client(load_allowlist(settings.config_dir, hosts))
     SAMPLES.mkdir(exist_ok=True)
     report: list[dict[str, object]] = []
-    for name, url in targets(today or date.today()):
+    for name, url in [*targets(today or date.today()), *media]:
         started = time.monotonic()
         entry: dict[str, object] = {"name": name, "url": url}
         try:
@@ -66,6 +87,11 @@ def run(settings: Settings, today: date | None = None) -> list[dict[str, object]
         except (httpx2.HTTPError, ValueError) as exc:
             entry.update(error=f"{type(exc).__name__}: {str(exc)[:160]}")
             print(f"  ❌ {name} ({urlsplit(url).hostname}) : {type(exc).__name__}, {str(exc)[:100]}")
+            if isinstance(exc, OutboundBlocked):
+                moved = redirect_target(client, url)
+                if moved:
+                    entry["redirect"] = moved
+                    print(f"      redirigé vers : {moved}")
         report.append(entry)
     (SAMPLES / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return report

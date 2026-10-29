@@ -45,6 +45,7 @@ class Item:
     magnitude: float | None = None
     key: str = ""  # stable identity for feeds without URL (e.g. a river reading); defaults to the URL
     details: dict[str, Any] = field(default_factory=dict)
+    queried: bool = True  # False for a whole media feed: no query chose it, the rule filter asks for more
 
     def identity(self) -> str:
         return hashlib.sha256((self.key or canonical_url(self.url)).encode()).hexdigest()

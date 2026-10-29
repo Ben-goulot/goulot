@@ -48,12 +48,13 @@ def create_material(conn: sqlite3.Connection, identity: dict[str, Any]) -> str:
         return str(row["id"])
     material_id = str(uuid.uuid4())
     now = utcnow()
+    labels = identity.get("labels")
     conn.execute(
-        "INSERT INTO materials (id, name, cas, formula, synonyms, hs_codes, identity_sources, status, created_at, "
-        "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)",
+        "INSERT INTO materials (id, name, cas, formula, synonyms, hs_codes, identity_sources, labels, status, "
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)",
         (material_id, identity.get("name_fr") or identity["name"], identity["cas"], identity.get("formula", ""),
          _j(identity.get("synonyms", [])), _j(official_hs_codes(identity.get("cn_codes", []))),
-         _j(identity.get("sources", [])), now, now),
+         _j(identity.get("sources", [])), None if labels is None else _j(labels), now, now),
     )
     return material_id
 
@@ -65,6 +66,7 @@ def get_material(conn: sqlite3.Connection, material_id: str) -> dict[str, Any] |
     m = dict(row)
     for key in ("synonyms", "hs_codes", "identity_sources"):
         m[key] = json.loads(m[key])
+    m["labels"] = json.loads(m["labels"]) if m.get("labels") else {}
     return m
 
 

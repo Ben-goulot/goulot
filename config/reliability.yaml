@@ -20,11 +20,13 @@ agency_specialized:
   domains: [reuters.com, apnews.com, afp.com, bloomberg.com, ft.com, wsj.com, asia.nikkei.com, caixinglobal.com,
             argusmedia.com, icis.com, spglobal.com, fastmarkets.com, metal.com, mysteel.net, mining.com,
             lloydslist.com, tradewindsnews.com, chemweek.com, cen.acs.org,
-            crugroup.com, benchmarkminerals.com, roskill.com]  # analystes matières premières (ajoutés le 19 octobre 2026)
+            crugroup.com, benchmarkminerals.com, roskill.com,  # analystes matières premières (ajoutés le 19 octobre 2026)
+            usinenouvelle.com, chemanager-online.com]  # presse industrielle et chimie européennes (flux RSS, 29 octobre 2026)
 
 general_press:
   domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,
-            scmp.com, dw.com, aljazeera.com, economictimes.indiatimes.com]
+            scmp.com, dw.com, aljazeera.com, economictimes.indiatimes.com,
+            euractiv.com, politico.eu, euronews.com, handelsblatt.com, elpais.com, ilsole24ore.com]  # flux RSS européens (29 octobre 2026)
 
 # Sites qui republient le contenu d'autres médias : l'article prend la fiabilité du fournisseur indiqué par
 # la donnée structurée de la plateforme (champ fournisseur de Yahoo, attribut <source url> de Google News, champ source de l'API ReliefWeb),
@@ -38,11 +40,13 @@ press_release_paths: ["/press-release", "/press-releases", "/pr-newswire", "/spo
 # Groupes de presse : deux titres d'un même groupe forment une seule lignée.
 groups:
   - [lemonde.fr, telerama.fr, courrierinternational.com]
+  - [handelsblatt.com, wiwo.de]
 
 lineage:
   # Deux articles appartiennent à la même lignée si l'une de ces conditions est vraie :
   same_canonical_url: true
   text_similarity: {method: jaccard_word_5grams, fields: [title, excerpt], threshold: 0.6}
+  same_title: {min_words: 6}   # même titre d'au moins 6 mots : article lu deux fois (Google News et flux du média) ou dépêche reprise telle quelle
   same_cited_origin: true   # même source d'origine citée (cited_origin du tri) : sert à regrouper, jamais à relever la fiabilité
   same_group: true
 

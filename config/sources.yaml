@@ -61,6 +61,112 @@ sources:
     use: actualités par requête, dont annonces officielles chinoises
     notes: "flux non officiel, usage personnel ; analyser avec defusedxml ; vérifié : chaque article porte <source url=...>, qui donne la fiabilité"
 
+  # --- Médias européens (flux RSS ou Atom publics, sans compte) ---
+  # Titre et résumé du flux seulement, jamais la page de l'article. Famille « media » : un flux en panne ne rend pas
+  # la veille « Non vérifiée » (seules les familles news et hazard comptent). Aucune requête ne choisit ces articles :
+  # le filtre par règles leur demande le nom de la matière, ou un nom de site, d'entreprise ou de détroit accompagné
+  # d'un mot de perturbation (goulot/collect/rules.py). lang : langue du flux, transmise au tri.
+  # enabled: false tant que `goulot dev check-sources` n'a pas vérifié le flux depuis le Mac.
+  - id: media_lesechos
+    enabled: false
+    family: media
+    url: https://syndication.lesechos.fr/rss/rss_industrie-services.xml
+    lang: fr
+    auth: none
+    frequency: 3h
+    use: Les Échos, rubrique Industrie et services
+    notes: "le 29 octobre 2026, depuis le Mac : HTTP 503 (« Backend fetch failed », serveur de cache Varnish) ; à retester"
+  - id: media_lemonde_economie
+    enabled: true
+    family: media
+    url: https://www.lemonde.fr/economie/rss_full.xml
+    lang: fr
+    auth: none
+    frequency: 3h
+    use: Le Monde, rubrique Économie
+    notes: vérifié depuis le Mac le 29 octobre 2026 (RSS 2.0, 20 articles datés avec résumé)
+  - id: media_usinenouvelle
+    enabled: true
+    family: media
+    url: https://www.usinenouvelle.com/rss/
+    lang: fr
+    auth: none
+    frequency: 3h
+    use: L'Usine Nouvelle, presse industrielle (chimie, métaux, énergie)
+    notes: vérifié depuis le Mac le 29 octobre 2026 (40 articles datés ; résumé sur quelques-uns seulement, le filtre lit alors le titre)
+  - id: media_euractiv
+    enabled: false
+    family: media
+    url: https://www.euractiv.com/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Euractiv, politique européenne (énergie, industrie, commerce)
+    notes: "le 29 octobre 2026, depuis le Mac : le flux redirige vers www.rapporteur.com, un autre domaine, refusé par la liste blanche ; laissé de côté tant que ce changement n'est pas compris"
+  - id: media_politico_eu
+    enabled: true
+    family: media
+    url: https://www.politico.eu/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Politico Europe
+    notes: vérifié depuis le Mac le 29 octobre 2026 (10 articles datés avec résumé)
+  - id: media_dw_business
+    enabled: true
+    family: media
+    url: https://rss.dw.com/rdf/rss-en-bus
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Deutsche Welle, économie (format RSS 1.0)
+    notes: vérifié depuis le Mac le 29 octobre 2026 (18 articles datés avec résumé)
+  - id: media_euronews_business
+    enabled: true
+    family: media
+    url: https://www.euronews.com/rss?level=vertical&name=business
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Euronews, économie
+    notes: vérifié depuis l'extérieur puis depuis le Mac le 29 octobre 2026 (RSS 2.0, 50 articles datés avec résumé)
+  - id: media_chemanager
+    enabled: false
+    family: media
+    url: https://chemanager-online.com/en/rss.xml
+    lang: en
+    auth: none
+    frequency: 3h
+    use: CHEManager, presse spécialisée de la chimie européenne
+    notes: "le 29 octobre 2026, www.chemanager-online.com redirigeait vers chemanager-online.com : adresse corrigée, à revérifier"
+  - id: media_handelsblatt
+    enabled: false
+    family: media
+    url: https://www.handelsblatt.com/contentexport/feed/unternehmen
+    lang: de
+    auth: none
+    frequency: 3h
+    use: Handelsblatt, rubrique Entreprises
+    notes: "le 29 octobre 2026, depuis le Mac : redirection vers feeds.cms.handelsblatt.com ; adresse exacte à relever (check-sources l'affiche désormais)"
+  - id: media_elpais_economia
+    enabled: true
+    family: media
+    url: https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia/portada
+    lang: es
+    auth: none
+    frequency: 3h
+    use: El País, rubrique Économie
+    notes: vérifié depuis le Mac le 29 octobre 2026 (40 articles datés avec résumé, dont Cinco Días)
+  - id: media_ilsole24ore
+    enabled: true
+    family: media
+    url: https://www.ilsole24ore.com/rss/economia.xml
+    lang: it
+    auth: none
+    frequency: 3h
+    use: Il Sole 24 Ore, rubrique Économie
+    notes: vérifié depuis le Mac le 29 octobre 2026 (12 articles datés avec résumé)
+
   # --- Aléas naturels ---
   - id: gdacs
     enabled: true

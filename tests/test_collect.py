@@ -6,6 +6,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx2
 import pytest
@@ -14,7 +15,7 @@ from goulot.api.context import AppContext
 from goulot.chain import service, store
 from goulot.chain.identify import identify
 from goulot.collect import sources
-from goulot.collect.base import Item, canonical_url, clean_text, parse_datetime
+from goulot.collect.base import Item, canonical_url, clean_text, load_sources, parse_datetime
 from goulot.collect.rules import active_rules, match
 from goulot.collect.runner import freshness, queries, run_cycle
 from goulot.llm.backend import ReplayBackend
@@ -68,7 +69,14 @@ def portwatch_json() -> dict[str, Any]:
     return {"features": feats}
 
 
+# Every European media feed of config/sources.yaml answers an empty frozen feed (tests/test_media_feeds.py reads full
+# ones): a cycle test sees them enabled without depending on their real content.
+EMPTY_FEED = b"<rss version='2.0'><channel><title>x</title></channel></rss>"
+MEDIA_ROUTES = {(str(urlsplit(s["url"]).hostname), urlsplit(s["url"]).path): (200, EMPTY_FEED)
+                for s in load_sources().values() if s.get("family") == "media"}
+
 ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
+    **MEDIA_ROUTES,
     ("api.gdeltproject.org", "/api/v2/doc/doc"): (200, json.dumps(GDELT_JSON).encode()),
     ("news.google.com", "/rss/search"): (200, GOOGLE_RSS),
     ("www.gdacs.org", "/xml/rss.xml"): (200, GDACS_RSS),

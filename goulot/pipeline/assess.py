@@ -83,7 +83,7 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] 
             continue
         last = conn.execute("SELECT signature FROM analyses WHERE event_id = ? ORDER BY created_at DESC LIMIT 1",
                             (e["id"],)).fetchone()
-        if last is None or last[0] != analysis.signature(e):
+        if last is None or analysis.signature_changed(last[0], e):
             out.append(e)
     return out
 

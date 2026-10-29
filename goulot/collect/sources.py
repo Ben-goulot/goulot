@@ -427,5 +427,54 @@ def eurlex(client: httpx2.Client, since: datetime) -> list[Item]:
     return items
 
 
+# --- European media feeds ---------------------------------------------------------------------------------
+MEDIA_MAX_BYTES = 2 * 1024 * 1024  # a front page feed weighs a few hundred kB
+MEDIA_MAX_ITEMS = 200
+ATOM = "{http://www.w3.org/2005/Atom}"
+RSS1 = "{http://purl.org/rss/1.0/}"
+DC_DATE = "{http://purl.org/dc/elements/1.1/}date"
+
+
+def _first(node: Any, *tags: str) -> str:
+    for t in tags:
+        found = node.find(t)
+        if found is not None and found.text:
+            return str(found.text).strip()
+    return ""
+
+
+def _atom_link(entry: Any) -> str:
+    for link in entry.findall(ATOM + "link"):
+        if link.get("rel", "alternate") == "alternate" and link.get("href"):
+            return str(link.get("href")).strip()
+    return ""
+
+
+def media_feed(client: httpx2.Client, source_id: str, url: str, lang: str, since: datetime) -> list[Item]:
+    """A media feed as published (RSS 2.0, RSS 1.0 / RDF or Atom): title and summary only, the article page is never
+    fetched. Unlike the search sources, nothing was selected by a query: the rule filter is stricter for these
+    items (`Item.queried`, goulot/collect/rules.py)."""
+    result = fetch(client, url, max_bytes=MEDIA_MAX_BYTES)
+    if result.status != 200:
+        raise SourceError(f"HTTP {result.status}")
+    root = parse_xml(result.content, max_bytes=MEDIA_MAX_BYTES)
+    entries = [*root.iter("item"), *root.iter(RSS1 + "item"), *root.iter(ATOM + "entry")]
+    items = []
+    for e in entries[:MEDIA_MAX_ITEMS]:
+        link = _first(e, "link", RSS1 + "link") or _atom_link(e)
+        if not link.startswith(("https://", "http://")):
+            continue
+        published = parse_datetime(_first(e, "pubDate", DC_DATE, ATOM + "published", ATOM + "updated"))
+        if published and published < since:
+            continue
+        title = clean_text(_first(e, "title", RSS1 + "title", ATOM + "title"), 300)
+        summary = clean_text(_first(e, "description", RSS1 + "description", ATOM + "summary"))
+        items.append(Item(
+            source=source_id, kind="news", url=link, title=title, published_at=published, lang=lang[:20],
+            excerpt=summary, domain=domain_of(link), queried=False,
+        ))
+    return items
+
+
 def now_utc() -> datetime:
     return datetime.now(UTC)

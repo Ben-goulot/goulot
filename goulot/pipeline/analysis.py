@@ -51,6 +51,23 @@ def signature(event: sqlite3.Row) -> str:
     return f"{event['confirmation']}|{event['lineages']}|{event['severity_hint']}|{event['event_status']}"
 
 
+# From the third independent lineage on, one more press echo leaves the confirmation and the facts of the dossier
+# much the same: the event is analysed again for a change of confirmation, severity or status, not for each new
+# echo (docs/DECISIONS.md, 29 October 2026). Signatures are stored whole: earlier analyses keep matching.
+LINEAGE_CAP = 3
+
+
+def signature_changed(previous: str, event: sqlite3.Row) -> bool:
+    def key(sig: str) -> tuple[str, int, str, str] | None:
+        parts = sig.split("|")
+        if len(parts) != 4 or not parts[1].isdigit():
+            return None
+        return parts[0], min(int(parts[1]), LINEAGE_CAP), parts[2], parts[3]
+
+    old = key(previous)
+    return old is None or old != key(signature(event))
+
+
 def should_analyze(conn: sqlite3.Connection, event: sqlite3.Row) -> bool:
     if event["confirmation"] != "confirmed" and event["severity_hint"] < URGENT_SEVERITY:
         return False

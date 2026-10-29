@@ -68,8 +68,18 @@ def history(conn: sqlite3.Connection, now: datetime, days: int = 14) -> dict[str
                                    "SUM(material_id NOT IN (SELECT id FROM materials)) AS orphans "
                                    "FROM watch_rules").fetchone()),
     }
+    # What the triage made of each source's articles, and what the watch cost: to keep a feed or drop it.
+    outcomes: dict[str, dict[str, int]] = {}
+    for r in conn.execute("SELECT source, status, COUNT(*) AS n FROM articles WHERE first_seen_at >= ? "
+                          "AND kind IN ('news', 'policy') GROUP BY source, status", (since,)):
+        outcomes.setdefault(r["source"], {})[r["status"]] = r["n"]
+    copies = conn.execute("SELECT COUNT(*) FROM articles WHERE first_seen_at >= ? "
+                          "AND json_extract(details, '$.copy_of') IS NOT NULL", (since,)).fetchone()[0]
+    costs = [dict(r) for r in conn.execute(
+        "SELECT purpose, COUNT(*) AS calls, SUM(cost_usd) AS cost FROM llm_calls WHERE budget = 'watch' AND at >= ? "
+        "GROUP BY purpose ORDER BY purpose", (since,))]
     return {"days": days, "has_matched": has_matched, "cycles": cycles, "sources": per_source,
-            "materials": materials, "base": base}
+            "materials": materials, "base": base, "outcomes": outcomes, "copies": copies, "costs": costs}
 
 
 def _printable(text: str) -> str:
@@ -139,6 +149,21 @@ def render(report: dict[str, Any], sample: list[dict[str, Any]] | None) -> str:
     b = report["base"]
     lines.append(f"  Base : migration {b['schema']} ; règles {b['rules']['total'] or 0}, actives "
                  f"{b['rules']['active'] or 0}, sans matière {b['rules']['orphans'] or 0}.")
+    if report.get("outcomes"):
+        lines += ["", "Tri des articles gardés, par source (pertinents = regroupés en événement) :"]
+        for source, by_status in sorted(report["outcomes"].items()):
+            judged = sum(n for k, n in by_status.items() if k != "new")
+            useful = by_status.get("grouped", 0) + by_status.get("triaged", 0)
+            share = f"{100 * useful / judged:.0f} %" if judged else "—"
+            detail = ", ".join(f"{k} {n}" for k, n in sorted(by_status.items()))
+            lines.append(f"  {source:<28} {share:>5} pertinents  ({detail})")
+        lines.append(f"  Copies jugées sans appel IA (même histoire déjà triée) : {report.get('copies', 0)}")
+    if report.get("costs") is not None:
+        total = sum(c["cost"] or 0 for c in report["costs"])
+        days = report["days"]
+        lines += ["", f"Coût IA de la veille : {total:.2f} $ sur {days} jours, soit environ "
+                      f"{total * 30 / days:.2f} $ par mois :"]
+        lines += [f"  {c['purpose']:<28} {c['calls']:>5} appels  {c['cost'] or 0:.3f} $" for c in report["costs"]]
     if sample is not None:
         lines += ["", "Essai à blanc sur 24 h (règles publiques, rien n'est enregistré) :"]
         for r in sample:

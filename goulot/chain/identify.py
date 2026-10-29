@@ -25,6 +25,7 @@ CAS_RE = re.compile(r"^(\d{2,7})-(\d{2})-(\d)$")
 PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
 WIKIDATA = "https://query.wikidata.org/sparql"
 MAX_SYNONYMS = 12
+LABEL_LANGS = ("de", "es", "it")  # languages of the European media feeds besides French and English
 MAX_QUERY = 100
 
 
@@ -41,11 +42,12 @@ class Identity:
     sources: list[dict[str, str]] = field(default_factory=list)  # {name, url}: built by the code only
     name_fr: str = ""
     cn_codes: list[str] = field(default_factory=list)  # 8-digit CN codes from ECICS
+    labels: dict[str, str] | None = None  # Wikidata labels by language (LABEL_LANGS); None: Wikidata did not answer
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "cas": self.cas, "name": self.name, "name_fr": self.name_fr, "formula": self.formula,
-            "synonyms": self.synonyms, "sources": self.sources, "cn_codes": self.cn_codes,
+            "synonyms": self.synonyms, "sources": self.sources, "cn_codes": self.cn_codes, "labels": self.labels,
         }
 
 
@@ -107,6 +109,29 @@ def _wikidata_label(client: httpx2.Client, cas: str) -> tuple[str, str] | None:
     return qid, rows[0].get("itemLabel", {}).get("value", "")
 
 
+def wikidata_labels(client: httpx2.Client, cas: str) -> dict[str, str] | None:
+    """Labels of the item whose P231 is `cas`, in LABEL_LANGS: {} when there is none, None when Wikidata did not
+    answer (asked again later). External text: cleaned and bounded, used only as a word to look for."""
+    if normalize_cas(cas) != cas:
+        return None
+    langs = ", ".join(f'"{lang}"' for lang in LABEL_LANGS)
+    sparql = (
+        'SELECT ?label WHERE { ?item wdt:P231 "' + cas + '" ; rdfs:label ?label . '
+        "FILTER(LANG(?label) IN (" + langs + ")) }"
+    )
+    try:
+        data = _json(client, WIKIDATA, params={"query": sparql, "format": "json"})
+    except (IdentificationError, httpx2.HTTPError):
+        return None
+    out: dict[str, str] = {}
+    for row in ((data or {}).get("results") or {}).get("bindings") or []:
+        label = row.get("label") or {}
+        lang, value = str(label.get("xml:lang") or ""), " ".join(str(label.get("value") or "").split())
+        if lang in LABEL_LANGS and lang not in out and 0 < len(value) <= 60 and value.isprintable():
+            out[lang] = value
+    return out
+
+
 def identify(client: httpx2.Client, query: str) -> Identity:
     query = query.strip()
     if not query or len(query) > MAX_QUERY:
@@ -140,6 +165,7 @@ def identify(client: httpx2.Client, query: str) -> Identity:
         qid, label = wd
         identity.name_fr = label
         identity.sources.append({"name": "Wikidata", "url": f"https://www.wikidata.org/wiki/{qid}"})
+        identity.labels = wikidata_labels(client, cas)
     codes = ecics.lookup(client, cas)
     if codes:
         identity.cn_codes = [c.cn8 for c in codes]

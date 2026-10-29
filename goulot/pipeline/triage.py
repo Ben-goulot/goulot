@@ -3,6 +3,11 @@
 One request per (article, material): the model sees the public typical chain of that material, never Ma chaîne.
 Outputs are validated by schema, then by code (known node ids, dates, lengths). `injection_suspected` sends the
 article to quarantine: it never reaches an event.
+
+A copy is not sent: an article telling the same story as one judged in the last 7 days for the same material (same
+headline, or near-identical title and excerpt: the same lineage, `corroborate.same_story`) takes that judgment,
+quarantine included, at no cost. It adds nothing to corroboration, the two being one lineage. While its twin is
+still in a batch, it waits.
 """
 
 from __future__ import annotations
@@ -11,6 +16,8 @@ import json
 import logging
 import re
 import sqlite3
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from goulot.chain import store
@@ -21,6 +28,7 @@ from goulot.llm.budget import Budget
 from goulot.llm.pricing import Usage, cost_usd
 from goulot.llm.prompts import escape, load_prompt, tag
 from goulot.llm.validate import DATE, ISO2, SchemaError, parse_json_output, schema, validate_schema
+from goulot.pipeline.corroborate import same_story, shingles
 
 log = logging.getLogger("goulot.pipeline.triage")
 
@@ -30,6 +38,7 @@ MODEL = "claude-haiku-5-5"
 MAX_TOKENS = 1_500
 MAX_PER_BATCH = 200
 MAX_ATTEMPTS = 3
+COPY_WINDOW = timedelta(days=7)
 WORST_CASE = Usage(input_tokens=4_000, output_tokens=MAX_TOKENS)
 TRIAGE_ENUMS = {"event_type": "other", "event_status": "unclear"}
 
@@ -68,11 +77,51 @@ def triage_params(context: str, article: sqlite3.Row) -> dict[str, Any]:
     }
 
 
+@dataclass
+class Judged:
+    article_id: int
+    title: str
+    grams: set[str]
+    state: str  # pending, done or quarantined
+    result: str | None
+
+
+def _judged(conn: sqlite3.Connection, material_id: str, since: str) -> list[Judged]:
+    """Articles judged or being judged for this material since `since`, judged ones first."""
+    rows = conn.execute(
+        "SELECT a.id, a.title, a.excerpt, t.state, t.result FROM triage t JOIN articles a ON a.id = t.article_id "
+        "WHERE t.material_id = ? AND t.state IN ('done', 'quarantined', 'pending') AND a.first_seen_at >= ? "
+        "ORDER BY t.state = 'pending', a.id", (material_id, since)).fetchall()
+    return [Judged(r["id"], r["title"], shingles(f"{r['title']} {r['excerpt']}"), r["state"], r["result"])
+            for r in rows]
+
+
+def _twin(article: sqlite3.Row, judged: list[Judged]) -> Judged | None:
+    grams = shingles(f"{article['title']} {article['excerpt']}")
+    return next((j for j in judged if j.article_id != article["id"]
+                 and same_story(article["title"], grams, j.title, j.grams)), None)
+
+
+def _copy(conn: sqlite3.Connection, article: sqlite3.Row, material_id: str, cid: str, twin: Judged) -> None:
+    now = utcnow()
+    conn.execute(
+        "INSERT OR IGNORE INTO triage (article_id, material_id, custom_id, model, prompt_version, schema_version, "
+        "state, result, cost_usd, created_at, done_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        (article["id"], material_id, cid, MODEL, PROMPT, SCHEMA, twin.state, twin.result, now, now))
+    details = json.loads(article["details"] or "{}")
+    details["copy_of"] = twin.article_id
+    conn.execute("UPDATE articles SET details = ? WHERE id = ?", (json.dumps(details, ensure_ascii=False),
+                                                                   article["id"]))
+
+
 def submit_pending(db: Database, budget: Budget, backend: BatchBackend, budget_name: str = "watch") -> str | None:
-    """Queue every new news or policy article for each validated material it concerns; one batch."""
+    """Queue every new news or policy article for each validated material it concerns; one batch. Copies take
+    their twin's judgment instead (module docstring)."""
     requests: list[tuple[str, dict[str, Any]]] = []
     with db.transaction() as conn:
         contexts: dict[str, tuple[dict[str, Any], str]] = {}
+        judged: dict[str, list[Judged]] = {}
+        copied: set[int] = set()
         for a in conn.execute("SELECT * FROM articles WHERE status = 'new' AND kind IN ('news', 'policy') "
                               "ORDER BY id LIMIT ?", (MAX_PER_BATCH,)).fetchall():
             for material_id in json.loads(a["materials"]):
@@ -85,13 +134,28 @@ def submit_pending(db: Database, budget: Budget, backend: BatchBackend, budget_n
                     continue
                 material, context = contexts[material_id]
                 cid = custom_id(material, a["url_hash"])
-                cur = conn.execute(
-                    "INSERT OR IGNORE INTO triage (article_id, material_id, custom_id, model, prompt_version, "
+                if conn.execute("SELECT 1 FROM triage WHERE custom_id = ?", (cid,)).fetchone():
+                    continue
+                if material_id not in judged:
+                    since = (datetime.fromisoformat(a["first_seen_at"]) - COPY_WINDOW).isoformat(timespec="seconds")
+                    judged[material_id] = _judged(conn, material_id, since)
+                twin = _twin(a, judged[material_id])
+                if twin is not None and twin.state == "pending":
+                    continue  # judged with its twin, once the batch ends
+                if twin is not None:
+                    _copy(conn, a, material_id, cid, twin)
+                    copied.add(a["id"])
+                    continue
+                conn.execute(
+                    "INSERT INTO triage (article_id, material_id, custom_id, model, prompt_version, "
                     "schema_version, state, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
                     (a["id"], material_id, cid, MODEL, PROMPT, SCHEMA, utcnow()),
                 )
-                if cur.rowcount:
-                    requests.append((cid, triage_params(context, a)))
+                requests.append((cid, triage_params(context, a)))
+                judged[material_id].append(Judged(a["id"], a["title"], shingles(f"{a['title']} {a['excerpt']}"),
+                                                  "pending", None))
+        for article_id in copied:
+            _close_article(conn, article_id)
     if not requests:
         return None
     worst = len(requests) * cost_usd(MODEL, WORST_CASE, batch=True)
@@ -175,27 +239,32 @@ def _close_articles(conn: sqlite3.Connection, batch_id: str) -> None:
     `irrelevant` otherwise (kept 30 days for audit, then deleted)."""
     articles = conn.execute("SELECT DISTINCT article_id FROM triage WHERE batch_id = ?", (batch_id,)).fetchall()
     for (article_id,) in articles:
-        rows = conn.execute("SELECT state, result FROM triage WHERE article_id = ?", (article_id,)).fetchall()
-        if any(r["state"] == "pending" for r in rows):
-            continue
-        failed = [r for r in rows if r["state"] in ("error", "rejected")]
-        if any(r["state"] == "quarantined" for r in rows):
-            status = "quarantined"
-        elif any(r["state"] == "done" and json.loads(r["result"])["relevant"] for r in rows):
-            status = "triaged"
-        elif failed:
-            # Never judged: retried at the next cycles, at most MAX_ATTEMPTS times, then set aside with the reason.
-            details = json.loads(conn.execute("SELECT details FROM articles WHERE id = ?",
-                                              (article_id,)).fetchone()[0])
-            details["triage_failures"] = int(details.get("triage_failures", 0)) + 1
-            status = "new" if details["triage_failures"] < MAX_ATTEMPTS else "irrelevant"
-            if status == "irrelevant":
-                details["set_aside"] = "tri impossible après plusieurs essais"
-            conn.execute("UPDATE articles SET details = ? WHERE id = ?", (json.dumps(details), article_id))
-            conn.execute("DELETE FROM triage WHERE article_id = ? AND state IN ('error', 'rejected')", (article_id,))
-        else:
-            status = "irrelevant"
-        conn.execute("UPDATE articles SET status = ? WHERE id = ?", (status, article_id))
+        _close_article(conn, article_id)
+
+
+def _close_article(conn: sqlite3.Connection, article_id: int) -> None:
+    """Once no triage of the article is pending: its status from all its triages (`_close_articles`)."""
+    rows = conn.execute("SELECT state, result FROM triage WHERE article_id = ?", (article_id,)).fetchall()
+    if any(r["state"] == "pending" for r in rows):
+        return
+    failed = [r for r in rows if r["state"] in ("error", "rejected")]
+    if any(r["state"] == "quarantined" for r in rows):
+        status = "quarantined"
+    elif any(r["state"] == "done" and json.loads(r["result"])["relevant"] for r in rows):
+        status = "triaged"
+    elif failed:
+        # Never judged: retried at the next cycles, at most MAX_ATTEMPTS times, then set aside with the reason.
+        details = json.loads(conn.execute("SELECT details FROM articles WHERE id = ?",
+                                          (article_id,)).fetchone()[0])
+        details["triage_failures"] = int(details.get("triage_failures", 0)) + 1
+        status = "new" if details["triage_failures"] < MAX_ATTEMPTS else "irrelevant"
+        if status == "irrelevant":
+            details["set_aside"] = "tri impossible après plusieurs essais"
+        conn.execute("UPDATE articles SET details = ? WHERE id = ?", (json.dumps(details), article_id))
+        conn.execute("DELETE FROM triage WHERE article_id = ? AND state IN ('error', 'rejected')", (article_id,))
+    else:
+        status = "irrelevant"
+    conn.execute("UPDATE articles SET status = ? WHERE id = ?", (status, article_id))
 
 
 def purge_irrelevant(conn: sqlite3.Connection, now_iso: str, days: int = 30) -> int:

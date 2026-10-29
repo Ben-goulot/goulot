@@ -36,6 +36,7 @@ DAILY = timedelta(hours=20)
 DISRUPTION_TERMS = ('strike OR fire OR explosion OR shutdown OR outage OR "force majeure" OR flood OR sanctions '
                     'OR "export ban" OR "export controls" OR closure')
 REQUIRED_FAMILIES = ("news", "hazard")
+MEDIA = "media"  # whole media feeds: their headlines also go to the hot spots
 MAX_ITEMS_PER_SOURCE = 1_000  # bounded queue: a flooding feed cannot fill the database nor the triage
 BACKOFF_BASE = timedelta(hours=3)
 BACKOFF_MAX = timedelta(hours=24)
@@ -136,8 +137,9 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
     gdelt_qs = gdelt_queries(conn) + [q for q, _ in private_queries or []]
     boxes = [(r["node_key"], r["lat"], r["lon"]) for r in conn.execute(
         "SELECT DISTINCT node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone'")]
-    terms = sorted({r["value"] for r in conn.execute(
-        "SELECT value FROM watch_rules WHERE active = 1 AND kind = 'keyword' AND node_key IS NULL")})
+    # Names of the materials as the American press writes them: the names in other languages (rules of 29 October
+    # 2026) would push them out of the six terms of the query.
+    terms = sorted({fold(t): t for _, names, _ in _public_terms(conn) for t in names}.values())
 
     def news_gdelt(c: httpx2.Client, since: datetime) -> list[Item]:
         return sources.gdelt_many(c, gdelt_qs, since, now)
@@ -152,7 +154,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
             raise sources.SourceError(MISSING_KEY)
         return sources.firms(c, key, boxes)
 
-    return {
+    fetchers: dict[str, Callable[[httpx2.Client, datetime], list[Item]]] = {
         "gdelt_doc": news_gdelt,
         "google_news_rss": news_google,
         "gdacs": lambda c, s: sources.gdacs(c),
@@ -165,6 +167,17 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "copernicus_ems": lambda c, s: sources.copernicus(c, now),
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
     }
+    for source_id, src in load_sources().items():
+        if src.get("family") == MEDIA:
+            fetchers[source_id] = _media(source_id, str(src["url"]), str(src.get("lang") or ""))
+    return fetchers
+
+
+def _media(source_id: str, url: str, lang: str) -> Callable[[httpx2.Client, datetime], list[Item]]:
+    def read(c: httpx2.Client, since: datetime) -> list[Item]:
+        return sources.media_feed(c, source_id, url, lang, since)
+
+    return read
 
 
 def _backoff(conn: sqlite3.Connection, source: str, now: datetime) -> bool:
@@ -216,11 +229,40 @@ def ensure_rules(conn: sqlite3.Connection) -> int:
     return len(todo)
 
 
+def ensure_labels(db: Database, http: httpx2.Client) -> int:
+    """Catch-up of 29 October 2026: names in German, Spanish and Italian of the validated materials identified
+    before, asked once to Wikidata, then their rules generated again. A material whose question failed is asked
+    again at the next cycle. Returns how many materials got their labels."""
+    from goulot.chain.identify import wikidata_labels
+
+    if not enabled("wikidata"):
+        return 0
+    with db.connect() as conn:
+        todo = [(r["id"], r["cas"]) for r in conn.execute(
+            "SELECT id, cas FROM materials WHERE status = 'validated' AND labels IS NULL")]
+    done = 0
+    for material_id, cas in todo:
+        labels = wikidata_labels(http, cas)
+        if labels is None:
+            continue
+        with db.transaction() as conn:
+            conn.execute("UPDATE materials SET labels = ? WHERE id = ?",
+                         (json.dumps(labels, ensure_ascii=False), material_id))
+            if labels:
+                store.refresh_rules(conn, material_id)
+        done += 1
+    return done
+
+
 def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: datetime | None = None,
               private: PrivateWatch | None = None) -> CycleResult:
     """`private`: rules and queries of Ma chaîne, built in memory by the caller; never stored nor logged."""
     now = now or datetime.now(UTC)
     cycle_id = str(uuid.uuid4())
+    try:
+        ensure_labels(db, http)
+    except (ValueError, sqlite3.Error):
+        log.exception("labels catch-up failed")
     with db.transaction() as conn:
         conn.execute("INSERT INTO cycles (id, started_at) VALUES (?, ?)", (cycle_id, iso(now)))
         ensure_rules(conn)
@@ -250,7 +292,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 items, error = exc.items[:MAX_ITEMS_PER_SOURCE], f"SourceError: {exc}"
                 log.warning("source failed midway: source=%s error=%s kept_items=%s", source_id, error, len(items))
             fetched = len(items)
-            if source_id in ("gdacs", "copernicus_ems") and not error:
+            if (source_id in ("gdacs", "copernicus_ems") or family == MEDIA) and not error:
                 fetched_items[source_id] = items
             with db.transaction() as conn:
                 for item in items:

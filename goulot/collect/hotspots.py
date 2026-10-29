@@ -46,6 +46,7 @@ PORTWATCH_PAGE_URL = "https://portwatch.imf.org/pages/chokepoints"
 NEWS_STRAITS = ("hormuz", "bab_el_mandeb", "suez", "malacca", "panama", "bosporus", "gibraltar", "taiwan", "kerch",
                 "dover", "oresund", "cape_good_hope")
 NEWS_DAYS = 7
+MEDIA_PREFIX = "media_"  # ids of the European media feeds in config/sources.yaml
 NEWS_MIN_HEADLINES = 3
 NEWS_MIN_PUBLISHERS = 2
 NEWS_MIN_RELIABILITY = 0.7
@@ -55,6 +56,10 @@ CRISIS_WORDS = frozenset({
     "crisis", "halt", "halted", "diverted", "diversions", "war", "strike", "strikes", "explosion", "explosions",
     "attaque", "attaques", "ferme", "fermeture", "blocus", "bloque", "perturbation", "perturbations", "suspendu",
     "suspendue", "saisi", "crise", "frappe", "frappes", "guerre", "detournes",
+    # German, Spanish and Italian headlines of the European media feeds
+    "angriff", "angriffe", "gesperrt", "sperrung", "krise", "krieg", "beschuss",
+    "ataque", "ataques", "bloqueo", "cierre", "cerrado", "guerra",
+    "attacco", "attacchi", "blocco", "chiusura", "chiuso", "crisi",
 })
 
 
@@ -238,20 +243,25 @@ def _replace(conn: sqlite3.Connection, kind: str, spots: list[dict[str, Any]], n
 
 def refresh(db: Database, http: httpx2.Client, now: datetime, fetched: dict[str, list[Item]]) -> int:
     """After the collection: GDACS hot spots from this cycle's answer, straits in crisis in the press (two Google
-    News queries), traffic drops from the stored history (updated once a day). A failure keeps the previous hot
-    spots: they are a display, never a verdict."""
+    News queries, plus the headlines of the European media feeds read by the cycle), traffic drops from the stored
+    history (updated once a day). A failure keeps the previous hot spots: they are a display, never a verdict."""
     with db.transaction() as conn:
         if "gdacs" in fetched:
             _replace(conn, "gdacs", gdacs_hotspots(fetched["gdacs"]), now)
         if "copernicus_ems" in fetched:
             _replace(conn, "copernicus", copernicus_hotspots(fetched["copernicus_ems"]), now)
+    # European media feeds read by this cycle add their headlines, without a request of their own.
+    headlines = [it for source_id, items in fetched.items() if source_id.startswith(MEDIA_PREFIX) for it in items]
+    complete = True
     if enabled("google_news_rss"):
         try:
-            headlines = [it for q, lang, cc in news_queries() for it in sources.google_news(http, q, lang, cc)]
-            with db.transaction() as conn:
-                _replace(conn, "strait_news", news_hotspots(headlines, now), now)
+            headlines += [it for q, lang, cc in news_queries() for it in sources.google_news(http, q, lang, cc)]
         except (httpx2.HTTPError, sources.SourceError, ValueError) as exc:
+            complete = False  # the previous count stays: fewer headlines would only hide a crisis
             log.warning("hotspots: news check failed: %s", type(exc).__name__)
+    if complete and (headlines or enabled("google_news_rss")):
+        with db.transaction() as conn:
+            _replace(conn, "strait_news", news_hotspots(headlines, now), now)
     if enabled("imf_portwatch_chokepoints"):
         try:
             with db.transaction() as conn:
