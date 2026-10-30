@@ -133,21 +133,21 @@ sources:
   - id: media_chemanager
     enabled: false
     family: media
-    url: https://chemanager-online.com/en/rss.xml
+    url: https://chemanager-online.com/en/rss/type/news/
     lang: en
     auth: none
     frequency: 3h
     use: CHEManager, presse spécialisée de la chimie européenne
-    notes: "le 29 octobre 2026, www.chemanager-online.com redirigeait vers chemanager-online.com : adresse corrigée, à revérifier"
+    notes: "le 30 octobre 2026 : /en/rss.xml répond 404 ; adresse /en/rss/type/news/ relevée dans cette page, à vérifier depuis le Mac"
   - id: media_handelsblatt
     enabled: false
     family: media
-    url: https://www.handelsblatt.com/contentexport/feed/unternehmen
+    url: https://feeds.cms.handelsblatt.com/unternehmen
     lang: de
     auth: none
     frequency: 3h
     use: Handelsblatt, rubrique Entreprises
-    notes: "le 29 octobre 2026, depuis le Mac : redirection vers feeds.cms.handelsblatt.com ; adresse exacte à relever (check-sources l'affiche désormais)"
+    notes: "le 30 octobre 2026 : l'ancienne adresse redirige vers celle-ci, à vérifier depuis le Mac"
   - id: media_elpais_economia
     enabled: true
     family: media

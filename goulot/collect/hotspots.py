@@ -23,7 +23,8 @@ from typing import Any
 
 import httpx2
 
-from goulot.chain import places
+from goulot.chain import geo, places
+from goulot.chain.countries import name_fr
 from goulot.collect import sources
 from goulot.collect.base import Item, clean_text, enabled, fold, iso, parse_datetime
 from goulot.db.connection import Database
@@ -42,6 +43,7 @@ MAX_PAGES = 30
 GDACS_RADIUS_KM = {"EQ": 100, "TC": 300, "FL": 100, "VO": 50, "WF": 50, "DR": 300, "TS": 150, "IND": 30, "LS": 30,
                    "OT": 50}
 GDACS_LEVELS = ("orange", "red")
+AREA_KINDS = {"DR": "Sécheresse", "FL": "Inondations", "WF": "Incendies"}
 PORTWATCH_PAGE_URL = "https://portwatch.imf.org/pages/chokepoints"
 NEWS_STRAITS = ("hormuz", "bab_el_mandeb", "suez", "malacca", "panama", "bosporus", "gibraltar", "taiwan", "kerch",
                 "dover", "oresund", "cape_good_hope")
@@ -198,17 +200,37 @@ def news_hotspots(items: list[Item], now: datetime) -> list[dict[str, Any]]:
     return out
 
 
+def country_rings(iso2_codes: list[str]) -> list[list[list[float]]]:
+    """Outlines of these countries (embedded Natural Earth borders)."""
+    wanted = set(iso2_codes)
+    return [ring for c in geo._borders() or [] if c["iso2"] in wanted for ring in c["polygons"]]
+
+
+def area_label(kind: str, iso2_codes: list[str]) -> str:
+    names = sorted(name_fr(c) for c in iso2_codes)
+    return (f"{AREA_KINDS.get(kind, 'Alerte')} : {len(names)} pays ({', '.join(names[:2])}"
+            f"{'…' if len(names) > 2 else ''})")
+
+
 def gdacs_hotspots(items: list[Item]) -> list[dict[str, Any]]:
+    """An event spread over several countries covers their outlines: its only point is a mere centre. Without any
+    recognized country, it is left out rather than drawn at the wrong place."""
     out = []
     for it in items:
         level = str(it.details.get("alert_level", "")).lower()
         kind = str(it.details.get("event_type", "")).upper()
         if level not in GDACS_LEVELS or it.lat is None or it.lon is None:
             continue
+        label, rings = clean_text(it.title, 60), [places.circle(it.lat, it.lon, GDACS_RADIUS_KM.get(kind, 100))]
+        if it.details.get("area_wide"):
+            codes = [str(c) for c in it.details.get("countries", [])]
+            label, rings = area_label(kind, codes), country_rings(codes)
+            if not rings:
+                continue
         out.append({
-            "id": f"gdacs:{it.identity()[:16]}", "kind": "gdacs", "label": clean_text(it.title, 60),
+            "id": f"gdacs:{it.identity()[:16]}", "kind": "gdacs", "label": label,
             "status": "alerte rouge" if level == "red" else "alerte orange", "lat": it.lat, "lon": it.lon,
-            "rings": [places.circle(it.lat, it.lon, GDACS_RADIUS_KM.get(kind, 100))],
+            "rings": rings,
             "source_url": it.url if it.url.startswith("https://") else "", "source_name": "GDACS",
             "started_at": (it.published_at or datetime.now(UTC)).date().isoformat(),
         })

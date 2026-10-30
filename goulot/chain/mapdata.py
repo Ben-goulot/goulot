@@ -123,6 +123,10 @@ def _event_rings(event: dict[str, Any], nodes: dict[str, dict[str, Any]]) -> lis
         border = next((c for c in geo._borders() or [] if c["iso2"] == iso), None)
         point = places.country_point(iso)
         return [(iso, border["polygons"], point)] if border and point else []
+    if event["details"].get("area_wide") or str(event["details"].get("event_type", "")).upper() == "DR":
+        # Spread over a territory: its one point is a mere centre, not a position.
+        rings = hotspots.country_rings([str(c) for c in event["details"].get("countries", [])])
+        return [("area", rings, (event["lat"], event["lon"]))] if rings and event["lat"] is not None else []
     if event["origin"] == "hazard" and event["lat"] is not None and event["lon"] is not None:
         own = float(hotspots.GDACS_RADIUS_KM.get(str(event["details"].get("event_type", "")).upper(), 100))
         return [("own", [places.circle(event["lat"], event["lon"], own)], (event["lat"], event["lon"]))]
@@ -160,11 +164,39 @@ def _inside_any(lon: float, lat: float, rings: list[list[list[float]]]) -> bool:
     return any(geo._inside(x, lat, ring) for ring in rings for x in (lon, lon - 360, lon + 360))
 
 
+def _node_in_zone(node: dict[str, Any], zone: dict[str, Any]) -> bool:
+    if _inside_any(node["lon"], node["lat"], zone["rings"]):
+        return True
+    # A node known only by its country sits at the country's centre: a world hot spot in that country counts for it.
+    return (zone["kind"] == "hotspot" and node.get("coord_source") not in places.PRECISE
+            and node["country_iso2"] != "unknown" and geo.country_at(zone["lat"], zone["lon"]) == node["country_iso2"])
+
+
 def mark_exposure(data: dict[str, Any]) -> dict[str, Any]:
-    """A flow or a node inside a zone is shown as exposed. The verdict engine is not told (docs/SPEC.md, section 5)."""
+    """A flow or a node inside a zone is shown as exposed. The verdict engine is not told (docs/SPEC.md, section 5).
+    The map of a material keeps only the world hot spots that touch its chain; all of them are listed on the home
+    screen (`world_hotspots`)."""
     for flow in data["flows"]:
         flow["exposed_by"] = [z["id"] for z in data["zones"]
                               if any(_inside_any(x, y, z["rings"]) for x, y in flow["coords"])]
     for node in data["nodes"]:
-        node["exposed_by"] = [z["id"] for z in data["zones"] if _inside_any(node["lon"], node["lat"], z["rings"])]
+        node["exposed_by"] = [z["id"] for z in data["zones"] if _node_in_zone(node, z)]
+    touching = {i for item in [*data["flows"], *data["nodes"]] for i in item["exposed_by"]}
+    data["zones"] = [z for z in data["zones"] if z["kind"] != "hotspot" or z["id"] in touching]
     return data
+
+
+def world_hotspots(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Every world hot spot, with the validated materials whose public chain it touches. Ma chaîne is not read."""
+    spots = [{"id": h["id"], "label": h["label"], "status": h["status"], "date": h["started_at"][:10],
+              "source_name": h["source_name"], "source_url": h["source_url"], "materials": []}
+             for h in hotspots.current(conn)]
+    by_id = {s["id"]: s for s in spots}
+    for m in store.list_materials(conn):
+        if m["status"] != "validated":
+            continue
+        data = build(conn, m["id"])
+        data["zones"] = zones(conn, m["id"], [])
+        for z in mark_exposure(data)["zones"]:
+            by_id[z["id"]]["materials"].append(m["name"])
+    return spots

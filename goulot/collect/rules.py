@@ -11,6 +11,7 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any
 
 from goulot.chain.leadtimes import great_circle_km
@@ -21,6 +22,7 @@ ZONE_RADIUS_KM = 50.0
 SITE_TYPES = ("mine", "plant", "recycler", "company", "port", "distributor")
 MIN_KEYWORD = 4  # shorter names (« BP », « SQM ») match too much; they stay in the chain, not in the filter
 MAX_MATERIAL_NAMES = 4
+MAX_NEWS_AGE = timedelta(days=30)
 
 
 @dataclass(frozen=True)
@@ -188,6 +190,12 @@ def disrupted(text: str) -> bool:
     return _DISRUPTION.search(text) is not None or not DISRUPTION_WORDS.isdisjoint(re.findall(r"[a-z]+", text))
 
 
+def too_old(item: Item, now: datetime) -> bool:
+    """A news article published long before it was found (an old page resurfacing in a search) reports no current
+    fact: it never reaches the triage. Without a date, the triage and the corroboration decide."""
+    return item.kind == "news" and item.published_at is not None and now - item.published_at > MAX_NEWS_AGE
+
+
 def match(item: Item, rules: list[Rule], country_nodes: dict[str, str] | None = None) -> list[Rule]:
     """Rules an item triggers. `country_nodes`: node_key -> country name, for the country + material rule.
 
@@ -205,6 +213,8 @@ def match(item: Item, rules: list[Rule], country_nodes: dict[str, str] | None = 
         if needs_disruption and not material_named:
             continue
         for r in material_rules:
+            if r.kind == "zone" and item.details.get("area_wide"):
+                continue  # the centre of a territory is no position: it creates no event near a site
             if r.kind == "zone" and item.lat is not None and item.lon is not None and r.lat is not None:
                 if great_circle_km(item.lat, item.lon, r.lat, r.lon or 0.0) <= (r.radius_km or ZONE_RADIUS_KM):
                     hits.append(r)

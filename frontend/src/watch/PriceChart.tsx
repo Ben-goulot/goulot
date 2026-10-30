@@ -1,13 +1,22 @@
-import { createChart, createSeriesMarkers, LineSeries, type IChartApi, type SeriesMarker, type Time } from "lightweight-charts";
-import { useEffect, useRef } from "react";
-import { sourceCredit, type SeriesPayload } from "./types";
+import { createChart, createSeriesMarkers, LineSeries, type SeriesMarker, type Time } from "lightweight-charts";
+import { useEffect, useRef, useState } from "react";
+import { clip } from "../chain/types";
+import { dayMarks, type EventMark, type Point } from "./chartView";
+import { sourceCredit } from "./types";
 
-export type ChartMark = { day: string; text: string; color: string; shape: "circle" | "arrowUp" | "arrowDown" | "square" };
+const RETAINED = "#F28C4C";
+const OTHER = "#7C8797";
 
-/** Price or index line with dated markers (events, advices). Colors come from design/README.md. */
-export function PriceChart(props: { series: SeriesPayload; marks?: ChartMark[]; height?: number }) {
+function dayLabel(day: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/** Price or index line for one period, with one marker per day where Goulot saw events. Colors from design/README.md. */
+export function PriceChart(props: { points: Point[]; source?: string; events?: EventMark[]; height?: number }) {
   const box = useRef<HTMLDivElement | null>(null);
-  const chartRef = useRef<IChartApi | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const marks = dayMarks(props.events ?? [], props.points);
+  const signature = JSON.stringify(marks.map((m) => [m.day, m.text, m.retained]));
 
   useEffect(() => {
     if (!box.current) return;
@@ -19,34 +28,49 @@ export function PriceChart(props: { series: SeriesPayload; marks?: ChartMark[]; 
       layout: { background: { color: "#121720" }, textColor: "#A3ADBB", fontFamily: "IBM Plex Mono, monospace", attributionLogo: false },
       grid: { vertLines: { color: "#1A212C" }, horzLines: { color: "#1A212C" } },
       rightPriceScale: { borderColor: "#263040" },
-      timeScale: { borderColor: "#263040" },
+      // No empty space on either side: the period fills the width.
+      timeScale: { borderColor: "#263040", fixLeftEdge: true, fixRightEdge: true },
     });
-    chartRef.current = chart;
     const line = chart.addSeries(LineSeries, { color: "#6CB2FF", lineWidth: 2 });
-    line.setData(props.series.points.map((p) => ({ time: p.day as Time, value: p.value })));
-    const days = new Set(props.series.points.map((p) => p.day));
-    const first = props.series.points[0]?.day ?? "";
-    const marks: SeriesMarker<Time>[] = (props.marks ?? [])
-      .filter((m) => m.day >= first)
-      .map((m) => {
-        // A marker must sit on a day of the series: take the next available day.
-        const day = days.has(m.day) ? m.day : props.series.points.find((p) => p.day >= m.day)?.day ?? m.day;
-        const marker: SeriesMarker<Time> = { time: day as Time, position: "aboveBar", color: m.color, shape: m.shape, text: m.text };
-        return marker;
-      })
-      .sort((a, b) => String(a.time).localeCompare(String(b.time)));
-    createSeriesMarkers(line, marks);
-    chart.timeScale().fitContent();
+    line.setData(props.points.map((p) => ({ time: p.day as Time, value: p.value })));
+    const markers: SeriesMarker<Time>[] = marks.map((m) => ({
+      time: m.day as Time,
+      position: "aboveBar",
+      color: m.retained ? RETAINED : OTHER,
+      shape: "circle",
+      text: m.text,
+    }));
+    createSeriesMarkers(line, markers);
+    chart.subscribeCrosshairMove((param) => setHovered(typeof param.time === "string" ? param.time : null));
+    // The chart measures its box after creation: fitted before that, the line would stay squeezed in a corner.
+    const fit = () => chart.timeScale().fitContent();
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box.current);
     return () => {
+      observer.disconnect();
       chart.remove();
-      chartRef.current = null;
     };
-  }, [props.series, props.marks, props.height]);
+    // `signature` stands for `marks`, rebuilt at each render.
+  }, [props.points, signature, props.height]);
 
-  const credit = sourceCredit(props.series.source);
+  const credit = sourceCredit(props.source);
+  const here = marks.find((m) => m.day === hovered);
   return (
     <>
       <div className="chart" ref={box} />
+      {marks.length > 0 && (
+        <p className="chart-note">
+          {here ? (
+            <>
+              <strong>{dayLabel(here.day)}</strong> :{" "}
+              {here.events.map((e) => `${e.letter}. ${clip(e.title, 90)}`).join(" · ")}
+            </>
+          ) : (
+            "Chaque repère marque le jour où Goulot a vu des événements : orange s'ils justifient le verdict, gris sinon, avec leur nombre. Survole-le pour le détail ; les lettres renvoient à la liste « Événements »."
+          )}
+        </p>
+      )}
       {credit && <p className="credit">{credit}</p>}
       <p className="credit">
         Graphique :{" "}

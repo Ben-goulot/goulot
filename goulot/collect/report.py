@@ -17,7 +17,7 @@ import httpx2
 
 from goulot.collect import sources
 from goulot.collect.base import Item, enabled, iso, load_sources
-from goulot.collect.rules import active_rules, match
+from goulot.collect.rules import active_rules, match, too_old
 from goulot.collect.runner import MAX_ITEMS_PER_SOURCE, SecretGetter, _fetchers
 
 EXAMPLES = 3
@@ -111,7 +111,7 @@ def live(conn: sqlite3.Connection, http: httpx2.Client, secret: SecretGetter, no
             continue
         row["fetched"] = len(items)
         for item in items:
-            if not match(item, rules, country_nodes):
+            if too_old(item, now) or not match(item, rules, country_nodes):
                 row["rejected"] += 1
                 if item.kind == "news" and len(row["examples"]) < EXAMPLES:
                     row["examples"].append(_printable(item.title))

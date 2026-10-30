@@ -21,7 +21,7 @@ import httpx2
 from goulot.chain import store
 from goulot.collect import hotspots, sources
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
-from goulot.collect.rules import Rule, active_rules, match, material_names
+from goulot.collect.rules import Rule, active_rules, match, material_names, too_old
 from goulot.db.connection import Database
 
 if TYPE_CHECKING:
@@ -296,7 +296,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 fetched_items[source_id] = items
             with db.transaction() as conn:
                 for item in items:
-                    hits = match(item, rules, {k: k for k in country_nodes})
+                    hits = [] if too_old(item, now) else match(item, rules, {k: k for k in country_nodes})
                     if hits:
                         matched += 1
                         kept += int(_store(conn, item, hits, now))

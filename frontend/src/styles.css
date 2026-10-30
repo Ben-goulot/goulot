@@ -268,3 +268,13 @@ a.button:hover { border-color: var(--accent); }
   .sheet-grid { grid-template-columns: 1fr; }
   .table-scroll { overflow: visible; }
 }
+
+/* Price chart periods and markers, situation behind a verdict, world hot spots */
+.range-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.chart-note { margin: 6px 0 0; font-size: 0.8rem; color: var(--text-2); min-height: 2.4em; }
+.situation { margin-top: 4px; }
+.situation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 32px; }
+.situation-event { display: block; width: 100%; padding: 0; background: transparent; border: 0; color: var(--text); text-align: left; font-weight: 600; cursor: pointer; }
+.world-hotspots { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 12px; }
+.world-hotspots summary { cursor: pointer; font-weight: 600; }
+.world-hotspots li { margin-bottom: 8px; }

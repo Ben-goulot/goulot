@@ -20,6 +20,7 @@ from urllib.parse import quote
 
 import httpx2
 
+from goulot.chain.countries import iso2_from_name
 from goulot.collect.base import Item, clean_text, domain_of, iso, parse_datetime
 from goulot.net.client import fetch
 from goulot.net.xml import parse_xml
@@ -46,6 +47,8 @@ COPERNICUS_TYPES = {"flood": "FL", "fire": "WF", "wildfire": "WF", "earthquake":
                     "industrial-accident": "IND", "mass-movement": "LS", "landslide": "LS"}
 EURLEX_OJ_L = "https://eur-lex.europa.eu/EN/display-feed.rss?rssId=165"
 
+GDACS_POINT_EVENTS = {"EQ", "TC", "VO", "TS"}  # a real position, whatever the countries it reaches
+GDACS_AREA_MIN_COUNTRIES = 3
 GDELT_MAX_WINDOW = timedelta(days=90)
 # VIIRS on NOAA-21 and NOAA-20: Suomi NPP observations end on 2 November 2026 (FIRMS notice of October 2026).
 FIRMS_PRODUCTS = ("VIIRS_NOAA21_NRT", "VIIRS_NOAA20_NRT")
@@ -215,12 +218,19 @@ def gdacs(client: httpx2.Client) -> list[Item]:
             if la and lo:
                 lat, lon = float(la), float(lo)
         link = _text(it, "link")
+        title = clean_text(_text(it, "title"), 300)
+        kind = _text(it, "gdacs:eventtype")[:10].upper()
+        # Several countries, comma-separated. GDACS gives one point for them: for an event spread over a territory
+        # it is a mere centre, in a country that may not even be concerned, never a location.
+        listed = [c.strip() for c in (_text(it, "gdacs:country") or title.partition(" in ")[2]).split(",") if c.strip()]
+        countries = sorted({iso for iso in map(iso2_from_name, listed) if iso})
+        area_wide = kind == "DR" or (kind not in GDACS_POINT_EVENTS and len(listed) >= GDACS_AREA_MIN_COUNTRIES)
         items.append(Item(
-            source="gdacs", kind="hazard", url=link, title=clean_text(_text(it, "title"), 300),
+            source="gdacs", kind="hazard", url=link, title=title,
             published_at=parse_datetime(_text(it, "pubDate")), excerpt=clean_text(_text(it, "description")),
             domain=domain_of(link), lat=lat, lon=lon, key="gdacs:" + (_text(it, "guid") or link),
-            details={"event_type": _text(it, "gdacs:eventtype")[:10], "alert_level": _text(it, "gdacs:alertlevel")[:10],
-                     "country": _text(it, "gdacs:country")[:80]},
+            details={"event_type": kind, "alert_level": _text(it, "gdacs:alertlevel")[:10],
+                     "country": _text(it, "gdacs:country")[:80], "countries": countries, "area_wide": area_wide},
         ))
     return items
 

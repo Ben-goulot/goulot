@@ -11,6 +11,17 @@ from __future__ import annotations
 import sqlite3
 
 
+def from_old_news(conn: sqlite3.Connection, event_id: str) -> bool:
+    """Every article of the event was published more than 30 days before Goulot found it: an old story that
+    resurfaced (rules.too_old now stops them at the collection). It enters neither a verdict nor an analysis."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS total, SUM(a.published_at IS NOT NULL AND "
+        "julianday(a.published_at) < julianday(a.first_seen_at) - 30) AS old FROM event_articles ea "
+        "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? AND a.kind IN ('news', 'policy')",
+        (event_id,)).fetchone()
+    return bool(row["total"]) and row["old"] == row["total"]
+
+
 def is_public(conn: sqlite3.Connection, event_id: str) -> bool:
     return conn.execute("SELECT 1 FROM public_events WHERE id = ?", (event_id,)).fetchone() is not None
 

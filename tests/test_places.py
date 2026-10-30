@@ -232,6 +232,11 @@ def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(check_sources, "SAMPLES", tmp_path)
     unknown, missing = check_sources.portwatch_names(settings)
     assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"]
+    refused = {"error": {"code": 400, "message": "Cannot perform query. Invalid query parameters."}}
+    monkeypatch.setattr(check_sources, "build_client", lambda allowlist: build_client(
+        Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(lambda r: httpx2.Response(200, json=refused))))
+    with pytest.raises(ValueError, match="refused"):  # never reported as 28 names missing
+        check_sources.portwatch_names(settings)
 
 
 def test_sources_of_27_october_in_the_app_and_echa_left_aside() -> None:

@@ -208,22 +208,39 @@ def _pressure(effects: list[EventEffect], by_id: dict[str, EventInput], thr: flo
 PRESSURE_LABELS = {2: "Forte hausse", 1: "Hausse", 0: "Neutre", -1: "Baisse", -2: "Forte baisse"}
 
 
-def explain(v: Verdict) -> str:
-    """Short French explanation written by the code (the analysis text is shown apart, as text)."""
-    if v.verdict == UNVERIFIED:
+def _weeks(n: float) -> str:
+    return f"{n:.0f} semaine{'s' if abs(round(n)) >= 2 else ''}"
+
+
+def describe(verdict: str, pressure: int, event_count: int, x_low: float | None, x_high: float | None,
+             window_weeks: float | None, x_weeks: float | None, window_assumed: bool, rules_only: bool) -> str:
+    """Short French explanation written by the code (the situation comes apart, from the analyses). Also applied to
+    stored verdicts at display time, so that its wording can improve without touching what was recorded."""
+    if verdict == UNVERIFIED:
         return "Aucun cycle de veille réussi depuis plus de 12 heures : rien ne garantit qu'il n'y a rien à signaler."
-    if v.verdict == RAS:
+    if verdict == RAS:
         base = "Aucun événement retenu ne menace l'approvisionnement à l'horizon de la veille."
     else:
-        rules = sorted({e.retained_by for e in v.effects if e.id in v.event_ids})
-        base = (f"{len(v.event_ids)} événement{'s' if len(v.event_ids) > 1 else ''} retenu"
-                f"{'s' if len(v.event_ids) > 1 else ''} (règle {' et '.join(rules)}) ; "
-                f"délai avant impact {v.x_low:.0f} à {v.x_high:.0f} semaines.")
-        if v.window_weeks is not None:
-            base += (f" Fenêtre d'action : {v.window_weeks:.0f} semaine{'s' if abs(v.window_weeks) >= 2 else ''}"
-                     + (" (délai fournisseur supposé de 4 semaines)." if v.window_assumed else "."))
-    if v.rules_only:
+        base = f"{event_count} événement{'s' if event_count > 1 else ''} retenu{'s' if event_count > 1 else ''}."
+        if x_low is not None and x_high is not None:
+            same = round(x_low) == round(x_high)
+            base += f" Impact attendu dans {f'environ {_weeks(x_low)}' if same else f'{x_low:.0f} à {_weeks(x_high)}'}."
+        if window_weeks is not None and x_weeks is not None:
+            lead = _weeks(x_weeks - window_weeks) + (" supposées" if window_assumed else "")
+            if round(window_weeks) < 0:
+                base += (f" Une commande passée aujourd'hui (délai : {lead}) arriverait environ "
+                         f"{_weeks(-window_weeks)} après le début de l'impact.")
+            elif round(window_weeks) == 0:
+                base += f" Une commande passée aujourd'hui (délai : {lead}) arriverait au moment de l'impact."
+            else:
+                base += f" Il reste environ {_weeks(window_weeks)} pour commander à temps (délai : {lead})."
+    if rules_only:
         base += " Estimation sans IA : plafond de veille atteint."
-    if v.pressure < 0:
+    if pressure < 0:
         base += " Pas d'urgence à acheter."
     return base
+
+
+def explain(v: Verdict) -> str:
+    return describe(v.verdict, v.pressure, len(v.event_ids), v.x_low, v.x_high, v.window_weeks, v.x_weeks,
+                    v.window_assumed, v.rules_only)

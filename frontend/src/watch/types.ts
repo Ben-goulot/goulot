@@ -105,12 +105,38 @@ export type SheetEvent = {
   headline: string;
 };
 
+/** One event behind the verdict: the situation as the analysis sums it up, and the sources read. */
+export type SituationEvent = {
+  id: string;
+  letter: string;
+  title: string;
+  place: string;
+  status_label: string;
+  lineages: number;
+  nodes: string[];
+  headline: string;
+  summary: string;
+  analysed: boolean;
+  severity: number | null;
+  duration_low: number | null;
+  duration_high: number | null;
+  transmission: string[];
+  buffers: string[];
+  uncertainties: string[];
+  confidence: number | null;
+  triggers: { indicator: string; signal: string; implication: string }[];
+  sources: { title: string; url: string; publisher: string; published_at: string | null; reliability: number }[];
+};
+
+export type WorldHotspot = { id: string; label: string; status: string; date: string; source_name: string; source_url: string; materials: string[] };
+
 export type Sheet = {
   material: { id: string; name: string; cas: string; status: string; hs_codes: { code: string }[] };
   verdict: Verdict | null;
   personal: LockedPersonal | null;
   freshness: Freshness;
   events: SheetEvent[];
+  situation: SituationEvent[];
   analysis: {
     headline: string;
     summary: string;

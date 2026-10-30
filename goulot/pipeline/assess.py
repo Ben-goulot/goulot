@@ -31,6 +31,7 @@ from goulot.llm.calls import CallSpec, LLMError, call
 from goulot.llm.pricing import Usage, cost_usd
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import EventInput, Verdict, compute
+from goulot.pipeline.visibility import from_old_news
 from goulot.prices import stats
 from goulot.prices import store as prices
 from goulot.private import service as private_service
@@ -75,6 +76,8 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] 
     for e in conn.execute("SELECT e.* FROM events e JOIN materials m ON m.id = e.material_id "
                           "WHERE m.status = 'validated' AND e.analysis_state NOT IN ('queued') "
                           "ORDER BY e.first_seen_at"):
+        if from_old_news(conn, e["id"]):
+            continue
         priced = e["material_id"] in anomalies and e["confirmation"] == "confirmed"
         personal = e["id"] in weighs and (e["confirmation"] == "confirmed"
                                           or e["severity_hint"] >= analysis.URGENT_SEVERITY)
@@ -170,6 +173,8 @@ def event_inputs(conn: sqlite3.Connection, material_id: str, now: datetime) -> l
     out = []
     for e in conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                           "AND event_status NOT IN ('resolved')", (material_id, since)):
+        if from_old_news(conn, e["id"]):
+            continue
         links = conn.execute(
             "SELECT l.node_key, n.global_share_pct FROM event_links l LEFT JOIN chain_nodes n ON n.material_id = "
             "l.material_id AND n.node_key = l.node_key AND n.valid_to IS NULL WHERE l.event_id = ?", (e["id"],)

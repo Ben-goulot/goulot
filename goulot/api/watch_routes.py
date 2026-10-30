@@ -21,8 +21,8 @@ from goulot.db.connection import set_setting
 from goulot.ledger import chain, outcomes, replay, report
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis
-from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS
-from goulot.pipeline.visibility import serious_event
+from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS, describe
+from goulot.pipeline.visibility import from_old_news, serious_event
 from goulot.prices import margin
 from goulot.prices import store as prices
 from goulot.security.secrets import get_secret
@@ -76,7 +76,41 @@ def _verdict(conn: Any, material_id: str) -> dict[str, Any] | None:
                   else LABELS[row["verdict"]])
     v["pressure_label"] = PRESSURE_LABELS[row["pressure"]]
     v["event_ids"] = json.loads(row["event_ids"])
+    v["explanation"] = describe(row["verdict"], row["pressure"], len(v["event_ids"]), row["x_low"], row["x_high"],
+                                row["window_weeks"], row["x_weeks"], bool(row["window_assumed"]),
+                                bool(row["rules_only"]))
     return v
+
+
+def _situation(conn: Any, events: list[dict[str, Any]], event_ids: list[str]) -> list[dict[str, Any]]:
+    """What is behind the verdict, event by event: the analysis already paid for (no new AI call), or the triage's
+    summary when there is none yet, and the sources read. Texts from sources and models, displayed as text."""
+    out = []
+    for e in events:
+        if e["id"] not in event_ids:
+            continue
+        result = analysis.latest_valid(conn, e["id"]) or {}
+        row = conn.execute("SELECT summary FROM events WHERE id = ?", (e["id"],)).fetchone()
+        tightening = [c for c in result.get("commodity_impacts", []) if c.get("net_balance_effect") == "tightening"]
+        main: dict[str, Any] = max(tightening, key=lambda c: c.get("severity", 0), default={})
+        duration = main.get("expected_duration_days") or {}
+        confidence = result.get("confidence") or {}
+        out.append({
+            "id": e["id"], "letter": e["letter"], "title": e["title"], "place": e["place"],
+            "status_label": e["status_label"], "lineages": e["lineages"], "nodes": e["nodes"],
+            "headline": result.get("headline", ""), "summary": result.get("summary") or row["summary"] or "",
+            "analysed": bool(result), "severity": main.get("severity"),
+            "duration_low": duration.get("low"), "duration_high": duration.get("high"),
+            "transmission": main.get("transmission_chain", []), "buffers": main.get("buffers", []),
+            "uncertainties": confidence.get("main_uncertainties", []),
+            "confidence": confidence.get("analysis_confidence"), "triggers": result.get("monitoring_triggers", []),
+            "sources": [dict(r) for r in conn.execute(
+                "SELECT a.title, a.url, a.published_at, ea.reliability, "
+                "COALESCE(NULLIF(a.provider_domain, ''), a.domain) AS publisher FROM event_articles ea "
+                "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? "
+                "ORDER BY ea.reliability DESC, a.published_at DESC LIMIT 6", (e["id"],))],
+        })
+    return out
 
 
 def _series_payload(s: Any, months: int) -> dict[str, Any] | None:
@@ -103,6 +137,7 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
     rows = conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                         "ORDER BY first_seen_at", (material_id,
                                                    (today - timedelta(days=60)).isoformat())).fetchall()
+    rows = [e for e in rows if not from_old_news(conn, e["id"])]
     for i, e in enumerate(rows):
         label, kind = _status(dict(e))
         links = [r[0] for r in conn.execute("SELECT node_key FROM event_links WHERE event_id = ?", (e["id"],))]
@@ -169,9 +204,11 @@ def build_router(ctx: AppContext) -> APIRouter:
             m = material_or_404(conn, material_id)
             nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
             events = _events(conn, material_id, nodes, today)
+            shown = [e["id"] for e in events]
             latest = conn.execute("SELECT result FROM analyses a JOIN events e ON e.id = a.event_id "
-                                  "WHERE e.material_id = ? AND a.state = 'done' ORDER BY a.done_at DESC LIMIT 1",
-                                  (material_id,)).fetchone()
+                                  "WHERE e.material_id = ? AND a.state = 'done' AND a.event_id IN "
+                                  "(SELECT value FROM json_each(?)) ORDER BY a.done_at DESC LIMIT 1",
+                                  (material_id, json.dumps(shown))).fetchone()
             card = json.loads(latest[0]) if latest else None
             best = prices.best_series(conn, material_id)
             margin_series = margin.for_material(conn, material_id)
@@ -188,16 +225,22 @@ def build_router(ctx: AppContext) -> APIRouter:
             sites = [{"name": n["name"], "lat": n["lat"], "lon": n["lon"], "type": n["node_type"]}
                      for n in nodes.values() if n["lat"] is not None]
             verdict = _verdict(conn, material_id)
+            situation = _situation(conn, events, verdict["event_ids"]) if verdict else []
         return {
-            "material": m, "verdict": verdict, "personal": locked_summary(ctx, material_id),
+            "material": m, "verdict": verdict, "personal": locked_summary(ctx, material_id), "situation": situation,
             "freshness": freshness(ctx.db, today), "events": events,
             "analysis": {"headline": card.get("headline", ""), "summary": card.get("summary", ""),
                          "triggers": card.get("monitoring_triggers", []),
                          "confidence": card.get("confidence", {}).get("analysis_confidence")} if card else None,
-            "series": _series_payload(best, 6), "links": series_links, "upcoming": upcoming, "sites": sites,
+            "series": _series_payload(best, 12), "links": series_links, "upcoming": upcoming, "sites": sites,
             "margin": {"trend": margin_trend[0], "change_pct_20": margin_trend[1],
                        "series": _series_payload(margin_series, 6)} if margin_trend else None,
         }
+
+    @router.get("/hotspots")
+    def world_hotspots() -> dict[str, Any]:
+        with ctx.db.connect() as conn:
+            return {"hotspots": mapdata.world_hotspots(conn)}
 
     @router.get("/materials/{material_id}/map")
     def material_map(material_id: str) -> dict[str, Any]:

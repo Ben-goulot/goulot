@@ -5,13 +5,12 @@ import { PersonalCard } from "../private/PersonalCard";
 import { Comparables } from "./Comparables";
 import { DeleteMaterial, setWatched } from "./Lifecycle";
 import { ChainMap, type MapData } from "../map/ChainMap";
-import { EVENT_LOOK } from "../map/style";
 import { Pressure } from "./Markets";
-import { PriceChart, type ChartMark } from "./PriceChart";
+import { changePct, defaultRange, RANGES, slicePoints, usableRanges, weeksRange, type EventMark, type RangeKey } from "./chartView";
+import { PriceChart } from "./PriceChart";
+import { Situation } from "./Situation";
 import { RANK_LABEL, signed, verdictClass, type Sheet as SheetData } from "./types";
 
-// Events on the price chart: vermilion for ongoing and preparing (told apart by the shape), grey otherwise.
-const STATUS_SHAPE: Record<string, ChartMark["shape"]> = { ongoing: "circle", preparing: "square", early: "circle", ended: "circle" };
 const SOURCES = [
   ["fred", "FRED"],
   ["bls_ppi", "BLS (indice)"],
@@ -38,6 +37,7 @@ export function Sheet(props: {
   const [message, setMessage] = useState<string | null>(null);
   const [form, setForm] = useState({ source: "fred", code: "", role: "direct", name: "" });
   const [map, setMap] = useState<MapData | null>(null);
+  const [rangeKey, setRangeKey] = useState<RangeKey | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -52,10 +52,15 @@ export function Sheet(props: {
     void load();
   }, [load]);
 
-  const marks = useMemo<ChartMark[]>(
-    () => (data?.events ?? []).map((e) => ({ day: e.first_seen.slice(0, 10), text: e.letter, color: (EVENT_LOOK[e.status] ?? EVENT_LOOK.early).color, shape: STATUS_SHAPE[e.status] ?? "circle" })),
-    [data],
-  );
+  const marks = useMemo<EventMark[]>(() => {
+    const retained = new Set(data?.verdict?.event_ids ?? []);
+    return (data?.events ?? []).map((e) => ({ day: e.first_seen.slice(0, 10), letter: e.letter, title: e.title, retained: retained.has(e.id) }));
+  }, [data]);
+  const allPoints = data?.series?.points;
+  const ranges = useMemo(() => usableRanges(allPoints ?? []), [allPoints]);
+  const range = RANGES.find((r) => r.key === rangeKey && ranges.includes(r)) ?? defaultRange(allPoints ?? []);
+  const points = useMemo(() => (allPoints && range ? slicePoints(allPoints, range.days) : allPoints ?? []), [allPoints, range]);
+  const change = changePct(points);
 
   if (!data) return <section className="panel">{message ?? "Chargement…"}</section>;
   const v = data.verdict;
@@ -109,10 +114,21 @@ export function Sheet(props: {
         <section className="panel">
           <div className="row spread">
             <h3 className="title">{data.series ? `${clip(data.series.name, 60)} · ${RANK_LABEL[data.series.rank]}` : "Aucune série de prix"}</h3>
-            {data.series && <span className={`mono ${(data.series.change_pct ?? 0) >= 0 ? "up" : "down"}`}>{signed(data.series.change_pct)} % sur 6 mois</span>}
+            {data.series && range && <span className={`mono ${(change ?? 0) >= 0 ? "up" : "down"}`}>{signed(change)} % {range.phrase}</span>}
           </div>
           {data.series ? (
-            <PriceChart series={data.series} marks={marks} />
+            <>
+              {ranges.length > 1 && (
+                <div className="range-buttons" role="group" aria-label="Période du graphique">
+                  {ranges.map((r) => (
+                    <button key={r.key} className={r.key === range?.key ? "tab active" : "tab"} aria-pressed={r.key === range?.key} onClick={() => setRangeKey(r.key)}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <PriceChart points={points} source={data.series.source} events={marks} />
+            </>
           ) : (
             <p className="muted">Ajoute ou valide une série ci-dessous ; sans série, la pression de prix reste affichée, sans pourcentage.</p>
           )}
@@ -134,10 +150,8 @@ export function Sheet(props: {
             <>
               <p>
                 <span className={verdictClass(v)}>{v.label}</span>{" "}
-                {v.x_low !== null && v.x_high !== null && v.verdict !== "ras" && (
-                  <span className="muted">
-                    · {v.x_low.toFixed(0)} à {v.x_high.toFixed(0)} sem.
-                  </span>
+                {v.x_low !== null && v.x_high !== null && v.verdict !== "ras" && !(v.verdict === "pot" && v.x_low.toFixed(0) === v.x_high.toFixed(0)) && (
+                  <span className="muted">· {weeksRange(v.x_low, v.x_high)}</span>
                 )}
               </p>
               <p>
@@ -149,9 +163,9 @@ export function Sheet(props: {
           ) : (
             <p className="muted">Pas encore de verdict : il apparaît après le premier cycle de veille.</p>
           )}
-          {data.analysis && (
+          {data.situation.length === 0 && data.analysis && (
             <>
-              <p className="eyebrow">Dernière analyse de l'IA</p>
+              <p className="eyebrow">Dernière analyse de l'IA, sans effet sur le verdict</p>
               <p>{clip(data.analysis.headline, 200)}</p>
               <p className="muted">{clip(data.analysis.summary)}</p>
               {data.analysis.triggers.length > 0 && (
@@ -173,6 +187,12 @@ export function Sheet(props: {
           </button>
         </section>
       </div>
+
+      {data.situation.length > 0 && (
+        <section className="panel">
+          <Situation events={data.situation} onSelect={setSelected} />
+        </section>
+      )}
 
       <PersonalCard materialId={props.materialId} locked={data.personal} onChain={props.onChain} />
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
 import { DeleteMaterial, setWatched } from "./Lifecycle";
+import { WorldHotspots } from "./WorldHotspots";
 import { RANK_LABEL, signed, verdictClass, watchLabel, type Freshness, type MarketRow, type SeriesPayload } from "./types";
 
 const POLL_MS = 60_000;
@@ -117,6 +118,7 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
       <button className="primary" onClick={props.onAdd}>
         Ajouter une matière
       </button>
+      <WorldHotspots />
       {archived.length > 0 && (
         <>
           <h3>Archivées</h3>

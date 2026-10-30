@@ -461,7 +461,7 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
             print(f"  PortWatch : {len(unknown)} détroit(s) absent(s) de la table {unknown} ; "
                   f"{len(missing)} nom(s) de la table introuvable(s) {missing}")
         except (httpx2.HTTPError, ValueError, KeyError) as exc:
-            print(f"  ❌ PortWatch : {type(exc).__name__}")
+            print(f"  ❌ PortWatch : {type(exc).__name__}, {str(exc)[:200]}")
         print("Terminé. Copiez ce résultat à Claude.")
     elif args.dev_action == "fetch-cities":
         fetch_cities(settings)

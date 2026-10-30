@@ -109,11 +109,15 @@ def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list
     try:
         result = fetch(client, PORTWATCH, params={"where": f"date >= DATE '{since.isoformat()}'",
                                                   "outFields": "portid,portname", "returnGeometry": "false",
-                                                  "resultRecordCount": "2000", "f": "json"}, max_bytes=MAX_BYTES)
+                                                  "orderByFields": "date", "resultRecordCount": "2000", "f": "json"},
+                       max_bytes=MAX_BYTES)
     finally:
         client.close()
     SAMPLES.mkdir(exist_ok=True)
     (SAMPLES / "portwatch_noms.bin").write_bytes(result.content)
-    found = {str(f["attributes"]["portname"]) for f in json.loads(result.content).get("features", [])}
+    answer = json.loads(result.content)
+    if result.status != 200 or "error" in answer:  # ArcGIS reports a refused query in a JSON body
+        raise ValueError(f"PortWatch refused the query: {str(answer.get('error', result.status))[:160]}")
+    found = {str(f["attributes"]["portname"]) for f in answer.get("features", [])}
     table = {c["portwatch_name"] for c in chokepoints().values()}
     return sorted(found - table), sorted(table - found)
