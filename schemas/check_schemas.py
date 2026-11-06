@@ -266,7 +266,8 @@ def check_analyst(ex: dict, refs: set[str], publishers: set[str], today: str) ->
         f"{int(today[:4]) + 2}-{int(today[5:7]) - 6:02d}"
     for item in ex["watch"]:
         d = item["date"]
-        if d != "unknown" and (not DATE.match(d) or d < today[:len(d)] or d[:7] > end):
+        if d != "unknown" and (not re.match(r"^\d{4}(-\d{2}(-\d{2})?)?$", d) or d < today[:len(d)]
+                               or d[:7] > end[:len(d)]):
             fail(w, f"watch date {d} not between today and 18 months ahead")
     if ex["verdict_doubt"]["doubts"] != bool(ex["verdict_doubt"]["reason"].strip()):
         fail(w, "verdict_doubt.reason must be filled if and only if doubts is true")

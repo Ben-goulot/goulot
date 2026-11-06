@@ -1,0 +1,17 @@
+{
+ "107-13-1": {
+  "state": "done",
+  "problems": "",
+  "cost_usd": 0.0174
+ },
+ "554-13-2": {
+  "state": "done",
+  "problems": "",
+  "cost_usd": 0.0059
+ },
+ "7440-55-3": {
+  "state": "rejected",
+  "problems": "date 2027",
+  "cost_usd": 0.0064
+ }
+}

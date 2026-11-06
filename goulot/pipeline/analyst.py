@@ -279,7 +279,7 @@ def params(dossier: Dossier) -> dict[str, Any]:
 
 
 # --- checks of a real output (same rules as schemas/check_schemas.py) --------------------------------------
-DATE_RE = re.compile(r"^\d{4}-\d{2}(-\d{2})?$")
+DATE_RE = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")  # a year alone when the dossier gives no more
 URL_RE = re.compile(r"(?i)\b(?:https?|hxxps?|ftp)://|\bwww\.")
 DOMAIN_RE = re.compile(r"(?i)\b[a-z0-9][a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b")
 LIMITS = {"headline": 14, "situation": 80, "change": 30, "main": 60, "why_aside": 25, "counter": 30,

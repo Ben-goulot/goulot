@@ -1,0 +1,44 @@
+{
+ "state": "rejected",
+ "problems": "date 2027",
+ "cost_usd": 0.0064,
+ "dossier": {
+  "refs": {},
+  "publishers": [],
+  "today": "2026-10-18"
+ },
+ "now": "2026-10-18T12:00:00+00:00",
+ "response": {
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"1.0\",\"headline\":\"Aucun événement retenu sur le gallium ; structure de chaîne très concentrée, échéance du 27 novembre à suivre.\",\"situation\":\"La veille ne retient aucun événement et aucun prix n'est disponible. Le verdict est « rien à signaler ». La chaîne reste très concentrée : la Chine fournit 99 % du gallium primaire. L'échéance de fin de suspension de l'interdiction d'exporter vers les États-Unis approche.\",\"changes\":[{\"text\":\"Aucun événement retenu, aucun événement écarté, aucun point chaud : la veille ne montre aucune perturbation aujourd'hui.\",\"event_refs\":[]},{\"text\":\"Échéance connue : fin de la suspension de l'interdiction chinoise d'exporter du gallium vers les États-Unis le 2026-11-27, sans prolongation confirmée.\",\"event_refs\":[]}],\"main_signal\":{\"text\":\"Pas de signal notable dans les événements. Seule l'échéance du 27 novembre, issue du calendrier, est à garder en tête, car la chaîne dépend à 99 % de la Chine.\",\"event_refs\":[],\"novelty\":\"none\",\"origin\":\"unknown\"},\"set_aside\":[],\"counter_evidence\":[{\"text\":\"Aucun événement ni prix ne confirme une tension actuelle. Sans série de prix, l'absence de signal ne prouve pas l'absence de risque.\",\"event_refs\":[]}],\"watch\":[{\"what\":\"Fin de la suspension de l'interdiction chinoise d'exporter du gallium vers les États-Unis\",\"why\":\"Aucune prolongation n'est confirmée. La décision peut changer l'accès au gallium chinois.\",\"date\":\"2026-11-27\",\"event_refs\":[]},{\"what\":\"Montée en charge des capacités hors de Chine (Metlen, Alcoa Wagerup, Rio Tinto)\",\"why\":\"Ces projets pourraient diversifier l'offre à partir de 2027. Une source évoque 2026 pour Wagerup.\",\"date\":\"2027\",\"event_refs\":[]}],\"confidence\":{\"level\":\"medium\",\"basis\":\"Verdict « rien à signaler » sans événement, sans écart et sans point chaud. Pas de prix de référence ni de source à recouper : la lecture repose sur la chaîne et le calendrier.\",\"weak_points\":[\"Aucune série de prix disponible.\",\"Aucun événement : la veille peut ne rien avoir capté.\",\"Dates des projets hors Chine partiellement divergentes.\"]},\"verdict_doubt\":{\"doubts\":false,\"reason\":\"\"},\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011CgmcRmTwuTGjb1vCXf8RU",
+  "model": "claude-sonnet-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 0,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 4678,
+   "inference_geo": "global",
+   "input_tokens": 1639,
+   "output_tokens": 902,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "batch",
+   "speed": "standard"
+  }
+ }
+}

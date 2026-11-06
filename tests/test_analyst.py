@@ -123,7 +123,8 @@ def test_rejected_readings_are_never_shown(client: TestClient, ctx: AppContext, 
 
 @pytest.mark.parametrize(("date", "ok"), [("2026-10", True), ("2026-10-18", True), ("2026-09", False),
                                           ("2026-10-17", False), ("2028-04", True), ("2028-06", False),
-                                          ("dans deux semaines", False), ("unknown", True)])
+                                          ("dans deux semaines", False), ("unknown", True),
+                                          ("2027", True), ("2025", False)])
 def test_watch_dates_are_bounded(date: str, ok: bool) -> None:
     note = reading({"E1": "evt"})
     note["watch"][0]["date"] = date
@@ -230,7 +231,7 @@ def test_recorded_readings_replay(tmp_path: Path) -> None:
         data = json.loads((out / f"{cas}.json").read_text(encoding="utf-8"))
         sent = data["dossier"]
         note = analyst.parse(data["response"])
-        assert note is not None and data["state"] == "done", cas
+        assert note is not None, cas  # checked again by today's code (a year alone was refused at first)
         assert analyst.check_note(note, set(sent["refs"]), set(sent["publishers"]), sent["today"]) == [], cas
         assert data["cost_usd"] < 0.06, cas  # the worst case reserved for one reading
         at = datetime.fromisoformat(data["now"])

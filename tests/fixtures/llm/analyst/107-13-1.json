@@ -1,0 +1,51 @@
+{
+ "state": "done",
+ "problems": "",
+ "cost_usd": 0.0174,
+ "dossier": {
+  "refs": {
+   "E1": "EVT-2026-10-18-0001",
+   "E2": "EVT-2026-10-18-0002"
+  },
+  "publishers": [
+   "federalregister.gov",
+   "icis.com",
+   "reuters.com"
+  ],
+  "today": "2026-10-18"
+ },
+ "now": "2026-10-18T12:00:00+00:00",
+ "response": {
+  "container": null,
+  "content": [
+   {
+    "text": "{\"schema_version\":\"1.0\",\"headline\":\"Incendie Gulfchem au Texas : arrêt de plusieurs semaines, impact prix non chiffrable à ce stade.\",\"situation\":\"Un incendie a arrêté l'usine d'acrylonitrile Gulfchem au Texas. Le redémarrage est attendu dans plusieurs semaines. Le verdict est « anticiper stock », pression de prix +1. L'analyse d'impact ne chiffre pas l'effet faute de capacité connue. Une mesure antidumping américaine vise par ailleurs l'acrylonitrile coréen.\",\"changes\":[{\"text\":\"Incendie à Gulfchem (Texas) : usine à l'arrêt, redémarrage attendu dans plusieurs semaines. Confirmé par deux lignées de sources.\",\"event_refs\":[\"E1\"]},{\"text\":\"Droits antidumping préliminaires américains sur l'acrylonitrile coréen, annoncés par une source officielle. Impact jugé limité et régional.\",\"event_refs\":[\"E2\"]}],\"main_signal\":{\"text\":\"L'arrêt de Gulfchem par incendie est le seul événement retenu pour le verdict. Il est confirmé (c_fait 0,91, deux lignées) et récent. La capacité touchée n'est pas connue, donc l'effet sur l'offre n'est pas quantifiable.\",\"event_refs\":[\"E1\"],\"novelty\":\"new\",\"origin\":\"unknown\"},\"set_aside\":[{\"event_ref\":\"E2\",\"why\":\"Antidumping préliminaire sur origine coréenne : sévérité 1, impact probablement limité et régional, non retenu dans le verdict.\"}],\"counter_evidence\":[{\"text\":\"Capacité de Gulfchem inconnue : l'analyse d'impact ne peut pas chiffrer la perte d'offre, et aucune fourchette de prix à 20 séances n'existe.\",\"event_refs\":[\"E1\"]},{\"text\":\"Aucune série de prix disponible : aucune hausse observée ne confirme le signal. L'arrêt est temporaire, avec redémarrage attendu.\",\"event_refs\":[\"E1\"]}],\"watch\":[{\"what\":\"Date précise de redémarrage de Gulfchem et capacité concernée\",\"why\":\"Elle fixe la durée de la perte d'offre. Le dossier ne donne que « plusieurs semaines ».\",\"date\":\"unknown\",\"event_refs\":[\"E1\"]},{\"what\":\"Fin de la suspension du paquet chinois de contrôles à l'exportation\",\"why\":\"Échéance de politique commerciale liée à la Chine, un maillon de la chaîne.\",\"date\":\"2026-11-10\",\"event_refs\":[]},{\"what\":\"Décision finale sur l'antidumping coréen\",\"why\":\"Le droit est préliminaire. Une décision finale pourrait changer les flux, sans date dans le dossier.\",\"date\":\"unknown\",\"event_refs\":[\"E2\"]}],\"confidence\":{\"level\":\"medium\",\"basis\":\"Incendie confirmé par deux lignées (Reuters, ICIS), score de réalité 0,91. Pas de source officielle ni de prix observés. Antidumping confirmé par une source officielle.\",\"weak_points\":[\"Capacité de l'usine et durée exacte de l'arrêt inconnues.\",\"Aucune donnée de prix pour vérifier l'effet.\",\"Pas de lecture précédente, donc pas de point de comparaison.\"]},\"verdict_doubt\":{\"doubts\":false,\"reason\":\"\"},\"injection_suspected\":false}",
+    "type": "text"
+   }
+  ],
+  "diagnostics": null,
+  "id": "msg_011CgmcE17dxWAJvqM3zKm9S",
+  "model": "claude-sonnet-5-5",
+  "role": "assistant",
+  "stop_details": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "type": "message",
+  "usage": {
+   "cache_creation": {
+    "ephemeral_1h_input_tokens": 4678,
+    "ephemeral_5m_input_tokens": 0
+   },
+   "cache_creation_input_tokens": 4678,
+   "cache_read_input_tokens": 0,
+   "inference_geo": "global",
+   "input_tokens": 2101,
+   "output_tokens": 1193,
+   "output_tokens_details": {
+    "thinking_tokens": 0
+   },
+   "service_tier": "batch",
+   "speed": "standard"
+  }
+ }
+}
