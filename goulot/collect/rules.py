@@ -23,6 +23,7 @@ SITE_TYPES = ("mine", "plant", "recycler", "company", "port", "distributor")
 MIN_KEYWORD = 4  # shorter names (« BP », « SQM ») match too much; they stay in the chain, not in the filter
 MAX_MATERIAL_NAMES = 4
 MAX_NEWS_AGE = timedelta(days=30)
+TITLE_ONLY_REST = 40  # characters left once the headline is removed: a publisher's name at most
 
 
 @dataclass(frozen=True)
@@ -151,9 +152,10 @@ def _other_rule_hit(r: Rule, item: Item, text: str) -> bool:
     return r.kind == "hs_code" and item.kind == "policy" and _has_hs(text, r.value)
 
 
-# Words of a disruption, folded (no accents), in the five languages of the feeds: a whole media feed is not chosen
-# by a query, so a site, company or strait name alone (« BASF », « Rotterdam ») does not make an article a
-# candidate; with one of these words, it does. Prefixes, except the short ambiguous words of `DISRUPTION_WORDS`;
+# Words of a disruption or of a regulatory action (permits, licences, inspections, quotas), folded (no accents), in
+# the five languages of the feeds: a whole media feed is not chosen by a query, so a site, company or strait name
+# alone (« BASF », « Rotterdam ») does not make an article a candidate; with one of these words, it does.
+# Prefixes, except the short ambiguous words of `DISRUPTION_WORDS`;
 # German « Brand » alone is left out, being an English word too.
 DISRUPTION_STEMS = (
     # English
@@ -162,23 +164,26 @@ DISRUPTION_STEMS = (
     "force majeure", "blockade", "tariff", "anti-dumping", "antidumping", "price hike", "price surge", "soar",
     "rationing", "evacuat", "attack", "earthquake", "storm", "halt", "suspend", "curtail", "production cut",
     "low water", "derail", "collapse", "bankrupt", "insolven",
+    "permit", "licen", "inspection", "investigat", "probe", "quota", "resubmit", "crackdown", "rectification",
     # French
     "greve", "incendie", "explos", "arret", "fermeture", "inondation", "interdiction d'export", "penurie",
     "rupture", "panne", "fuite", "suspen", "blocage", "droits de douane", "flambee", "envol", "rationnement",
     "attaque", "seisme", "tempete", "faillite", "redressement judiciaire", "basses eaux",
+    "permis", "enquete", "mise en demeure",
     # German
     "streik", "grossbrand", "stillstand", "stilllegung", "schliessung", "hochwasser", "uberschwemmung", "sanktion",
     "exportverbot", "exportkontroll", "engpass", "knappheit", "ausfall", "storung", "unfall", "hohere gewalt",
     "strafzoll", "zolle", "preisanstieg", "preissprung", "rationier", "evakuier", "angriff", "erdbeben",
     "niedrigwasser", "abschalt", "drossel", "insolvenz", "pleite",
+    "genehmigung", "lizenz", "untersuchung", "ermittl",
     # Spanish
     "huelga", "incendio", "cierre", "inundacion", "sancion", "prohibicion de export", "escasez", "desabastec",
     "averia", "accidente", "fuerza mayor", "bloqueo", "arancel", "subida de precio", "racionamiento", "terremoto",
-    "quiebra",
+    "quiebra", "permiso", "investigacion", "cuota",
     # Italian
     "sciopero", "esplosion", "chiusura", "alluvione", "inondazion", "sanzion", "divieto di esport", "carenza",
     "scarsita", "guasto", "incidente", "forza maggiore", "blocco", "dazi", "rincar", "impennata", "razionament",
-    "attacco", "fallimento",
+    "attacco", "fallimento", "permess", "indagine",
 )
 DISRUPTION_WORDS = frozenset({"fuga", "alza", "duties", "zoll"})  # whole words only
 _DISRUPTION = re.compile(r"(?<![a-z0-9])(?:" + "|".join(re.escape(s) for s in DISRUPTION_STEMS) + ")")
@@ -188,6 +193,18 @@ def disrupted(text: str) -> bool:
     """`text` already folded (« ß » is kept by the folding: « Großbrand » is read « grossbrand »)."""
     text = text.replace("ß", "ss")
     return _DISRUPTION.search(text) is not None or not DISRUPTION_WORDS.isdisjoint(re.findall(r"[a-z]+", text))
+
+
+def headline_only(title: str, excerpt: str) -> bool:
+    """Nothing but the headline: no excerpt, or one that repeats it with the publisher's name (Google News)."""
+    return len(fold(excerpt).replace(fold(title), "").strip()) <= TITLE_ONLY_REST
+
+
+def title_only(item: Item) -> bool:
+    """Decision of 4 November 2026: a news article enters the triage only with its text or a summary published by
+    the source itself; a headline alone never counts. Data sources (hazards, logistics, policy acts) are not
+    concerned: their items are measurements or official texts."""
+    return item.kind == "news" and headline_only(item.title, item.excerpt)
 
 
 def too_old(item: Item, now: datetime) -> bool:
@@ -201,6 +218,8 @@ def match(item: Item, rules: list[Rule], country_nodes: dict[str, str] | None = 
 
     An item of a whole media feed (`queried` False) needs the material's name, or a disruption word next to the
     site, company, country or strait it names: the search sources got that selection from their query."""
+    if item.source == "gdacs" and str(item.details.get("alert_level", "")).lower() == "green":
+        return []  # GDACS itself rates it as of low impact: an official source, but no event for a purchase
     text = fold(f"{item.title} {item.excerpt} {json.dumps(item.details, ensure_ascii=False)}")
     hits: list[Rule] = []
     by_material: dict[str, list[Rule]] = {}

@@ -31,7 +31,7 @@ from goulot.llm.calls import CallSpec, LLMError, call
 from goulot.llm.pricing import Usage, cost_usd
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import EventInput, Verdict, compute
-from goulot.pipeline.visibility import from_old_news
+from goulot.pipeline.visibility import set_aside
 from goulot.prices import stats
 from goulot.prices import store as prices
 from goulot.private import service as private_service
@@ -76,7 +76,7 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] 
     for e in conn.execute("SELECT e.* FROM events e JOIN materials m ON m.id = e.material_id "
                           "WHERE m.status = 'validated' AND e.analysis_state NOT IN ('queued') "
                           "ORDER BY e.first_seen_at"):
-        if from_old_news(conn, e["id"]):
+        if set_aside(conn, e["id"]):
             continue
         priced = e["material_id"] in anomalies and e["confirmation"] == "confirmed"
         personal = e["id"] in weighs and (e["confirmation"] == "confirmed"
@@ -173,7 +173,7 @@ def event_inputs(conn: sqlite3.Connection, material_id: str, now: datetime) -> l
     out = []
     for e in conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                           "AND event_status NOT IN ('resolved')", (material_id, since)):
-        if from_old_news(conn, e["id"]):
+        if set_aside(conn, e["id"]):
             continue
         links = conn.execute(
             "SELECT l.node_key, n.global_share_pct FROM event_links l LEFT JOIN chain_nodes n ON n.material_id = "
@@ -194,6 +194,15 @@ def _changed(conn: sqlite3.Connection, material_id: str, v: Verdict) -> bool:
     return cur is None or (cur[0], cur[1], cur[2]) != (v.verdict, v.pressure, v.x_weeks)
 
 
+def _keep_events_current(conn: sqlite3.Connection, material_id: str, v: Verdict) -> None:
+    """Same verdict, same pressure, same delay, but perhaps from other events: no new advice in the ledger and no
+    alert, yet the screen must name the events that justify the verdict today, never ones set aside since. The
+    ledger keeps what was true when the advice was given; `inputs` and their digest stay with it."""
+    conn.execute("UPDATE verdicts SET event_ids = ?, x_low = ?, x_high = ?, explanation = ? WHERE material_id = ? "
+                 "AND scope = 'market' AND current = 1", (json.dumps(v.event_ids), v.x_low, v.x_high, v.explanation,
+                                                          material_id))
+
+
 def refresh_verdicts(db: Database, vault: Vault, now: datetime, *, verified: bool, last_ok_cycle: str | None,
                      rules_only: bool = False) -> list[tuple[str, Verdict]]:
     """Market verdict of every validated material; returns the materials whose verdict changed."""
@@ -209,6 +218,7 @@ def refresh_verdicts(db: Database, vault: Vault, now: datetime, *, verified: boo
                         instruments=targets, delays=delays_to_material(chain["nodes"], chain["edges"]),
                         last_prices=last_prices, verified=verified, rules_only=rules_only)
             if not _changed(conn, m["id"], v):
+                _keep_events_current(conn, m["id"], v)
                 continue
             inputs = {"material": m["id"], "events": [vars(e) | {"analysis": bool(e.analysis)} for e in
                                                       event_inputs(conn, m["id"], now)],

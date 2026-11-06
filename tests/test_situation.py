@@ -12,15 +12,15 @@ from fastapi.testclient import TestClient
 from goulot.api.context import AppContext
 from goulot.chain import geo, mapdata
 from goulot.chain.countries import iso2_from_name, name_fr
-from goulot.collect import hotspots, sources
+from goulot.collect import hotspots, report, sources
 from goulot.collect.base import Item
 from goulot.collect.rules import Rule, match, too_old
 from goulot.collect.runner import run_cycle
 from goulot.net.allowlist import Allowlist
 from goulot.net.client import build_client
-from goulot.pipeline import assess
+from goulot.pipeline import analysis, assess
 from goulot.pipeline.verdict import ANTICIPATE, POTENTIAL, describe
-from goulot.pipeline.visibility import from_old_news
+from goulot.pipeline.visibility import from_old_news, minor_alert
 from tests.conftest import login
 from tests.test_collect import NOW, ROUTES, http, validated_chain
 from tests.test_screens_api import prepared
@@ -197,3 +197,95 @@ def test_world_list_tells_which_chains_are_touched(client: TestClient, ctx: AppC
 
 def test_hot_spots_need_a_session(client: TestClient) -> None:
     assert client.get("/api/hotspots").status_code in (401, 403)
+
+
+# --- a verdict always names what justifies it ---------------------------------------------------------------
+def test_verdict_follows_its_events_without_a_new_advice_or_alert(client: TestClient, ctx: AppContext) -> None:
+    material_id, event_id = prepared(ctx)
+    login(client, ctx)
+    with ctx.db.transaction() as conn:
+        entries = conn.execute("SELECT COUNT(*) FROM ledger").fetchone()[0]
+        conn.execute("UPDATE verdicts SET event_ids = '[\"EVT-GONE\"]' WHERE material_id = ?", (material_id,))
+    sheet = client.get(f"/api/materials/{material_id}/sheet").json()
+    assert sheet["situation"] == [] and "analysis" not in sheet  # never another event's text instead
+    changed = assess.refresh_verdicts(ctx.db, ctx.vault, NOW, verified=True, last_ok_cycle=NOW.isoformat())
+    assert changed == []  # same verdict, same pressure, same delay: no alert
+    with ctx.db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM ledger").fetchone()[0] == entries  # no new advice
+    sheet = client.get(f"/api/materials/{material_id}/sheet").json()
+    assert sheet["verdict"]["event_ids"] == [event_id] and [e["id"] for e in sheet["situation"]] == [event_id]
+
+
+# --- minor alerts -------------------------------------------------------------------------------------------
+def test_a_green_alert_creates_no_event_and_an_old_one_leaves_the_screens(client: TestClient, ctx: AppContext) -> None:
+    near = Rule(1, "m", "zone", "site", "site", 48.1, 12.1, 50.0)
+    def alert(level: str) -> Item:
+        return Item(source="gdacs", kind="hazard", url="https://www.gdacs.org/r", title="Flood", lat=48.0, lon=12.0,
+                    details={"alert_level": level, "event_type": "FL"})
+    assert match(alert("Green"), [near]) == [] and match(alert("Orange"), [near]) == [near]
+
+    material_id, event_id = prepared(ctx)
+    login(client, ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE articles SET source = 'gdacs', details = '{\"alert_level\": \"Green\"}' WHERE id IN "
+                     "(SELECT article_id FROM event_articles WHERE event_id = ?)", (event_id,))
+        assert minor_alert(conn, event_id)
+        assert event_id not in [e.id for e in assess.event_inputs(conn, material_id, NOW)]
+    assert event_id not in [e["id"] for e in client.get(f"/api/materials/{material_id}/sheet").json()["events"]]
+
+
+def test_a_small_measurement_is_not_worth_an_analysis(ctx: AppContext) -> None:
+    _, event_id = prepared(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE events SET confirmation = 'confirmed', severity_hint = 1, origin = 'hazard' WHERE id = ?",
+                     (event_id,))
+        small = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        assert not analysis.should_analyze(conn, small)
+        conn.execute("UPDATE events SET severity_hint = 2 WHERE id = ?", (event_id,))
+        big = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        assert analysis.should_analyze(conn, big)
+        conn.execute("UPDATE events SET severity_hint = 1, origin = 'logistics' WHERE id = ?", (event_id,))
+        rhine = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        assert analysis.should_analyze(conn, rhine)  # a low Rhine is rated 1 and still hits barges
+
+
+def test_report_names_the_events_behind_each_verdict(ctx: AppContext) -> None:
+    material_id, event_id = prepared(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE verdicts SET event_ids = ? WHERE material_id = ?",
+                     (json.dumps([event_id, "EVT-GONE"]), material_id))
+        text = report.render(report.history(conn, NOW), None)
+    assert "Verdict de chaque matière" in text and event_id in text
+    assert "EVT-GONE : (introuvable)" in text and "ÉCARTÉ depuis" in text
+
+
+def test_a_refused_portwatch_query_is_a_failure_not_a_calm(ctx: AppContext) -> None:
+    from goulot.collect import sources as src
+
+    refused = json.dumps({"error": {"code": 400, "message": "Invalid URL", "details": ["Invalid URL"]}}).encode()
+    host = ("services9.arcgis.com", src.PORTWATCH.split("arcgis.com", 1)[1])
+    validated_chain(ctx)
+    run_cycle(ctx.db, http({**ROUTES, host: (200, refused)}), lambda name: None, NOW)
+    with ctx.db.connect() as conn:
+        ok, error = conn.execute("SELECT ok, error FROM collect_runs WHERE source = 'imf_portwatch_chokepoints'").fetchone()
+    assert ok == 0 and "refused" in error
+    client = build_client(Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(
+        lambda r: httpx2.Response(200, content=refused)))
+    try:
+        hotspots.fetch_traffic(client, NOW.date())
+    except src.SourceError as exc:
+        assert "refused" in str(exc)
+    else:
+        raise AssertionError("a refused query must fail")
+
+
+def test_portwatch_without_any_transit_is_a_failure(ctx: AppContext) -> None:
+    from goulot.collect import sources as src
+
+    empty = json.dumps({"objectIdFieldName": "ObjectId", "features": []}).encode()
+    host = ("services9.arcgis.com", src.PORTWATCH.split("arcgis.com", 1)[1])
+    validated_chain(ctx)
+    run_cycle(ctx.db, http({**ROUTES, host: (200, empty)}), lambda name: None, NOW)
+    with ctx.db.connect() as conn:
+        ok, error = conn.execute("SELECT ok, error FROM collect_runs WHERE source = 'imf_portwatch_chokepoints'").fetchone()
+    assert ok == 0 and "no transit" in error

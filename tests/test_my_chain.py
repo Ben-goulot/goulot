@@ -39,6 +39,7 @@ from goulot.private.personal import PersonalEvent, active_signals, compute, expi
 from goulot.private.watch import build
 from goulot.settings import REPO_ROOT
 from tests.private_fixtures import chain_data, doc, with_my_chain
+from tests.test_collect import feed_routes
 
 NOW = datetime(2026, 11, 3, 9, tzinfo=UTC)
 IMPACT: dict[str, Any] = json.loads(
@@ -68,9 +69,11 @@ def add_event(ctx: AppContext, material_id: str, *, nodes: tuple[str, ...] = (),
     seen = (NOW - timedelta(days=1)).isoformat(timespec="seconds")
     with ctx.db.transaction() as conn:
         cur = conn.execute(
-            "INSERT INTO articles (source, kind, url, url_hash, domain, title, first_seen_at, collected_at, rules_hit, "
-            "materials, status) VALUES ('gdelt_doc', 'news', ?, ?, 'reuters.com', ?, ?, ?, ?, ?, 'grouped')",
-            (f"https://reuters.com/{event_id}", uuid.uuid4().hex, title, seen, seen,
+            "INSERT INTO articles (source, kind, url, url_hash, domain, title, excerpt, first_seen_at, collected_at, "
+            "rules_hit, materials, status) VALUES ('media_test', 'news', ?, ?, 'reuters.com', ?, ?, ?, ?, ?, ?, "
+            "'grouped')",
+            (f"https://reuters.com/{event_id}", uuid.uuid4().hex, title,
+             "Summary published by the source, with the place and the date of the facts it reports.", seen, seen,
              "[1]" if public_rule else "[]", json.dumps([material_id])))
         conn.execute(
             "INSERT INTO triage (article_id, material_id, custom_id, model, prompt_version, schema_version, state, "
@@ -208,18 +211,19 @@ def test_article_found_through_my_chain_keeps_no_rule(ctx: AppContext) -> None:
     company["sites"][1]["watch_level"] = "city_material_company"  # the user allowed the company name
     assert private_service.save(ctx.db, ctx.vault, material_id, MyChain.model_validate(company))[0] == 2
     seen: list[str] = []
-    found = {"anvers": {"url": "https://reuters.com/anvers-fire", "title": "Fire near Anvers acrylonitrile depot"},
-             "alpha": {"url": "https://reuters.com/alpha-strike", "title": "Strike at Alpha Fictif SA warehouse"}}
+    # Through a media feed with summaries: GDELT and Google News give headlines only (decision of 4 November 2026).
+    found = [{"url": "https://reuters.com/anvers-fire", "title": "Fire near Anvers acrylonitrile depot",
+              "seendate": "20261103T060000Z"},
+             {"url": "https://reuters.com/alpha-strike", "title": "Strike at Alpha Fictif SA warehouse",
+              "seendate": "20261103T060000Z"}]
+    feeds = feed_routes(found)
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(str(request.url))
-        if request.url.host != "api.gdeltproject.org":
-            return httpx2.Response(404, content=b"{}")
-        hits = [a for key, a in found.items() if ("Alpha" if key == "alpha" else "Anvers") in str(request.url)]
-        return httpx2.Response(200, json={"articles": [{**a, "seendate": "20261103T060000Z", "domain": "reuters.com",
-                                                        "language": "English"} for a in hits]})
+        status, body = feeds.get((request.url.host, request.url.path), (404, b"{}"))
+        return httpx2.Response(status, content=body)
 
-    client = build_client(Allowlist({"api.gdeltproject.org"}), transport=httpx2.MockTransport(handler))
+    client = build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))
     from goulot.pipeline.cycle import private_watch
 
     run_cycle(ctx.db, client, lambda _: None, NOW, private=private_watch(ctx))

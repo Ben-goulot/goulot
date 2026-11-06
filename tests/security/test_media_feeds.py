@@ -41,6 +41,9 @@ def test_a_feed_host_is_allowed_only_once_the_feed_is_enabled() -> None:
     hosts = source_hosts(CONFIG_DIR / "sources.yaml")
     feeds = {sid: s for sid, s in load_sources().items() if s.get("family") == "media"}
     assert feeds
+    enabled_hosts = {urlsplit(str(s["url"])).hostname for s in load_sources().values() if s.get("enabled")}
     for sid, s in feeds.items():
         host = urlsplit(s["url"]).hostname
-        assert (host in hosts) == bool(s["enabled"]), sid
+        # Two sections of one site share its host: it is allowed as soon as one of them is enabled.
+        assert (host in hosts) == (host in enabled_hosts), sid
+        assert not s["enabled"] or host in hosts, sid

@@ -137,12 +137,6 @@ export type Sheet = {
   freshness: Freshness;
   events: SheetEvent[];
   situation: SituationEvent[];
-  analysis: {
-    headline: string;
-    summary: string;
-    triggers: { indicator: string; signal: string; implication: string }[];
-    confidence: number | null;
-  } | null;
   series: SeriesPayload | null;
   links: { instrument_id: string; name: string; role: string; rank: number; validated: boolean; proposed_by: string }[];
   upcoming: { date: string; what: string; source: string }[];

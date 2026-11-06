@@ -32,9 +32,13 @@ DAY = datetime(2025, 7, 24, 12, tzinfo=UTC)
 ARTICLES = [
     {"url": "https://www.reuters.com/markets/commodities/yichun-lithium-mines-permits-2025-07-24/",
      "title": "Lithium carbonate: Yichun lithium mines face permit review, output at risk",
+     "summary": "Authorities in Yichun asked lithium miners to review their mining permits, putting part of the "
+                "region's lepidolite output at risk while the checks run.",
      "seendate": "20250724T060000Z", "language": "English"},
     {"url": "https://www.mining.com/yichun-eight-lithium-mines-ordered-to-resubmit-reserve-reports/",
      "title": "Eight Yichun lepidolite mines told to redo reserve reports; lithium supply in question",
+     "summary": "Eight lepidolite mines around Yichun must resubmit their reserve reports by the end of September, "
+                "according to a notice from the local natural resources bureau.",
      "seendate": "20250724T090000Z", "language": "English"},
 ]
 
@@ -52,9 +56,14 @@ def recorded_lithium_chain(ctx: AppContext) -> str:
 
 
 def gdelt(articles: list[dict[str, str]]) -> httpx2.Client:
+    """The articles as a media feed with their summary (decision of 4 November 2026: no headline alone)."""
+    from goulot.cli.watch_scenario import feed_routes
+
+    feeds = feed_routes(articles)
+
     def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.url.host == "api.gdeltproject.org":
-            return httpx2.Response(200, json={"articles": articles})
+        if (request.url.host, request.url.path) in feeds:
+            return httpx2.Response(200, content=feeds[(request.url.host, request.url.path)])
         return httpx2.Response(404)
 
     return build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))

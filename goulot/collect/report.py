@@ -8,6 +8,7 @@ Only public tables are read (rules, chain nodes, runs, articles); Ma chaîne is 
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -17,12 +18,13 @@ import httpx2
 
 from goulot.collect import sources
 from goulot.collect.base import Item, enabled, iso, load_sources
-from goulot.collect.rules import active_rules, match, too_old
+from goulot.collect.rules import active_rules, match, title_only, too_old
 from goulot.collect.runner import MAX_ITEMS_PER_SOURCE, SecretGetter, _fetchers
 
 EXAMPLES = 3
 _PER_SOURCE = ("SELECT source, COUNT(*) AS runs, SUM(ok = 0) AS failed, SUM(fetched) AS fetched, "
-               "SUM(matched) AS matched, SUM(kept) AS kept, MAX(CASE WHEN kept > 0 THEN started_at END) AS last_kept "
+               "SUM(matched) AS matched, SUM(kept) AS kept, SUM(title_only) AS title_only, "
+               "MAX(CASE WHEN kept > 0 THEN started_at END) AS last_kept "
                "FROM collect_runs WHERE started_at >= ? GROUP BY source ORDER BY source")
 
 
@@ -34,7 +36,10 @@ def history(conn: sqlite3.Connection, now: datetime, days: int = 14) -> dict[str
     since = iso(now - timedelta(days=days))
     has_matched = "matched" in _columns(conn, "collect_runs")
     per_source = []
-    for r in conn.execute(_PER_SOURCE if has_matched else _PER_SOURCE.replace("SUM(matched)", "NULL"), (since,)):
+    query = _PER_SOURCE if has_matched else _PER_SOURCE.replace("SUM(matched)", "NULL")
+    if "title_only" not in _columns(conn, "collect_runs"):
+        query = query.replace("SUM(title_only)", "0")
+    for r in conn.execute(query, (since,)):
         errors = [(e["error"], e["n"]) for e in conn.execute(
             "SELECT error, COUNT(*) AS n FROM collect_runs WHERE source = ? AND started_at >= ? AND ok = 0 "
             "GROUP BY error ORDER BY n DESC LIMIT 3", (r["source"], since))]
@@ -79,7 +84,30 @@ def history(conn: sqlite3.Connection, now: datetime, days: int = 14) -> dict[str
         "SELECT purpose, COUNT(*) AS calls, SUM(cost_usd) AS cost FROM llm_calls WHERE budget = 'watch' AND at >= ? "
         "GROUP BY purpose ORDER BY purpose", (since,))]
     return {"days": days, "has_matched": has_matched, "cycles": cycles, "sources": per_source,
-            "materials": materials, "base": base, "outcomes": outcomes, "copies": copies, "costs": costs}
+            "materials": materials, "base": base, "outcomes": outcomes, "copies": copies, "costs": costs,
+            "verdicts": _verdicts(conn, since)}
+
+
+def _verdicts(conn: sqlite3.Connection, since: str | None) -> list[dict[str, Any]]:
+    """Market verdict of each material and the public events behind it, to tell why it says what it says."""
+    from goulot.pipeline.visibility import set_aside
+
+    out = []
+    for m in conn.execute("SELECT id, name FROM materials WHERE status = 'validated' ORDER BY name"):
+        row = conn.execute("SELECT verdict, event_ids FROM verdicts WHERE material_id = ? AND scope = 'market' "
+                           "AND current = 1", (m["id"],)).fetchone()
+        retained = []
+        for event_id in json.loads(row["event_ids"]) if row else []:
+            e = conn.execute("SELECT id, title, origin, confirmation, severity_hint, lineages FROM public_events "
+                             "WHERE id = ?", (event_id,)).fetchone()
+            retained.append({**dict(e), "set_aside": set_aside(conn, event_id)} if e else
+                            {"id": event_id, "title": "(introuvable)", "origin": "", "confirmation": "",
+                             "severity_hint": None, "lineages": 0, "set_aside": True})
+        origins = dict(conn.execute("SELECT origin, COUNT(*) FROM public_events WHERE material_id = ? "
+                                    "AND first_seen_at >= ? GROUP BY origin", (m["id"], since)).fetchall())
+        out.append({"name": m["name"], "verdict": row["verdict"] if row else None, "retained": retained,
+                    "origins": origins})
+    return out
 
 
 def _printable(text: str) -> str:
@@ -111,7 +139,7 @@ def live(conn: sqlite3.Connection, http: httpx2.Client, secret: SecretGetter, no
             continue
         row["fetched"] = len(items)
         for item in items:
-            if too_old(item, now) or not match(item, rules, country_nodes):
+            if title_only(item) or too_old(item, now) or not match(item, rules, country_nodes):
                 row["rejected"] += 1
                 if item.kind == "news" and len(row["examples"]) < EXAMPLES:
                     row["examples"].append(_printable(item.title))
@@ -127,11 +155,11 @@ def render(report: dict[str, Any], sample: list[dict[str, Any]] | None) -> str:
     c = report["cycles"]
     lines = [f"Veille des {report['days']} derniers jours : {c['cycles'] or 0} cycles, {c['ok'] or 0} réussis, "
              f"{c['unfinished'] or 0} interrompus ; dernier : {c['last'] or 'aucun'}.", "",
-             "Par source (lus / filtrés / nouveaux gardés ; échecs) :"]
+             "Par source (lus / titres seuls écartés / filtrés / nouveaux gardés ; échecs) :"]
     for s in report["sources"]:
         matched = "?" if s["matched"] is None else s["matched"]
-        line = (f"  {s['source']:<28} {s['fetched'] or 0:>6} lus  {matched:>5} filtrés  {s['kept'] or 0:>5} gardés"
-                f"  {s['failed'] or 0}/{s['runs']} échecs")
+        line = (f"  {s['source']:<28} {s['fetched'] or 0:>6} lus  {s['title_only'] or 0:>5} titres seuls  "
+                f"{matched:>5} filtrés  {s['kept'] or 0:>5} gardés  {s['failed'] or 0}/{s['runs']} échecs")
         if s["errors"]:
             line += "  [" + ", ".join(f"{e} ×{n}" for e, n in s["errors"]) + "]"
         lines.append(line + f"  dernier gardé : {s['last_kept'] or 'jamais'}")
@@ -164,6 +192,15 @@ def render(report: dict[str, Any], sample: list[dict[str, Any]] | None) -> str:
         lines += ["", f"Coût IA de la veille : {total:.2f} $ sur {days} jours, soit environ "
                       f"{total * 30 / days:.2f} $ par mois :"]
         lines += [f"  {c['purpose']:<28} {c['calls']:>5} appels  {c['cost'] or 0:.3f} $" for c in report["costs"]]
+    if report.get("verdicts"):
+        lines += ["", "Verdict de chaque matière et événements qui le justifient :"]
+        for v in report["verdicts"]:
+            origins = ", ".join(f"{k} {n}" for k, n in sorted(v["origins"].items())) or "aucun"
+            lines.append(f"  {v['name']} : {v['verdict'] or 'pas de verdict'} — événements de la période : {origins}")
+            for e in v["retained"]:
+                aside = " ; ÉCARTÉ depuis" if e["set_aside"] else ""
+                lines.append(f"      {e['id']} : {_printable(e['title'])} ({e['origin']}, {e['confirmation']}, "
+                             f"gravité {e['severity_hint']}, {e['lineages']} source(s){aside})")
     if sample is not None:
         lines += ["", "Essai à blanc sur 24 h (règles publiques, rien n'est enregistré) :"]
         for r in sample:

@@ -22,7 +22,7 @@ from goulot.ledger import chain, outcomes, replay, report
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS, describe
-from goulot.pipeline.visibility import from_old_news, serious_event
+from goulot.pipeline.visibility import serious_event, set_aside
 from goulot.prices import margin
 from goulot.prices import store as prices
 from goulot.security.secrets import get_secret
@@ -137,7 +137,7 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
     rows = conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ? "
                         "ORDER BY first_seen_at", (material_id,
                                                    (today - timedelta(days=60)).isoformat())).fetchall()
-    rows = [e for e in rows if not from_old_news(conn, e["id"])]
+    rows = [e for e in rows if not set_aside(conn, e["id"])]
     for i, e in enumerate(rows):
         label, kind = _status(dict(e))
         links = [r[0] for r in conn.execute("SELECT node_key FROM event_links WHERE event_id = ?", (e["id"],))]
@@ -204,12 +204,6 @@ def build_router(ctx: AppContext) -> APIRouter:
             m = material_or_404(conn, material_id)
             nodes = {n["node_key"]: n for n in store.load_chain(conn, material_id)["nodes"]}
             events = _events(conn, material_id, nodes, today)
-            shown = [e["id"] for e in events]
-            latest = conn.execute("SELECT result FROM analyses a JOIN events e ON e.id = a.event_id "
-                                  "WHERE e.material_id = ? AND a.state = 'done' AND a.event_id IN "
-                                  "(SELECT value FROM json_each(?)) ORDER BY a.done_at DESC LIMIT 1",
-                                  (material_id, json.dumps(shown))).fetchone()
-            card = json.loads(latest[0]) if latest else None
             best = prices.best_series(conn, material_id)
             margin_series = margin.for_material(conn, material_id)
             margin_trend = margin.trend(margin_series)
@@ -229,9 +223,6 @@ def build_router(ctx: AppContext) -> APIRouter:
         return {
             "material": m, "verdict": verdict, "personal": locked_summary(ctx, material_id), "situation": situation,
             "freshness": freshness(ctx.db, today), "events": events,
-            "analysis": {"headline": card.get("headline", ""), "summary": card.get("summary", ""),
-                         "triggers": card.get("monitoring_triggers", []),
-                         "confidence": card.get("confidence", {}).get("analysis_confidence")} if card else None,
             "series": _series_payload(best, 12), "links": series_links, "upcoming": upcoming, "sites": sites,
             "margin": {"trend": margin_trend[0], "change_pct_20": margin_trend[1],
                        "series": _series_payload(margin_series, 6)} if margin_trend else None,

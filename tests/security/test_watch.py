@@ -10,22 +10,16 @@ import httpx2
 from goulot.api.context import AppContext
 from goulot.collect.runner import run_cycle
 from goulot.llm.batch import ReplayBatchBackend
-from goulot.net.allowlist import Allowlist
-from goulot.net.client import build_client
 from goulot.pipeline import grouping, triage
-from tests.test_collect import NOW, validated_chain
+from tests.test_collect import NOW, feed_client, validated_chain
 from tests.test_triage_events import answers_for, result
 
 FAKE = "A massive explosion destroyed the acrylonitrile plants on the Gulf coast, production halted for months"
 
 
 def gdelt_with(articles: list[dict[str, str]]) -> httpx2.Client:
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.url.host == "api.gdeltproject.org":
-            return httpx2.Response(200, json={"articles": articles})
-        return httpx2.Response(404, json={})
-
-    return build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))
+    """The articles through a media feed with a summary: a headline alone no longer enters the triage."""
+    return feed_client(articles)
 
 
 def test_fake_sites_cannot_confirm(ctx: AppContext) -> None:

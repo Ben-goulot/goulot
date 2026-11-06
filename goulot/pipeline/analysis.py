@@ -47,6 +47,9 @@ class Dossier:
     signature: str
 
 
+MIN_HAZARD_SEVERITY = 2
+
+
 def signature(event: sqlite3.Row) -> str:
     return f"{event['confirmation']}|{event['lineages']}|{event['severity_hint']}|{event['event_status']}"
 
@@ -70,6 +73,10 @@ def signature_changed(previous: str, event: sqlite3.Row) -> bool:
 
 def should_analyze(conn: sqlite3.Connection, event: sqlite3.Row) -> bool:
     if event["confirmation"] != "confirmed" and event["severity_hint"] < URGENT_SEVERITY:
+        return False
+    # A natural hazard is confirmed by its official source, whatever its size: a small one is not worth an analysis.
+    # Logistics measurements stay: a low Rhine is rated 1 and still hits barges.
+    if event["origin"] == "hazard" and event["severity_hint"] < MIN_HAZARD_SEVERITY:
         return False
     rows = conn.execute(
         "SELECT n.node_type, n.global_share_pct FROM event_links l JOIN chain_nodes n ON n.material_id = l.material_id "

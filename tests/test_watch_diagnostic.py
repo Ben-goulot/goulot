@@ -14,7 +14,7 @@ from goulot.collect.base import Item
 from goulot.collect.runner import gdelt_queries, queries, run_cycle
 from goulot.net.allowlist import Allowlist
 from goulot.net.client import build_client
-from tests.test_collect import GDELT_JSON, NOW, ROUTES, http, validated_chain
+from tests.test_collect import FEED_ARTICLES, FEED_SOURCE, FEED_SUMMARY, GDELT_JSON, NOW, ROUTES, http, validated_chain
 
 GDELT_HOST = ("api.gdeltproject.org", "/api/v2/doc/doc")
 
@@ -98,8 +98,10 @@ def test_partial_gdelt_failure_stores_what_was_read(ctx: AppContext, slept: list
         run = conn.execute("SELECT ok, error, fetched, matched, kept FROM collect_runs WHERE source = 'gdelt_doc'"
                            ).fetchone()
         stored = conn.execute("SELECT COUNT(*) FROM articles WHERE source = 'gdelt_doc'").fetchone()[0]
+        headlines = conn.execute("SELECT title_only FROM collect_runs WHERE source = 'gdelt_doc'").fetchone()[0]
     assert run["ok"] == 0 and run["error"] == "SourceError: HTTP 429"
-    assert run["fetched"] == 2 and run["matched"] == 1 and run["kept"] == 1 and stored == 1
+    # What was read is kept and counted: GDELT gives headlines only, set aside since 4 November 2026.
+    assert run["fetched"] == 2 and headlines == 2 and run["matched"] == 0 and stored == 0
 
 
 def test_gdelt_queries_pool_materials_and_never_wrap_one_term(ctx: AppContext) -> None:
@@ -119,10 +121,10 @@ def test_matched_tells_duplicates_from_rejected(ctx: AppContext) -> None:
     run_cycle(ctx.db, http(), lambda name: None, NOW + timedelta(hours=3))
     with ctx.db.connect() as conn:
         first, second = conn.execute(
-            "SELECT fetched, matched, kept FROM collect_runs WHERE source = 'gdelt_doc' ORDER BY id").fetchall()
-    # Each GDELT query answers the same two articles: one passes the filter, the other is rejected.
-    assert first["kept"] == 1 and first["fetched"] == 2 * first["matched"]
-    assert second["matched"] == first["matched"] and second["kept"] == 0  # seen again: duplicates, not rejections
+            "SELECT fetched, matched, kept FROM collect_runs WHERE source = ? ORDER BY id", (FEED_SOURCE,)).fetchall()
+    # The feed carries four articles: the football results are rejected, the three others pass the filter.
+    assert (first["fetched"], first["matched"], first["kept"]) == (4, 3, 3)
+    assert second["fetched"] == 0  # a feed is read from the last success on: nothing is offered twice
 
 
 def test_report_history_per_source_and_material(ctx: AppContext) -> None:
@@ -131,21 +133,24 @@ def test_report_history_per_source_and_material(ctx: AppContext) -> None:
     with ctx.db.connect() as conn:
         found = report.history(conn, NOW + timedelta(hours=1))
     assert found["has_matched"] and found["cycles"]["cycles"] == 1
+    feed = next(s for s in found["sources"] if s["source"] == FEED_SOURCE)
+    assert (feed["fetched"], feed["matched"], feed["kept"]) == (4, 3, 3)
     gdelt = next(s for s in found["sources"] if s["source"] == "gdelt_doc")
-    assert gdelt["fetched"] == 2 * gdelt["matched"] and gdelt["kept"] == 1
+    assert gdelt["title_only"] == gdelt["fetched"] > 0 and gdelt["kept"] == 0
     (material,) = found["materials"]
     assert material["status"] == "validated" and material["rules"]["keyword"] > 0
     assert sum(material["articles"].values()) >= 1
     text = report.render(found, None)
-    assert "Par source" in text and "gdelt_doc" in text and material["name"] in text
+    assert "Par source" in text and "titres seuls" in text and "gdelt_doc" in text and material["name"] in text
 
 
 def test_report_live_writes_nothing_and_cleans_titles(ctx: AppContext) -> None:
     validated_chain(ctx)
     run_cycle(ctx.db, http(), lambda name: None, NOW)
     trap = Item(source="gdelt_doc", kind="news", url="https://example.org/x", title="\x1b[31mRouge\x1b]0;titre\x07")
-    known = Item(source="gdelt_doc", kind="news", url=GDELT_JSON["articles"][0]["url"],
-                 title=GDELT_JSON["articles"][0]["title"])
+    stored = FEED_ARTICLES[0]
+    known = Item(source=FEED_SOURCE, kind="news", url=stored["url"], title=stored["title"],
+                 excerpt=FEED_SUMMARY.format(title=stored["title"]))
 
     def fake(c: httpx2.Client, since: datetime) -> list[Item]:
         return [trap, known]

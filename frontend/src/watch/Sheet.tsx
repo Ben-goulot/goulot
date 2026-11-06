@@ -163,24 +163,8 @@ export function Sheet(props: {
           ) : (
             <p className="muted">Pas encore de verdict : il apparaît après le premier cycle de veille.</p>
           )}
-          {data.situation.length === 0 && data.analysis && (
-            <>
-              <p className="eyebrow">Dernière analyse de l'IA, sans effet sur le verdict</p>
-              <p>{clip(data.analysis.headline, 200)}</p>
-              <p className="muted">{clip(data.analysis.summary)}</p>
-              {data.analysis.triggers.length > 0 && (
-                <>
-                  <p className="eyebrow">Ce qui changerait l'avis</p>
-                  <ul className="plain">
-                    {data.analysis.triggers.slice(0, 3).map((t, i) => (
-                      <li key={i}>
-                        {clip(t.signal, 200)} <span className="muted">· {clip(t.implication, 200)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </>
+          {v && (v.verdict === "ant" || v.verdict === "pot") && data.situation.length === 0 && (
+            <p className="warn">L'événement à l'origine de ce verdict n'est plus retenu. Le verdict sera recalculé au prochain cycle de veille : ne t'y fie pas d'ici là.</p>
           )}
           <button className="tab" onClick={props.onReliability}>
             Fiabilité de cette matière

@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from goulot.chain import store
+from goulot.collect.rules import headline_only
 from goulot.db.connection import Database, utcnow
 from goulot.llm import batch
 from goulot.llm.batch import BatchBackend
@@ -114,6 +115,13 @@ def _copy(conn: sqlite3.Connection, article: sqlite3.Row, material_id: str, cid:
                                                                    article["id"]))
 
 
+def _set_aside_headline(conn: sqlite3.Connection, article: sqlite3.Row) -> None:
+    details = json.loads(article["details"] or "{}")
+    details["set_aside"] = "titre seul, sans texte ni résumé de la source"
+    conn.execute("UPDATE articles SET status = 'irrelevant', details = ? WHERE id = ?",
+                 (json.dumps(details, ensure_ascii=False), article["id"]))
+
+
 def submit_pending(db: Database, budget: Budget, backend: BatchBackend, budget_name: str = "watch") -> str | None:
     """Queue every new news or policy article for each validated material it concerns; one batch. Copies take
     their twin's judgment instead (module docstring)."""
@@ -124,6 +132,9 @@ def submit_pending(db: Database, budget: Budget, backend: BatchBackend, budget_n
         copied: set[int] = set()
         for a in conn.execute("SELECT * FROM articles WHERE status = 'new' AND kind IN ('news', 'policy') "
                               "ORDER BY id LIMIT ?", (MAX_PER_BATCH,)).fetchall():
+            if a["kind"] == "news" and headline_only(a["title"], a["excerpt"]):
+                _set_aside_headline(conn, a)  # stored before the decision of 4 November 2026
+                continue
             for material_id in json.loads(a["materials"]):
                 if material_id not in contexts:
                     material = store.get_material(conn, material_id)

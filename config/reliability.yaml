@@ -26,7 +26,8 @@ agency_specialized:
 general_press:
   domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,
             scmp.com, dw.com, aljazeera.com, economictimes.indiatimes.com,
-            euractiv.com, politico.eu, euronews.com, handelsblatt.com, elpais.com, ilsole24ore.com]  # flux RSS européens (29 octobre 2026)
+            euractiv.com, politico.eu, euronews.com, handelsblatt.com, elpais.com, ilsole24ore.com,  # flux RSS européens (29 octobre 2026)
+            focustaiwan.tw, businesstimes.com.sg, gulf-times.com, bnamericas.com]  # médias en anglais (5 novembre 2026)
 
 # Sites qui republient le contenu d'autres médias : l'article prend la fiabilité du fournisseur indiqué par
 # la donnée structurée de la plateforme (champ fournisseur de Yahoo, attribut <source url> de Google News, champ source de l'API ReliefWeb),

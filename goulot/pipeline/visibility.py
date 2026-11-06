@@ -8,6 +8,7 @@ the « nouvel événement » alert or any response outside /api/private/.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 
 
@@ -20,6 +21,31 @@ def from_old_news(conn: sqlite3.Connection, event_id: str) -> bool:
         "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? AND a.kind IN ('news', 'policy')",
         (event_id,)).fetchone()
     return bool(row["total"]) and row["old"] == row["total"]
+
+
+def minor_alert(conn: sqlite3.Connection, event_id: str) -> bool:
+    """Born from a green GDACS alert, which GDACS itself rates as of low impact (rules.match now stops them)."""
+    rows = conn.execute("SELECT a.source, a.details FROM event_articles ea JOIN articles a ON a.id = ea.article_id "
+                        "WHERE ea.event_id = ?", (event_id,)).fetchall()
+    return bool(rows) and all(r["source"] == "gdacs" and str(json.loads(r["details"]).get("alert_level", "")).lower()
+                              == "green" for r in rows)
+
+
+def from_headlines(conn: sqlite3.Connection, event_id: str) -> bool:
+    """Every news article of the event carried its headline only (decision of 4 November 2026; rules.title_only now
+    stops them at the collection)."""
+    from goulot.collect.rules import headline_only
+
+    rows = conn.execute("SELECT a.title, a.excerpt FROM event_articles ea JOIN articles a ON a.id = ea.article_id "
+                        "WHERE ea.event_id = ? AND a.kind = 'news'", (event_id,)).fetchall()
+    others = conn.execute("SELECT COUNT(*) FROM event_articles ea JOIN articles a ON a.id = ea.article_id "
+                          "WHERE ea.event_id = ? AND a.kind != 'news'", (event_id,)).fetchone()[0]
+    return bool(rows) and not others and all(headline_only(r["title"], r["excerpt"]) for r in rows)
+
+
+def set_aside(conn: sqlite3.Connection, event_id: str) -> bool:
+    """An event that enters neither a verdict, nor an analysis, nor a screen."""
+    return from_old_news(conn, event_id) or minor_alert(conn, event_id) or from_headlines(conn, event_id)
 
 
 def is_public(conn: sqlite3.Connection, event_id: str) -> bool:

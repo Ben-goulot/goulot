@@ -21,7 +21,7 @@ import httpx2
 from goulot.chain import store
 from goulot.collect import hotspots, sources
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
-from goulot.collect.rules import Rule, active_rules, match, material_names, too_old
+from goulot.collect.rules import Rule, active_rules, match, material_names, title_only, too_old
 from goulot.db.connection import Database
 
 if TYPE_CHECKING:
@@ -35,7 +35,8 @@ OVERLAP = timedelta(hours=1)
 DAILY = timedelta(hours=20)
 DISRUPTION_TERMS = ('strike OR fire OR explosion OR shutdown OR outage OR "force majeure" OR flood OR sanctions '
                     'OR "export ban" OR "export controls" OR closure')
-REQUIRED_FAMILIES = ("news", "hazard")
+# Usable news come from the media feeds since 4 November 2026: Google News and GDELT give headlines only, set aside.
+REQUIRED_FAMILIES = ("media", "hazard")
 MEDIA = "media"  # whole media feeds: their headlines also go to the hot spots
 MAX_ITEMS_PER_SOURCE = 1_000  # bounded queue: a flooding feed cannot fill the database nor the triage
 BACKOFF_BASE = timedelta(hours=3)
@@ -167,10 +168,11 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "copernicus_ems": lambda c, s: sources.copernicus(c, now),
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
     }
-    for source_id, src in load_sources().items():
-        if src.get("family") == MEDIA:
-            fetchers[source_id] = _media(source_id, str(src["url"]), str(src.get("lang") or ""))
-    return fetchers
+    # The media feeds right after the other news sources, before measurements and policy acts.
+    media = {sid: _media(sid, str(src["url"]), str(src.get("lang") or ""))
+             for sid, src in load_sources().items() if src.get("family") == MEDIA}
+    news = [k for k in fetchers if k in ("gdelt_doc", "google_news_rss")]
+    return {**{k: fetchers[k] for k in news}, **media, **{k: v for k, v in fetchers.items() if k not in news}}
 
 
 def _media(source_id: str, url: str, lang: str) -> Callable[[httpx2.Client, datetime], list[Item]]:
@@ -284,7 +286,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                     families_ok[family] = True  # answered less than 3 hours ago: the family is covered
                 continue
             since = (_last_success(conn, source_id) or now - FIRST_LOOKBACK) - OVERLAP
-        started, error, fetched, matched, kept = iso(now), "", 0, 0, 0
+        started, error, fetched, matched, kept, headlines = iso(now), "", 0, 0, 0, 0
         try:
             try:
                 items = fetch(http, since)[:MAX_ITEMS_PER_SOURCE]
@@ -296,6 +298,9 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
                 fetched_items[source_id] = items
             with db.transaction() as conn:
                 for item in items:
+                    if title_only(item):
+                        headlines += 1
+                        continue
                     hits = [] if too_old(item, now) else match(item, rules, {k: k for k in country_nodes})
                     if hits:
                         matched += 1
@@ -312,9 +317,9 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
         with db.transaction() as conn:
             conn.execute(
                 "INSERT INTO collect_runs (cycle_id, source, family, started_at, finished_at, ok, error, fetched, "
-                "matched, kept) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "matched, kept, title_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (cycle_id, source_id, family, started, iso(datetime.now(UTC)), int(ok), error[:120], fetched, matched,
-                 kept),
+                 kept, headlines),
             )
     try:
         hotspots.refresh(db, http, now, fetched_items)

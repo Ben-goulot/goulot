@@ -28,7 +28,7 @@ from tests.test_triage_events import result, triage_message
 RSS2 = b"""<?xml version="1.0"?><rss version="2.0"><channel><title>Industrie</title>
 <item><title>Explosion dans l'usine d'acrylonitrile de Rotterdam, production arr&#234;t&#233;e</title>
 <link>https://www.lesechos.fr/industrie/acrylonitrile-rotterdam-123</link>
-<pubDate>Sat, 18 Oct 2026 09:00:00 GMT</pubDate><description>&lt;p&gt;Le site &lt;b&gt;arr&#234;t&#233;&lt;/b&gt;&lt;/p&gt;</description></item>
+<pubDate>Sat, 18 Oct 2026 09:00:00 GMT</pubDate><description>&lt;p&gt;Le site &lt;b&gt;arr&#234;t&#233;&lt;/b&gt; pour plusieurs semaines apr&#232;s l'explosion, selon l'exploitant.&lt;/p&gt;</description></item>
 <item><title>Ancien article</title><link>https://www.lesechos.fr/old</link><pubDate>Mon, 01 Sep 2026 09:00:00 GMT</pubDate></item>
 <item><title>Lien pi&#233;g&#233;</title><link>javascript:alert(1)</link></item>
 </channel></rss>"""
@@ -56,7 +56,7 @@ def media(title: str, excerpt: str = "", domain: str = "lesechos.fr") -> Item:
 def test_rss_rdf_and_atom_feeds_read_as_text() -> None:
     since = NOW - timedelta(days=3)
     (item,) = sources.media_feed(feed_client(RSS2), "media_lesechos", "https://feed.example/rss", "fr", since)
-    assert item.title.startswith("Explosion dans l'usine d'acrylonitrile") and item.excerpt == "Le site arrêté"
+    assert item.title.startswith("Explosion dans l'usine d'acrylonitrile") and item.excerpt.startswith("Le site arrêté pour plusieurs semaines")
     assert item.domain == "lesechos.fr" and item.lang == "fr" and item.queried is False and item.kind == "news"
     (rdf,) = sources.media_feed(feed_client(RDF), "media_dw_business", "https://feed.example/rdf", "en", since)
     assert rdf.url == "https://www.dw.com/en/strike/a-1" and rdf.published_at is not None
@@ -90,10 +90,12 @@ def store_items(ctx: AppContext, items: list[Item]) -> None:
 def test_copy_takes_its_twins_judgment(ctx: AppContext, quarantine: bool) -> None:
     validated_chain(ctx)
     title = "Fire halts the acrylonitrile plant near Rotterdam for several weeks"
+    # The same story in two feeds: the publisher's own, and a site reprinting it with its own summary.
     store_items(ctx, [
-        media(title, "The site is closed.", "lesechos.fr"),
-        Item(source="google_news_rss", kind="news", url="https://news.google.com/rss/articles/zz", title=title,
-             excerpt=f"{title} Les Echos", domain="news.google.com", provider_domain="lesechos.fr"),
+        media(title, "The site is closed while firefighters cool the units, the operator said on Sunday.",
+              "lesechos.fr"),
+        media(title, "A reprint: the operator expects the restart to take weeks and warned its customers.",
+              "reprints.example"),
     ])
     backend = ReplayBatchBackend()
     triage.submit_pending(ctx.db, ctx.budget, backend)
@@ -229,3 +231,28 @@ def test_check_sources_shows_where_a_refused_redirect_leads() -> None:
 
     client = build_client(Allowlist({"feed.example"}), transport=httpx2.MockTransport(handler))
     assert redirect_target(client, "https://feed.example/rss") == "https://feeds.other.example/x"  # shown, not followed
+
+
+def test_google_news_probe_says_what_an_item_carries_and_where_its_link_leads(settings: Any, tmp_path: Any,
+                                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    from goulot.cli import check_sources
+
+    monkeypatch.setattr(check_sources, "SAMPLES", tmp_path)
+
+    feed = (b"<rss><channel><item><title>Fire at acrylonitrile plant - Reuters</title>"
+            b"<link>https://news.google.com/rss/articles/CBMiX</link><description>&lt;a href=x&gt;Fire at acrylonitrile "
+            b"plant&lt;/a&gt; Reuters</description><source url='https://www.reuters.com'>Reuters</source></item>"
+            b"<item><title>Gallium export curbs explained - Blog</title><link>https://news.google.com/rss/articles/CBMiY</link>"
+            b"<description>A long summary written by the publisher about export curbs</description>"
+            b"<source url='https://blog.example'>Blog</source></item></channel></rss>")
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/rss/search":
+            return httpx2.Response(200, content=feed)
+        return httpx2.Response(200, content=b"<html><c-wiz data-n-a-sg='x'></c-wiz></html>")
+
+    client = build_client(Allowlist({"news.google.com"}), transport=httpx2.MockTransport(handler))
+    probe = check_sources.google_news_probe(settings, client)
+    assert probe["items"] == 6 and probe["title_only"] == 3  # 3 queries; the Reuters item repeats its title
+    assert probe["reliable_items"] == 3 and probe["reliable_publishers"] == ["reuters.com"]
+    assert probe["link"] == {"status": 200, "redirect_host": "", "needs_javascript": True}

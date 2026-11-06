@@ -131,23 +131,23 @@ sources:
     use: Euronews, économie
     notes: vérifié depuis l'extérieur puis depuis le Mac le 29 octobre 2026 (RSS 2.0, 50 articles datés avec résumé)
   - id: media_chemanager
-    enabled: false
+    enabled: true
     family: media
     url: https://chemanager-online.com/en/rss/type/news/
     lang: en
     auth: none
     frequency: 3h
     use: CHEManager, presse spécialisée de la chimie européenne
-    notes: "le 30 octobre 2026 : /en/rss.xml répond 404 ; adresse /en/rss/type/news/ relevée dans cette page, à vérifier depuis le Mac"
+    notes: "vérifié depuis le Mac le 5 novembre 2026 (RSS 2.0, 25 articles datés avec résumé) ; /en/rss.xml répondait 404"
   - id: media_handelsblatt
-    enabled: false
+    enabled: true
     family: media
     url: https://feeds.cms.handelsblatt.com/unternehmen
     lang: de
     auth: none
     frequency: 3h
     use: Handelsblatt, rubrique Entreprises
-    notes: "le 30 octobre 2026 : l'ancienne adresse redirige vers celle-ci, à vérifier depuis le Mac"
+    notes: "vérifié depuis le Mac le 5 novembre 2026 (RSS 2.0, 20 articles datés avec résumé) ; l'ancienne adresse www.handelsblatt.com/contentexport/feed/unternehmen y redirige"
   - id: media_elpais_economia
     enabled: true
     family: media
@@ -166,6 +166,71 @@ sources:
     frequency: 3h
     use: Il Sole 24 Ore, rubrique Économie
     notes: vérifié depuis le Mac le 29 octobre 2026 (12 articles datés avec résumé)
+
+  # Médias en anglais d'Asie, du Golfe et d'Amérique latine (proposés le 5 novembre 2026, adresses à vérifier).
+  - id: media_focustaiwan
+    enabled: false
+    family: media
+    url: https://feeds.feedburner.com/rsscna/engnews
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Focus Taiwan (agence CNA), toute l'actualité en anglais ; Formosa Plastics, détroit de Taïwan, semi-conducteurs
+    notes: "le 6 novembre 2026 : /rss/business.xml répondait 404 ; adresse du flux relevée dans la page de Focus Taiwan, servie par FeedBurner, à vérifier"
+  - id: media_businesstimes_sg
+    enabled: true
+    family: media
+    url: https://www.businesstimes.com.sg/rss/companies-markets
+    lang: en
+    auth: none
+    frequency: 3h
+    use: The Business Times (Singapour) ; transport maritime, Malacca, pétrochimie de Jurong
+    notes: vérifié depuis le Mac le 6 novembre 2026 (100 articles datés avec résumé)
+  - id: media_et_chemicals
+    enabled: true
+    family: media
+    url: https://economictimes.indiatimes.com/industry/indl-goods/svs/chem-/-fertilisers/rssfeeds/13358350.cms
+    lang: en
+    auth: none
+    frequency: 3h
+    use: The Economic Times (Inde), chimie et engrais ; importations, droits antidumping indiens
+    notes: vérifié depuis le Mac le 6 novembre 2026 (50 articles datés avec résumé)
+  - id: media_et_metals
+    enabled: false
+    family: media
+    url: https://economictimes.indiatimes.com/industry/indl-goods/svs/metals-mining/rssfeeds/13358363.cms
+    lang: en
+    auth: none
+    frequency: 3h
+    use: The Economic Times (Inde), métaux et mines
+    notes: "le 6 novembre 2026 : flux valide mais vide (identifiant de rubrique sans doute périmé) ; à corriger"
+  - id: media_nikkei_asia
+    enabled: false
+    family: media
+    url: https://asia.nikkei.com/rss/feed/nar
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Nikkei Asia ; chimie japonaise, métaux rares, contrôles chinois à l'export
+    notes: "le 6 novembre 2026 : 50 titres sans date ni résumé : écarté par la règle du 4 novembre, laissé désactivé"
+  - id: media_gulftimes
+    enabled: false
+    family: media
+    url: https://www.gulf-times.com/rss/business
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Gulf Times (Qatar), économie ; méthanol et gaz du Golfe, détroit d'Ormuz
+    notes: "le 6 novembre 2026 : l'adresse renvoie une page web, pas un flux ; adresse à trouver"
+  - id: media_bnamericas
+    enabled: false
+    family: media
+    url: https://www.bnamericas.com/en/rss
+    lang: en
+    auth: none
+    frequency: 3h
+    use: BNamericas ; lithium du Chili, de l'Argentine et du Brésil, mines d'Amérique latine
+    notes: "le 6 novembre 2026 : HTTP 403 (accès refusé) ; laissé désactivé"
 
   # --- Aléas naturels ---
   - id: gdacs

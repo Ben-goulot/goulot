@@ -462,6 +462,18 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
                   f"{len(missing)} nom(s) de la table introuvable(s) {missing}")
         except (httpx2.HTTPError, ValueError, KeyError) as exc:
             print(f"  ❌ PortWatch : {type(exc).__name__}, {str(exc)[:200]}")
+        try:
+            news = check_sources.google_news_probe(settings)
+            reliable = ", ".join(str(p) for p in news["reliable_publishers"])  # type: ignore[attr-defined]
+            print(f"  Google News : {news['items']} articles, dont {news['title_only']} sans autre texte que le "
+                  f"titre ; {news['reliable_items']} de journaux de fiabilité ≥ 0,7 ({reliable})")
+            link = news["link"]
+            if isinstance(link, dict):
+                where = (f"redirection vers {link['redirect_host']}" if link["redirect_host"] else
+                         "pas de redirection" + (", page à décoder par JavaScript" if link["needs_javascript"] else ""))
+                print(f"  Lien d'article Google News : HTTP {link['status']}, {where}")
+        except (httpx2.HTTPError, ValueError) as exc:
+            print(f"  ❌ Google News : {type(exc).__name__}")
         print("Terminé. Copiez ce résultat à Claude.")
     elif args.dev_action == "fetch-cities":
         fetch_cities(settings)

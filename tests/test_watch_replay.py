@@ -16,11 +16,11 @@ from goulot.settings import Settings
 
 def test_scenario_is_well_formed() -> None:
     scenario = watch_scenario.load()
-    expects = {a["expect"] for a in scenario["gdelt"]} | {d["expect"] for d in scenario["federal_register"]}
+    expects = {a["expect"] for a in scenario["articles"]} | {d["expect"] for d in scenario["federal_register"]}
     assert expects == {"outage", "trap", "fake", "irrelevant", "policy"}
-    assert all(a["url"].startswith("https://") for a in scenario["gdelt"])
+    assert all(a["url"].startswith("https://") and len(a["summary"]) > 60 for a in scenario["articles"])
     # Fictitious companies only: no real firm is said to have an accident in a public repository.
-    titles = " ".join(a["title"] for a in scenario["gdelt"])
+    titles = " ".join(a["title"] + " " + a["summary"] for a in scenario["articles"])
     for real in ("INEOS", "Ascend", "Asahi", "Sinopec", "Formosa", "Anqore", "Sumitomo"):
         assert real not in titles
 

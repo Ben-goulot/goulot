@@ -41,7 +41,6 @@ def test_markets_and_sheet(client: TestClient, ctx: AppContext) -> None:
     suez = events[event_id]
     assert suez["status_label"] == "En cours" and suez["letter"] in "ABCDEFGH"
     assert suez["lat"] is not None and "Canal de Suez" in suez["nodes"]
-    assert sheet["analysis"]["headline"] and isinstance(sheet["analysis"]["triggers"], list)
     assert {link["role"] for link in sheet["links"]} >= {"customs", "factor"}
     assert any(s["type"] == "port" for s in sheet["sites"])
     assert any(u["source"] == "chaîne" for u in sheet["upcoming"])

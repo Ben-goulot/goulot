@@ -89,6 +89,7 @@ def fetch_traffic(client: httpx2.Client, since: date) -> list[tuple[str, str, st
             data = json.loads(result.content)
         except json.JSONDecodeError as exc:
             raise sources.SourceError("invalid JSON") from exc
+        sources.refused(data)
         features = (data or {}).get("features", []) or []
         for feat in features:
             a = feat.get("attributes") or {}

@@ -97,6 +97,43 @@ def run(settings: Settings, today: date | None = None) -> list[dict[str, object]
     return report
 
 
+GOOGLE_PROBE_QUERIES = ("acrylonitrile", "gallium", "lithium carbonate")  # names of the 3 test CAS only
+RELIABLE = 0.7
+
+
+def google_news_probe(settings: Settings, client: httpx2.Client | None = None) -> dict[str, object]:
+    """Decision of 4 November 2026 (full text before the triage): what the Google News items carry, from which
+    publishers, and whether an article link leads to the publisher's page by a plain HTTP redirect. Only the names
+    of the 3 test materials are searched; the link is asked once, without following it."""
+    from goulot.collect import sources
+    from goulot.collect.rules import headline_only
+    from goulot.pipeline.corroborate import domain_reliability
+
+    own = client is None
+    client = client or build_client(load_allowlist(settings.config_dir))
+    try:
+        items = [it for q in GOOGLE_PROBE_QUERIES for it in sources.google_news(client, f"{q} when:7d")]
+        publishers = [it.provider_domain or it.domain for it in items]
+        reliable = sorted({p for p in publishers if domain_reliability(p) >= RELIABLE})
+        title_only = sum(1 for it in items if headline_only(it.title, it.excerpt))
+        out: dict[str, object] = {"items": len(items), "title_only": title_only,
+                                  "reliable_items": sum(1 for p in publishers if domain_reliability(p) >= RELIABLE),
+                                  "reliable_publishers": reliable, "link": None}
+        first = next((it for it in items if it.url.startswith("https://news.google.com/")), None)
+        if first is not None:
+            response = client.get(first.url, follow_redirects=False)
+            location = response.headers.get("location", "") if response.is_redirect else ""
+            SAMPLES.mkdir(exist_ok=True)
+            (SAMPLES / "google_news_article_link.bin").write_bytes(response.content[:MAX_BYTES])
+            body = response.content[:MAX_BYTES].decode("utf-8", "replace")
+            out["link"] = {"status": response.status_code, "redirect_host": urlsplit(location).hostname or "",
+                           "needs_javascript": "data-n-a-sg" in body or "c-wiz" in body}
+        return out
+    finally:
+        if own:
+            client.close()
+
+
 def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list[str], list[str]]:
     """Names of the IMF PortWatch chokepoints of the last days compared with the embedded table
     (goulot/data/chokepoints.json): (in PortWatch but not in the table, in the table but not in PortWatch). The answer
@@ -119,5 +156,7 @@ def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list
     if result.status != 200 or "error" in answer:  # ArcGIS reports a refused query in a JSON body
         raise ValueError(f"PortWatch refused the query: {str(answer.get('error', result.status))[:160]}")
     found = {str(f["attributes"]["portname"]) for f in answer.get("features", [])}
+    if not found:
+        raise ValueError("PortWatch answered no transit for the last 10 days")
     table = {c["portwatch_name"] for c in chokepoints().values()}
     return sorted(found - table), sorted(table - found)

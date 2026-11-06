@@ -111,9 +111,18 @@ def _json(client: httpx2.Client, url: str, params: dict[str, str] | None = None)
     if result.status != 200:
         raise SourceError(f"HTTP {result.status}")
     try:
-        return json.loads(result.content)
+        data = json.loads(result.content)
     except json.JSONDecodeError as exc:
         raise SourceError("invalid JSON") from exc
+    refused(data)
+    return data
+
+
+def refused(data: Any) -> None:
+    """ArcGIS (PortWatch) answers a refused query with HTTP 200 and an `error` object: read as « nothing to report »,
+    it would look like a calm. A failure of the source, never a silence."""
+    if isinstance(data, dict) and isinstance(data.get("error"), dict):
+        raise SourceError(f"refused: {str(data['error'].get('message', ''))[:60]}")
 
 
 def _xml(client: httpx2.Client, url: str, params: dict[str, str] | None = None) -> Any:
@@ -319,6 +328,9 @@ def portwatch(client: httpx2.Client, now: datetime) -> list[Item]:
         "where": f"date >= DATE '{since}'", "outFields": "date,portid,portname,n_total", "orderByFields": "date",
         "resultRecordCount": "2000", "f": "json",
     })
+    if not (data or {}).get("features"):
+        # 28 straits counted every day: nothing over 35 days is a broken source, never a calm (6 November 2026).
+        raise SourceError("no transit for 35 days")
     series: dict[str, list[tuple[datetime, float]]] = {}
     names: dict[str, str] = {}
     for feat in (data or {}).get("features", []) or []:

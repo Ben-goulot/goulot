@@ -40,13 +40,41 @@ def load() -> dict[str, Any]:
     return data
 
 
+def feed_rss(articles: list[dict[str, Any]]) -> bytes:
+    """Articles {url, title, summary, seendate (YYYYMMDDTHHMMSSZ)} as an RSS 2.0 feed, escaped."""
+    from email.utils import format_datetime
+    from xml.sax.saxutils import escape  # nosec B406 - escaping only, nothing is parsed
+
+    from goulot.collect.base import parse_datetime
+
+    items = "".join(
+        f"<item><title>{escape(a['title'])}</title><link>{escape(a['url'])}</link>"
+        f"<description>{escape(a['summary'])}</description>"
+        f"<pubDate>{format_datetime(parse_datetime(a['seendate']))}</pubDate></item>"  # type: ignore[arg-type]
+        for a in articles)
+    return f"<?xml version='1.0'?><rss version='2.0'><channel><title>x</title>{items}</channel></rss>".encode()
+
+
+def feed_routes(articles: list[dict[str, Any]]) -> dict[tuple[str, str], bytes]:
+    """(host, path) -> feed: the articles on the first enabled media feed of config/sources.yaml, the others empty.
+    Since 4 November 2026 a headline alone never enters the triage: the scenario's articles come with their summary,
+    as a media feed publishes them."""
+    from urllib.parse import urlsplit
+
+    from goulot.collect.base import load_sources
+
+    feeds = [urlsplit(str(s["url"])) for s in load_sources().values() if s.get("family") == "media" and s["enabled"]]
+    empty = feed_rss([])
+    return {(str(u.hostname), u.path): feed_rss(articles) if i == 0 else empty for i, u in enumerate(feeds)}
+
+
 def http(scenario: dict[str, Any]) -> httpx2.Client:
-    articles = [{k: v for k, v in a.items() if k not in ("id", "expect")} for a in scenario["gdelt"]]
+    feeds = feed_routes(scenario["articles"])
     documents = [{k: v for k, v in d.items() if k not in ("id", "expect")} for d in scenario["federal_register"]]
 
     def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.url.host == "api.gdeltproject.org":
-            return httpx2.Response(200, json={"articles": articles})
+        if (request.url.host, request.url.path) in feeds:
+            return httpx2.Response(200, content=feeds[(request.url.host, request.url.path)])
         if request.url.host == "www.federalregister.gov":
             return httpx2.Response(200, json={"results": documents})
         return httpx2.Response(404)
@@ -89,7 +117,7 @@ def run(db: Database, budget: Budget, vault: Vault, backend: BatchBackend, *, bu
 
 
 def summary(db: Database, scenario: dict[str, Any]) -> dict[str, Any]:
-    by_url = {a["url"]: a for a in scenario["gdelt"]}
+    by_url = {a["url"]: a for a in scenario["articles"]}
     with db.connect() as conn:
         articles = {}
         for r in conn.execute("SELECT a.url, a.status, e.event_id FROM articles a LEFT JOIN event_articles e ON "

@@ -56,9 +56,11 @@ def test_collector_limits(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> N
     later = NOW + timedelta(days=2)
     runner.run_cycle(ctx.db, client(spam), lambda name: None, later)
     with ctx.db.connect() as conn:
+        fetched, headlines = conn.execute("SELECT fetched, title_only FROM collect_runs WHERE source = 'gdelt_doc' "
+                                          "ORDER BY id DESC LIMIT 1").fetchone()
         stored = conn.execute("SELECT COUNT(*) FROM articles WHERE source = 'gdelt_doc'").fetchone()[0]
-        queries = len(runner.queries(conn))
-    assert 0 < stored <= 300 * queries  # never more than the cap per fetch
+    assert 0 < fetched <= 300  # never more than the cap per fetch
+    assert headlines == fetched and stored == 0  # GDELT gives headlines only: all set aside (4 November 2026)
     # The triage batch is bounded too.
     assert triage.MAX_PER_BATCH == 200
 
