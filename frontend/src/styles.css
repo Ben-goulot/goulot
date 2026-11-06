@@ -82,6 +82,32 @@ button:disabled { opacity: 0.55; cursor: default; }
 .node-sub { color: var(--text-2); font-size: 0.78rem; margin-top: 2px; }
 .node-flag { color: var(--amber); font-size: 0.75rem; margin-top: 2px; }
 .react-flow__edge.conf-low path { stroke-dasharray: 5 4; }
+/* Hover: the hovered node's content grows in place, drawn as a card with outline and shadow so that nothing changes
+   size or position (the layout does not move); its links light up, the rest dims. The card copies the node's look. */
+.react-flow__node.chain-node { transition: opacity 0.12s ease-out; }
+.react-flow__node.chain-node > div:not(.react-flow__handle) { transition: transform 0.12s ease-out; }
+.react-flow__node.chain-node.hovered > div:not(.react-flow__handle) {
+  background: var(--row); border-radius: 1px; transform: scale(1.25); transform-origin: center;
+  box-shadow: 0 0 0 9px var(--row), 0 6px 24px 9px rgba(0, 0, 0, 0.55); outline: 1px solid #2e3846; outline-offset: 9px;
+}
+.react-flow__node.chain-node.conf-low.hovered > div:not(.react-flow__handle) { outline-style: dashed; outline-color: var(--amber); }
+.react-flow__node.chain-node.purchased.hovered > div:not(.react-flow__handle),
+.react-flow__node.chain-node.adopted.hovered > div:not(.react-flow__handle) { outline-color: var(--accent); }
+.react-flow__node.chain-node.purchased.hovered > div:not(.react-flow__handle) { transform-origin: left center; } /* grow away from the labels that converge on it */
+.react-flow__node.chain-node.private-site.hovered > div:not(.react-flow__handle) { outline: 1.5px dashed var(--accent); }
+.react-flow__node.chain-node.selected.hovered > div:not(.react-flow__handle) { outline: 2px solid var(--accent); }
+.hz-2 .react-flow__node.chain-node.hovered > div:not(.react-flow__handle) { transform: scale(1.6); }
+.hz-3 .react-flow__node.chain-node.hovered > div:not(.react-flow__handle) { transform: scale(2.1); }
+.hz-4 .react-flow__node.chain-node.hovered > div:not(.react-flow__handle) { transform: scale(2.6); }
+.react-flow__node.chain-node.hovered .react-flow__handle { opacity: 0; }
+.react-flow__node.chain-node.hover-near { border-color: var(--neutral); }
+.react-flow__node.chain-node.hover-dim { opacity: 0.3; }
+.react-flow__edge.hover-dim path, .react-flow__edge.hover-dim .react-flow__edge-textwrapper { opacity: 0.12; }
+.react-flow__edge.hover-lit path.react-flow__edge-path { stroke: var(--text); stroke-width: 2px; }
+.edge-lit-layer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.edge-lit-label { font-family: "IBM Plex Sans", sans-serif; font-weight: 500; fill: var(--text); }
+.edge-lit-halo { flood-color: var(--panel); flood-opacity: 0.92; }
+@media (prefers-reduced-motion: reduce) { .react-flow__node.chain-node, .react-flow__node.chain-node > div { transition: none; } }
 @media (max-width: 900px) { .chain-layout { grid-template-columns: 1fr; } }
 .react-flow__node.col-header { width: 200px; padding: 0; border: none; background: transparent; box-shadow: none; color: var(--text-2); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; cursor: default; pointer-events: none; }
 .react-flow__node.col-header .react-flow__handle { display: none; }

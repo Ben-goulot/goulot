@@ -5,6 +5,8 @@ import { api, ApiError } from "../api";
 import { ChainMap, type MapData, type MineSite } from "../map/ChainMap";
 import { MyChainSide, overlay, useMyChain } from "../private/MyChainSide";
 import { Locked, usePrivacy } from "../private/privacy";
+import { ChainEdge, HoverLabels } from "./ChainEdge";
+import { emphasize, hoverStep, type Hover } from "./hover";
 import { HEADER_Y, layout } from "./layout";
 import { approximate, BASIS, clip, CONFIDENCE, COORD_SOURCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
 
@@ -19,6 +21,9 @@ type Draft = {
   city: string;
   position: { lat: number; lon: number; label: string } | null | "reset";
 };
+
+// Every plain edge, Ma chaîne included, uses the chain edge: when lit, its label is drawn by HoverLabels.
+const EDGE_TYPES = { default: ChainEdge };
 
 type City = { name: string; country_iso2: string; lat: number; lon: number };
 
@@ -116,6 +121,8 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
   const [mode, setMode] = useState<"type" | "mine">("type");
   const [view, setView] = useState<"graph" | "map">("graph");
   const [map, setMap] = useState<MapData | null>(null);
+  const [hover, setHover] = useState<Hover>(null);
+  const [zoomStep, setZoomStep] = useState<1 | 2 | 3 | 4>(1);
   const { vaultOpen, presenting } = usePrivacy();
   const my = useMyChain(props.materialId);
 
@@ -178,6 +185,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
     }));
     return mode === "mine" && vaultOpen ? overlay(chain, nodes, edges, my.data, selected, presenting) : { nodes, edges };
   }, [chain, selected, mode, vaultOpen, my.data, presenting]);
+  const shown = useMemo(() => emphasize(flow.nodes, flow.edges, hover), [flow, hover]);
 
   if (!chain) return <section className="panel">{message ?? "Chargement…"}</section>;
 
@@ -290,10 +298,18 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             )}
           </div>
         ) : (
-        <div className="chain-graph">
+        <div className={`chain-graph hz-${zoomStep}`}>
           <ReactFlow
-            nodes={flow.nodes}
-            edges={flow.edges}
+            nodes={shown.nodes}
+            edges={shown.edges}
+            edgeTypes={EDGE_TYPES}
+            onNodeMouseEnter={(_, n) => setHover(n.id.startsWith("col:") ? null : { kind: "node", id: n.id })}
+            onNodeMouseLeave={() => setHover(null)}
+            onEdgeMouseEnter={(_, e) => setHover({ kind: "edge", id: e.id })}
+            onEdgeMouseLeave={() => setHover(null)}
+            onPaneClick={() => setHover(null)}
+            onInit={(rf) => setZoomStep(hoverStep(rf.getZoom()))}
+            onMoveEnd={(_, vp) => setZoomStep(hoverStep(vp.zoom))}
             onNodeClick={(_, n) => {
               if (n.id.startsWith("col:")) return;
               setSelected(n.id);
@@ -305,6 +321,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
           >
             <Background />
             <Controls showInteractive={false} />
+            <HoverLabels edges={shown.edges} step={zoomStep} />
           </ReactFlow>
         </div>
         )}
