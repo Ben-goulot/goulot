@@ -536,7 +536,7 @@ def test_recorded_fixtures_meet_phase_2_criteria(ctx: AppContext) -> None:
     from goulot.cli.dev import FIXTURES, TEST_CAS
 
     for directory in sorted(p for p in FIXTURES.glob("*") if (p / "summary.json").is_file()
-                            and not p.name.startswith("watch_")):  # the watch scenario has its own test
+                            and not p.name.startswith("watch_") and p.name != "analyst"):  # they have their own test
         assert directory.name in TEST_CAS
         identity = json.loads((directory / "identity.json").read_text(encoding="utf-8"))
         with ctx.db.transaction() as conn:
