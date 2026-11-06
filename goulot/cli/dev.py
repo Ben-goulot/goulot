@@ -399,6 +399,8 @@ ANALYST_MAX_USD = 0.5  # 3 readings at about 0.03 $ each in Batch; 0.06 $ each a
 def record_analyst(settings: Settings, args: argparse.Namespace) -> None:
     """Real readings of the analyst (lot 10) for the 3 test CAS, in a Batch, recorded for the replay tests. The
     chains and the watch scenario are replayed from their recordings: only the analyst is paid."""
+    import anthropic
+
     from goulot.cli import watch_scenario
     from goulot.llm.batch import AnthropicBatchBackend, RecordingBatchBackend, ReplayBatchBackend
     from goulot.llm.budget import NORMAL, CallRecord
@@ -439,7 +441,13 @@ def record_analyst(settings: Settings, args: argparse.Namespace) -> None:
         db.migrate()
         scenario_budget = Budget(db, SystemClock())
         now = watch_scenario.analyst_material(db, scenario_budget, Vault(db), cas, replay)
-        analyst.submit(db, scenario_budget, live, now, NORMAL, budget_name="dev")
+        try:
+            analyst.submit(db, scenario_budget, live, now, NORMAL, budget_name="dev")
+        except anthropic.APIStatusError as exc:
+            low = "credit balance" in str(exc).lower()
+            sys.exit("Crédit Anthropic épuisé : rien n'a été dépensé. Rechargez le compte (console Anthropic, Plans & "
+                     "Billing), puis relancez la même commande." if low else
+                     f"L'API Anthropic refuse la demande (HTTP {exc.status_code}) : rien n'a été dépensé.")
         watch_scenario.wait_until_ended(live, db, analyst.PURPOSE, _poll)
         analyst.collect(db, scenario_budget, live, budget_name="dev")
         with db.connect() as conn:
