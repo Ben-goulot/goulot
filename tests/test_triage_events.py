@@ -260,3 +260,33 @@ def test_watch_cycle_runs_triage_and_grouping(ctx: AppContext) -> None:
 
     ctx.llm_batch = no_key
     process(ctx, NOW + timedelta(hours=6))  # does not raise
+
+
+def test_same_reading_again_prolongs_its_event(ctx: AppContext) -> None:
+    """Decision of 6 November 2026: the next reading of the same source at the same place within 7 days prolongs
+    the ongoing event instead of opening a new one (the Kaub gauge analysed every day)."""
+    validated_chain(ctx)
+    collect_cycle(ctx)
+    with ctx.db.transaction() as conn:
+        grouping.events_from_measurements(conn)
+        suez = conn.execute("SELECT * FROM events WHERE title LIKE '%Suez%'").fetchone()
+        item = conn.execute("SELECT a.* FROM articles a JOIN event_articles ea ON ea.article_id = a.id "
+                            "WHERE ea.event_id = ?", (suez["id"],)).fetchone()
+        count = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+
+        def reading(days: int, title: str) -> None:
+            row = dict(item)
+            row.pop("id")
+            row.update(url=f"{row['url']}?d={days}", url_hash=f"h{days}", status="new", title=title,
+                       first_seen_at=(NOW + timedelta(days=days)).isoformat(), magnitude=0.1)
+            conn.execute(f"INSERT INTO articles ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",  # noqa: S608
+                         tuple(row.values()))
+
+        assert item["lat"] is None  # a strait's traffic: the same place is told by its title without figures
+        reading(1, "Suez Canal : 6 passages le 19/10, contre 60 en moyenne")
+        created = grouping.events_from_measurements(conn)
+        again = conn.execute("SELECT * FROM events WHERE id = ?", (suez["id"],)).fetchone()
+        assert created == [] and conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == count
+        assert again["last_seen_at"] > suez["last_seen_at"] and again["severity_hint"] == 3  # worse: hint raised
+        reading(2, "Bab el-Mandeb : 6 passages le 20/10, contre 60 en moyenne")  # another strait: another event
+        assert len(grouping.events_from_measurements(conn)) == 1

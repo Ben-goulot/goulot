@@ -236,3 +236,52 @@ def test_a_failed_or_mismatched_part_fails_the_analysis(ctx: AppContext) -> None
         analysis.store_part(conn, ids["comprehension"], message(parts["comprehension"]), 0.0)
         analysis.store_part(conn, ids["impacts"], message(other), 0.0)
         assert analysis.store_part(conn, ids["hypotheses"], message(parts["hypotheses"]), 0.0) == "rejected"
+
+
+def _analysed(ctx: AppContext, event_id: str, severity: int) -> None:
+    backend = ReplayBatchBackend()
+    assess.run_analyses(ctx.db, ctx.budget, None, backend, NOW, Allowance())
+    backend.responses = analyses_by_custom_id(ctx, lambda eid: impact_for(eid, severity=severity))
+    assess.collect(ctx.db, ctx.budget, backend)
+
+
+def _due(ctx: AppContext, event_id: str, at: Any) -> bool:
+    with ctx.db.connect() as conn:
+        return event_id in [e["id"] for e in assess.due_events(conn, Allowance(), now=at)]
+
+
+def test_low_impact_event_is_analysed_again_only_when_it_gets_worse(ctx: AppContext) -> None:
+    """Decision of 6 November 2026: once a day at most; after no impact or a severity of 1, only for a higher severity
+    hint, a confirmation or an escalation — not for one more press echo."""
+    from datetime import timedelta
+
+    event_id = suez_event(ctx)
+    _analysed(ctx, event_id, severity=0)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE events SET lineages = lineages + 1 WHERE id = ?", (event_id,))
+    assert not _due(ctx, event_id, NOW + timedelta(days=2))  # one more echo: no new analysis
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE events SET severity_hint = severity_hint + 1 WHERE id = ?", (event_id,))
+    assert not _due(ctx, event_id, NOW + timedelta(hours=3))  # worse, but analysed less than a day ago
+    assert _due(ctx, event_id, NOW + timedelta(days=1, hours=1))
+
+
+def test_serious_event_is_analysed_again_on_any_change(ctx: AppContext) -> None:
+    from datetime import timedelta
+
+    event_id = suez_event(ctx)
+    _analysed(ctx, event_id, severity=2)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE events SET lineages = lineages + 1 WHERE id = ?", (event_id,))
+    assert not _due(ctx, event_id, NOW + timedelta(hours=2))
+    assert _due(ctx, event_id, NOW + timedelta(days=1, hours=1))
+
+
+def test_small_hazard_never_analysed_whatever_the_path(ctx: AppContext) -> None:
+    event_id = suez_event(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE events SET origin = 'hazard', severity_hint = 1, confirmation = 'confirmed' "
+                     "WHERE id = ?", (event_id,))
+        assert event_id not in [e["id"] for e in assess.due_events(conn, Allowance(), weighs={event_id}, now=NOW)]
+        conn.execute("UPDATE events SET severity_hint = 2 WHERE id = ?", (event_id,))
+        assert event_id in [e["id"] for e in assess.due_events(conn, Allowance(), weighs={event_id}, now=NOW)]

@@ -5,7 +5,8 @@
   shared company, site or port, or else the same country and similar titles; otherwise they open a new one. The
   purchased material itself is matched by nearly every article: it never links two articles alone.
 - Hazard and logistics items come from official measurements (GDACS, USGS, NOAA, PortWatch, PEGELONLINE): the
-  code turns them into events without AI. A satellite fire detection near a site stays an early signal.
+  code turns them into events without AI. A satellite fire detection near a site stays an early signal. A reading
+  of the same source at the same place within 7 days prolongs the ongoing event instead of opening a new one.
 - After each change, the event's corroboration is recomputed from its articles' lineages.
 """
 
@@ -193,6 +194,33 @@ def _measurement_severity(source: str, item: sqlite3.Row, details: dict[str, Any
     return 2
 
 
+SAME_PLACE_DEG = 0.25  # about 25 km: the same station, strait or fire area
+
+
+def _same_measurement(conn: sqlite3.Connection, material_id: str, item: sqlite3.Row) -> str | None:
+    """An event of this material, still ongoing and seen within 7 days, made of readings of the same source at the
+    same place (the Kaub gauge each day, a strait's traffic each week). Its next reading prolongs it instead of
+    opening a new event, so it is analysed again only when it gets worse."""
+    since = (datetime.fromisoformat(item["first_seen_at"]) - WINDOW).isoformat()
+    for e in conn.execute(
+            "SELECT DISTINCT e.id, a.lat, a.lon, a.title FROM events e JOIN event_articles ea ON ea.event_id = e.id "
+            "JOIN articles a ON a.id = ea.article_id WHERE e.material_id = ? AND e.origin = ? AND a.source = ? "
+            "AND e.event_status != 'resolved' AND e.last_seen_at >= ? ORDER BY e.last_seen_at DESC",
+            (material_id, item["kind"], item["source"], since)):
+        if item["lat"] is None or e["lat"] is None:
+            if item["lat"] is None and e["lat"] is None and _station(e["title"]) == _station(item["title"]):
+                return str(e["id"])
+            continue
+        if abs(e["lat"] - item["lat"]) <= SAME_PLACE_DEG and abs(e["lon"] - item["lon"]) <= SAME_PLACE_DEG:
+            return str(e["id"])
+    return None
+
+
+def _station(title: str) -> str:
+    """A reading's title without its figures (« Basses eaux : KAUB à 74 cm » → « basses eaux : kaub à cm »)."""
+    return re.sub(r"[\d.,]+", "", title).strip().lower()
+
+
 def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
     """Hazard and logistics items become events directly, linked to the nodes whose rules they triggered."""
     created: list[str] = []
@@ -210,6 +238,17 @@ def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
         for material_id in json.loads(item["materials"]):
             by_material.setdefault(material_id, [])  # found near a site of Ma chaîne only: no public link
         for material_id, nodes in by_material.items():
+            severity = _measurement_severity(item["source"], item, details)
+            ongoing = _same_measurement(conn, material_id, item)
+            if ongoing is not None:  # the same reading again: it prolongs the event (decision of 6 November 2026)
+                conn.execute("UPDATE events SET last_seen_at = ?, title = ?, severity_hint = MAX(severity_hint, ?), "
+                             "updated_at = ? WHERE id = ?",
+                             (item["first_seen_at"], item["title"], severity, utcnow(), ongoing))
+                conn.execute("INSERT OR IGNORE INTO event_articles (event_id, article_id, lineage_key, reliability) "
+                             "VALUES (?, ?, '', 0)", (ongoing, item["id"]))
+                _link(conn, ongoing, material_id, sorted(set(nodes)))
+                refresh_corroboration(conn, ongoing)
+                continue
             seen = datetime.fromisoformat(item["first_seen_at"])
             event_id = _event_id(conn, seen.strftime("%Y-%m-%d"))
             event_type = (HAZARD_TYPES.get(str(details.get("event_type", "")), "natural_disaster")
@@ -221,8 +260,7 @@ def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
                 "lat, lon, first_seen_at, last_seen_at, confirmation, severity_hint, updated_at) "
                 "VALUES (?, ?, ?, 'ongoing', ?, ?, ?, 'unknown', ?, ?, ?, ?, 'early_signal', ?, ?)",
                 (event_id, material_id, event_type, item["kind"], item["title"], str(details.get("country", ""))[:80],
-                 item["lat"], item["lon"], item["first_seen_at"], item["first_seen_at"],
-                 _measurement_severity(item["source"], item, details), utcnow()),
+                 item["lat"], item["lon"], item["first_seen_at"], item["first_seen_at"], severity, utcnow()),
             )
             conn.execute("INSERT INTO event_articles (event_id, article_id, lineage_key, reliability) "
                          "VALUES (?, ?, '', 0)", (event_id, item["id"]))

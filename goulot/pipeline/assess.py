@@ -66,8 +66,8 @@ def anomalous_materials(conn: sqlite3.Connection) -> set[str]:
     return out
 
 
-def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] | frozenset[str] = frozenset()
-               ) -> list[sqlite3.Row]:
+def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] | frozenset[str] = frozenset(),
+               now: datetime | None = None) -> list[sqlite3.Row]:
     """`weighs`: events that touch a site of Ma chaîne which weighs for the user (computed on the Mac): they trigger
     the analysis even under 0.5 % of world supply, and pass the crisis reserve from severity 2 (CLAUDE.md, Budget)."""
     out = []
@@ -78,15 +78,20 @@ def due_events(conn: sqlite3.Connection, allowance: Allowance, weighs: set[str] 
                           "ORDER BY e.first_seen_at"):
         if set_aside(conn, e["id"]):
             continue
+        # A natural hazard of severity 1 is never analysed, whatever the path (decision of 6 November 2026): it stays
+        # on the screens and in the analyst's reading.
+        if e["origin"] == "hazard" and e["severity_hint"] < analysis.MIN_HAZARD_SEVERITY:
+            continue
         priced = e["material_id"] in anomalies and e["confirmation"] == "confirmed"
         personal = e["id"] in weighs and (e["confirmation"] == "confirmed"
                                           or e["severity_hint"] >= analysis.URGENT_SEVERITY)
         floor = min(allowance.min_severity, 2) if e["id"] in weighs else allowance.min_severity
         if e["severity_hint"] < floor or not (priced or personal or analysis.should_analyze(conn, e)):
             continue
-        last = conn.execute("SELECT signature FROM analyses WHERE event_id = ? ORDER BY created_at DESC LIMIT 1",
-                            (e["id"],)).fetchone()
-        if last is None or analysis.signature_changed(last[0], e):
+        last = conn.execute("SELECT signature, created_at, state, result FROM analyses WHERE event_id = ? "
+                            "ORDER BY created_at DESC LIMIT 1", (e["id"],)).fetchone()
+        if last is None or (analysis.worth_again(last, e, now) if now is not None
+                            else analysis.signature_changed(last["signature"], e)):
             out.append(e)
     return out
 
@@ -103,7 +108,7 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
     requests: list[tuple[str, dict[str, Any]]] = []
     queued: list[str] = []
     with db.transaction() as conn:
-        events = due_events(conn, allowance, weighs)
+        events = due_events(conn, allowance, weighs, now)
         prepared = []
         for e in events:
             contexts, _, _ = prices.market(conn, e["material_id"], date.fromisoformat(e["first_seen_at"][:10]))
@@ -114,7 +119,7 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
         urgent = event["severity_hint"] >= analysis.URGENT_SEVERITY
         if urgent and std is not None:
             with db.transaction() as conn:
-                analysis_id = analysis.create(conn, event, dossier, "standard")
+                analysis_id = analysis.create(conn, event, dossier, "standard", now)
                 parts = analysis.part_ids(conn, analysis_id)
             for part, cid in parts.items():
                 spec = CallSpec(key=cid, purpose="impact", budget=budget_name,
@@ -131,7 +136,7 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
             counts["standard"] += 1
         elif batched is not None:
             with db.transaction() as conn:
-                analysis_id = analysis.create(conn, event, dossier, "batch")
+                analysis_id = analysis.create(conn, event, dossier, "batch", now)
                 parts = analysis.part_ids(conn, analysis_id)
             requests += [(cid, analysis.part_params(dossier, part)) for part, cid in parts.items()]
             queued.append(analysis_id)

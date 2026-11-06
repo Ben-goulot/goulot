@@ -71,6 +71,33 @@ def signature_changed(previous: str, event: sqlite3.Row) -> bool:
     return old is None or old != key(signature(event))
 
 
+REANALYSIS_GAP_HOURS = 24
+ESCALATING = "escalating"
+
+
+def worth_again(previous: sqlite3.Row, event: sqlite3.Row, now: datetime) -> bool:
+    """Decision of 6 November 2026: an analysed event is analysed again at most once a day, and, after an analysis
+    that found no impact or a severity of 1, only when it really gets worse (a higher severity hint, an early signal
+    now confirmed, a status now escalating). A failed or set-aside analysis may be tried again the next day."""
+    if not signature_changed(previous["signature"], event):
+        return False
+    at = datetime.fromisoformat(previous["created_at"])
+    if (now - (at if at.tzinfo else at.replace(tzinfo=now.tzinfo))).total_seconds() < REANALYSIS_GAP_HOURS * 3600:
+        return False
+    if previous["state"] != "done" or not previous["result"]:
+        return True
+    result = json.loads(previous["result"])
+    if max((c["severity"] for c in result["commodity_impacts"]), default=0) >= 2:
+        return True
+    parts = previous["signature"].split("|")
+    if len(parts) != 4:
+        return True
+    confirmation, _, hint, status = parts
+    return (event["severity_hint"] > int(hint) if hint.lstrip("-").isdigit() else True) \
+        or (confirmation != "confirmed" and event["confirmation"] == "confirmed") \
+        or (status != ESCALATING and event["event_status"] == ESCALATING)
+
+
 def should_analyze(conn: sqlite3.Connection, event: sqlite3.Row) -> bool:
     if event["confirmation"] != "confirmed" and event["severity_hint"] < URGENT_SEVERITY:
         return False
@@ -267,7 +294,8 @@ def custom_id(event_id: str, sig: str) -> str:
     return f"ana_{event_id}_{hashlib.sha256(sig.encode()).hexdigest()[:10]}"
 
 
-def create(conn: sqlite3.Connection, event: sqlite3.Row, dossier: Dossier, mode: str) -> str:
+def create(conn: sqlite3.Connection, event: sqlite3.Row, dossier: Dossier, mode: str,
+           now: datetime | None = None) -> str:
     analysis_id = str(uuid.uuid4())
     sent = {"sources": dossier.sources, "references": dossier.references, "instruments": dossier.instruments,
             "commodities": dossier.commodities}
@@ -275,7 +303,8 @@ def create(conn: sqlite3.Connection, event: sqlite3.Row, dossier: Dossier, mode:
         "INSERT INTO analyses (id, event_id, material_id, model, prompt_version, schema_version, mode, state, "
         "custom_id, signature, dossier_sources, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
         (analysis_id, event["id"], event["material_id"], MODEL, PROMPT, SCHEMA, mode,
-         custom_id(event["id"], dossier.signature), dossier.signature, json.dumps(sent), utcnow()),
+         custom_id(event["id"], dossier.signature), dossier.signature, json.dumps(sent),
+         now.isoformat(timespec="seconds") if now else utcnow()),
     )
     base = custom_id(event["id"], dossier.signature)
     for part in PARTS:
