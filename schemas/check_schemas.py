@@ -229,6 +229,49 @@ def check_digest(ex: dict) -> None:
         fail(w, "disagreement_reason must be filled if and only if disagrees_with_verdict is true")
 
 
+ANALYST_WORDS = {"headline": 14, "situation": 80, "change": 30, "main": 60, "why_aside": 25, "counter": 30,
+                 "why_watch": 25, "basis": 50, "weak": 20, "doubt": 40}
+URL = re.compile(r"(?i)\b(?:https?|hxxps?|ftp)://|\bwww\.")
+DOMAIN = re.compile(r"(?i)\b[a-z0-9][a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b")
+
+
+def check_analyst(ex: dict, refs: set[str], publishers: set[str], today: str) -> None:
+    """Same rules as goulot/pipeline/analyst.check_note, at the exact lengths asked by the prompt."""
+    w = "analyst example"
+    lw = ANALYST_WORDS
+    for text, key in [(ex["headline"], "headline"), (ex["situation"], "situation"),
+                      (ex["main_signal"]["text"], "main"), (ex["confidence"]["basis"], "basis"),
+                      (ex["verdict_doubt"]["reason"], "doubt"),
+                      *((c["text"], "change") for c in ex["changes"]),
+                      *((s["why"], "why_aside") for s in ex["set_aside"]),
+                      *((c["text"], "counter") for c in ex["counter_evidence"]),
+                      *((x["why"], "why_watch") for x in ex["watch"]),
+                      *((p, "weak") for p in ex["confidence"]["weak_points"])]:
+        if words(text) > lw[key]:
+            fail(w, f"{key} longer than {lw[key]} words")
+        if URL.search(text) or any(d.lower() not in publishers for d in DOMAIN.findall(text)):
+            fail(w, f"{key}: URL or domain not among the publishers sent")
+    for key, most in (("changes", 3), ("set_aside", 6), ("counter_evidence", 3), ("watch", 4)):
+        if len(ex[key]) > most:
+            fail(w, f"more than {most} {key}")
+    if not ex["changes"] or len(ex["confidence"]["weak_points"]) > 3:
+        fail(w, "changes must have 1 item at least, weak_points 3 at most")
+    cited = {r for part in ("changes", "counter_evidence", "watch") for item in ex[part] for r in item["event_refs"]}
+    cited |= set(ex["main_signal"]["event_refs"]) | {s["event_ref"] for s in ex["set_aside"]}
+    if cited - refs:
+        fail(w, f"events not provided in the input: {sorted(cited - refs)}")
+    if (ex["main_signal"]["novelty"] == "none") != (not ex["main_signal"]["event_refs"]):
+        fail(w, "main_signal: novelty none if and only if no event is cited")
+    end = f"{int(today[:4]) + 1}-{int(today[5:7]) + 6:02d}" if int(today[5:7]) <= 6 else \
+        f"{int(today[:4]) + 2}-{int(today[5:7]) - 6:02d}"
+    for item in ex["watch"]:
+        d = item["date"]
+        if d != "unknown" and (not DATE.match(d) or d < today[:len(d)] or d[:7] > end):
+            fail(w, f"watch date {d} not between today and 18 months ahead")
+    if ex["verdict_doubt"]["doubts"] != bool(ex["verdict_doubt"]["reason"].strip()):
+        fail(w, "verdict_doubt.reason must be filled if and only if doubts is true")
+
+
 def check_cases(ex: dict, allowed_sources: set[str], expected_cas: str) -> None:
     w = "historical_case example"
     if ex["material_cas"] != expected_cas:
@@ -287,6 +330,7 @@ def main() -> int:
         "commodities": {"copper"},
     })
     check_digest(examples["digest_v1"])
+    check_analyst(examples["analyst_v1"], {"E1", "E2", "X1"}, set(), "2026-11-08")
     check_cases(examples["historical_case_v1"], {"src1", "src2", "src3"}, "107-13-1")
     print("\n".join(errors) if errors else "All schemas and examples OK")
     return 1 if errors else 0

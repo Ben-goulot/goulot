@@ -128,6 +128,26 @@ export type SituationEvent = {
   sources: { title: string; url: string; publisher: string; published_at: string | null; reliability: number }[];
 };
 
+/** The analyst's reading of a material (lot 10): model text, checked by the code, shown as text. */
+export type AnalystReading = {
+  created_at: string;
+  trigger: "first" | "weekly" | "verdict" | "event";
+  pending: boolean;
+  verdict_changed_since: boolean;
+  titles: Record<string, string>;
+  note: {
+    headline: string;
+    situation: string;
+    changes: { text: string; event_ids: string[] }[];
+    main_signal: { text: string; event_ids: string[]; novelty: "new" | "reminder" | "unclear" | "none"; origin: string };
+    set_aside: { event_id: string; why: string }[];
+    counter_evidence: { text: string; event_ids: string[] }[];
+    watch: { what: string; why: string; date: string; event_ids: string[] }[];
+    confidence: { level: "low" | "medium" | "high"; basis: string; weak_points: string[] };
+    verdict_doubt: { doubts: boolean; reason: string };
+  };
+};
+
 export type WorldHotspot = { id: string; label: string; status: string; date: string; source_name: string; source_url: string; materials: string[] };
 
 export type Sheet = {
@@ -137,6 +157,7 @@ export type Sheet = {
   freshness: Freshness;
   events: SheetEvent[];
   situation: SituationEvent[];
+  analyst: AnalystReading | null;
   series: SeriesPayload | null;
   links: { instrument_id: string; name: string; role: string; rank: number; validated: boolean; proposed_by: string }[];
   upcoming: { date: string; what: string; source: string }[];

@@ -1,7 +1,7 @@
 """AI spending: every call is recorded in `llm_calls`, caps are checked before each call (CLAUDE.md, Budget).
 
-Budgets: `watch` (5 $ a month, modes in phase 3), `reconstruction` (10 $ a month, quote and confirmation before
-each run) and `dev` (the phase 2 test budget, outside the app's caps, all-time total).
+Budgets: `watch` (6.50 $ a month since 6 November 2026, modes in phase 3), `reconstruction` (8.50 $ a month,
+quote and confirmation before each run) and `dev` (the phase 2 test budget, outside the app's caps, all-time total).
 Circuit breaker: more than 20 calls in 10 minutes, or 3 errors in a row, pause every AI call for one hour.
 """
 

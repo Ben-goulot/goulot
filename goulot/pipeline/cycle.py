@@ -1,12 +1,12 @@
 """The watch cycle, about every 3 hours. One cycle at a time:
 
 collection and rule filter → prices → events from measurements → triage (Batch) → grouping and corroboration
-→ impact analyses (Batch, or standard when serious) → market verdicts → outcomes in the ledger → alerts → weekly
-digest → external heartbeat → purge of old irrelevant articles.
+→ impact analyses (Batch, or standard when serious) → market verdicts → outcomes in the ledger → analyst of each
+material (Batch, lot 10) → alerts → weekly digest → external heartbeat → purge of old irrelevant articles.
 
 The watch budget sets what the AI may do (CLAUDE.md, Budget): normal; economy at 80 % (corroborated severity ≥ 2
-only, one Batch a day, no AI digest); crisis reserve at 90 % (severity ≥ 3 only); rules only at 100 %. Without an
-API key, the AI steps wait and verdicts are computed from what exists.
+only, one Batch a day, the analyst only for a changed verdict); crisis reserve at 90 % (severity ≥ 3 only, no
+analyst); rules only at 100 %. Without an API key, the AI steps wait and verdicts are computed from what exists.
 
 A 10-minute tick starts a cycle when the last finished one is older than 2 h 45 (docs/DECISIONS.md, 27 October
 2026): the tick is checked against the wall clock, so a Mac that slept gets its cycle within 10 minutes of waking.
@@ -39,7 +39,7 @@ from goulot.llm.budget import (
 )
 from goulot.net.allowlist import load_allowlist
 from goulot.net.client import build_client, fetch
-from goulot.pipeline import assess, grouping, triage
+from goulot.pipeline import analyst, assess, grouping, triage
 from goulot.pipeline.assess import Allowance
 from goulot.pipeline.visibility import serious_event
 from goulot.prices import collect as price_collect
@@ -174,10 +174,11 @@ def process(ctx: AppContext, now: datetime) -> None:
     assess.resolve_outcomes(ctx.db, now, ctx.vault)
     try:
         if backend is not None:
-            digest.collect(ctx.db, ctx.budget, backend)
-        digest.submit(ctx.db, ctx.budget, backend, now, ai=mode.mode not in (ECONOMY, CRISIS, RULES_ONLY))
+            digest.collect(ctx.db, ctx.budget, backend)  # a digest batch sent before lot 10, still in flight
+        analyst.run(ctx.db, ctx.budget, backend, now, watch_mode(ctx.budget).mode)
     except (BudgetExceeded, CircuitOpen, anthropic.APIError) as exc:
-        log.warning("digest batch skipped: %s", type(exc).__name__)
+        log.warning("analyst batch skipped: %s", type(exc).__name__)
+    digest.submit(ctx.db, now)
     notify(ctx, now, changed, mode, personal)
     if fresh["verified"]:
         heartbeat(ctx)

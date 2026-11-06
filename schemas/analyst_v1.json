@@ -1,0 +1,95 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "headline", "situation", "changes", "main_signal", "set_aside", "counter_evidence",
+    "watch", "confidence", "verdict_doubt", "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "headline": {"type": "string"},
+    "situation": {"type": "string"},
+    "changes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "event_refs"],
+        "properties": {
+          "text": {"type": "string"},
+          "event_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "main_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "event_refs", "novelty", "origin"],
+      "properties": {
+        "text": {"type": "string"},
+        "event_refs": {"type": "array", "items": {"type": "string"}},
+        "novelty": {"type": "string", "enum": ["new", "reminder", "unclear", "none"]},
+        "origin": {"type": "string", "description": "Éditeur de la source d'origine, « source officielle » ou unknown."}
+      }
+    },
+    "set_aside": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event_ref", "why"],
+        "properties": {
+          "event_ref": {"type": "string"},
+          "why": {"type": "string"}
+        }
+      }
+    },
+    "counter_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "event_refs"],
+        "properties": {
+          "text": {"type": "string"},
+          "event_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "watch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["what", "why", "date", "event_refs"],
+        "properties": {
+          "what": {"type": "string"},
+          "why": {"type": "string"},
+          "date": {"type": "string", "description": "AAAA-MM-JJ, AAAA-MM ou unknown."},
+          "event_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "basis", "weak_points"],
+      "properties": {
+        "level": {"type": "string", "enum": ["low", "medium", "high"]},
+        "basis": {"type": "string"},
+        "weak_points": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "verdict_doubt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["doubts", "reason"],
+      "properties": {
+        "doubts": {"type": "boolean"},
+        "reason": {"type": "string"}
+      }
+    },
+    "injection_suspected": {"type": "boolean"}
+  }
+}

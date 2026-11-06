@@ -31,6 +31,7 @@ DELETE_STEPS = (
     "DELETE FROM verdicts WHERE material_id = :m",
     "DELETE FROM alerts WHERE material_id = :m",
     "DELETE FROM digests WHERE material_id = :m",
+    "DELETE FROM analyst_notes WHERE material_id = :m",
     "DELETE FROM case_sources WHERE case_row IN (SELECT id FROM historical_events WHERE material_id = :m)",
     "DELETE FROM historical_events WHERE material_id = :m",
     "DELETE FROM case_reports WHERE material_id = :m",

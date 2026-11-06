@@ -507,7 +507,7 @@ def test_routes_add_quote_reconstruct_validate(client: TestClient, ctx: AppConte
     mid = material["id"]
     assert material["status"] == "draft"
     quote = client.post(f"/api/materials/{mid}/quote", json={}, headers=h).json()
-    assert quote["max_usd"] < 3 and quote["cap_usd"] == 10
+    assert quote["max_usd"] < 3 and quote["cap_usd"] == 8.5  # 10 $ until 6 November 2026
     assert client.post(f"/api/materials/{mid}/reconstruct", json={"quote_id": "0" * 36}, headers=h).status_code == 409
     job = client.post(f"/api/materials/{mid}/reconstruct", json={"quote_id": quote["quote_id"]}, headers=h).json()
     ctx.jobs.shutdown(wait=True)

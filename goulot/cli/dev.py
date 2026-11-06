@@ -388,6 +388,87 @@ def record_watch(settings: Settings, args: argparse.Namespace) -> None:
     print("Enregistré dans tests/fixtures/llm/watch_107-13-1. Copiez ce résultat à Claude.")
 
 
+def _poll() -> None:
+    print("  … traitement différé en cours", flush=True)
+    time.sleep(20)
+
+
+ANALYST_MAX_USD = 0.5  # 3 readings at about 0.03 $ each in Batch; 0.06 $ each at worst
+
+
+def record_analyst(settings: Settings, args: argparse.Namespace) -> None:
+    """Real readings of the analyst (lot 10) for the 3 test CAS, in a Batch, recorded for the replay tests. The
+    chains and the watch scenario are replayed from their recordings: only the analyst is paid."""
+    from goulot.cli import watch_scenario
+    from goulot.llm.batch import AnthropicBatchBackend, RecordingBatchBackend, ReplayBatchBackend
+    from goulot.llm.budget import NORMAL, CallRecord
+    from goulot.llm.pricing import Usage
+    from goulot.pipeline import analyst
+    from goulot.vault.keys import Vault
+
+    key = get_secret("anthropic")
+    if not key:
+        sys.exit("Clé API Anthropic absente : lancez « ./bin/goulot setup ».")
+    if not watch_scenario.recorded():
+        sys.exit("Le scénario de veille n'est pas enregistré : « ./bin/goulot dev record-watch ».")
+    out = watch_scenario.ANALYST_RECORDINGS
+    if (out / "summary.json").is_file() and not args.force:
+        sys.exit("Lectures déjà enregistrées : ajoutez --force pour recommencer.")
+    setup_logging(settings.log_dir)
+    budget, _ = _dev_budget(settings)
+    print("Essai réel de l'analyste sur les 3 CAS de test (acrylonitrile avec le scénario de veille fictif,")
+    print("carbonate de lithium et gallium sans événement), par Sonnet 5.5 en traitement différé (moitié prix).")
+    print(f"Devis : environ 0,10 $, {ANALYST_MAX_USD:.2f} $ au plus.")
+    print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
+    budget.check("dev", ANALYST_MAX_USD)
+    if input("Lancer ? (o/N) ").strip().lower() != "o":
+        sys.exit("Rien n'est lancé.")
+    client = build_anthropic_client(key, load_allowlist(settings.config_dir))
+    live = RecordingBatchBackend(AnthropicBatchBackend(client), settings.home / "dev" / "analyst_raw")
+    replay = ReplayBatchBackend(watch_scenario.RECORDINGS)
+    results: dict[str, Any] = {}
+    total = 0.0
+    for cas in watch_scenario.TEST_CAS:
+        run_home = settings.home / "dev" / "analyst" / cas
+        if run_home.exists():
+            import shutil
+
+            shutil.rmtree(run_home)
+        ensure_private_dir(run_home)
+        db = Database(run_home / "scenario.sqlite")
+        db.migrate()
+        scenario_budget = Budget(db, SystemClock())
+        now = watch_scenario.analyst_material(db, scenario_budget, Vault(db), cas, replay)
+        analyst.submit(db, scenario_budget, live, now, NORMAL, budget_name="dev")
+        watch_scenario.wait_until_ended(live, db, analyst.PURPOSE, _poll)
+        analyst.collect(db, scenario_budget, live, budget_name="dev")
+        with db.connect() as conn:
+            row = conn.execute("SELECT * FROM analyst_notes").fetchone()
+        raw = json.loads((settings.home / "dev" / "analyst_raw" / f"{row['custom_id']}.json").read_text(
+            encoding="utf-8")) if row["state"] in ("done", "rejected") else None
+        total += row["cost_usd"]
+        results[cas] = {"state": row["state"], "problems": row["problems"], "cost_usd": round(row["cost_usd"], 4),
+                        "dossier": json.loads(row["dossier"]), "now": now.isoformat(),
+                        "response": raw["response"] if raw else None}
+        note = json.loads(row["result"]) if row["result"] else None
+        usage = (raw or {}).get("response", {}).get("usage", {})
+        print(f"\n{cas} : lecture {row['state']} {row['problems']} — {row['cost_usd']:.3f} $ "
+              f"({usage.get('input_tokens', 0)} tokens lus, {usage.get('output_tokens', 0)} écrits)")
+        if note:
+            print(f"  {note['headline']}\n  {note['situation']}")
+            print(f"  Confiance : {note['confidence']['level']} — {note['confidence']['basis']}")
+            if note["verdict_doubt"]["doubts"]:
+                print(f"  Doute sur le verdict : {note['verdict_doubt']['reason']}")
+    budget.record(CallRecord("dev", "analyst_trial", analyst.MODEL, "batch", Usage(), total))
+    out.mkdir(parents=True, exist_ok=True)
+    for cas, data in results.items():
+        (out / f"{cas}.json").write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    (out / "summary.json").write_text(json.dumps({c: {k: d[k] for k in ("state", "problems", "cost_usd")}
+                                                  for c, d in results.items()}, indent=1) + "\n", encoding="utf-8")
+    print(f"\nCoût réel : {total:.3f} $. Budget de test : {budget.spent('dev'):.2f} $ sur {budget.cap('dev'):.2f} $.")
+    print("Enregistré dans tests/fixtures/llm/analyst. Copiez ce résultat à Claude.")
+
+
 def fetch_cities(settings: Settings) -> None:
     """Download the GeoNames list of cities above 15,000 inhabitants through the app's client, keep its reduced form
     in `goulot/data/cities.json.gz` (offline place lookup of Ma chaîne). Public data, no key, no AI."""
@@ -479,3 +560,5 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         fetch_cities(settings)
     elif args.dev_action == "watch-report":
         watch_report(settings, args.days, args.live)
+    elif args.dev_action == "record-analyst":
+        record_analyst(settings, args)

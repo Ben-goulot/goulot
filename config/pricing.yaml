@@ -1,7 +1,7 @@
 # Tarifs de l'API Claude, en dollars US par million de tokens.
-# Relevés le 3 octobre 2026, revérifiés le 15 octobre 2026 sur https://platform.claude.com/docs/en/about-claude/pricing
+# Relevés le 3 octobre 2026, revérifiés le 15 octobre et le 6 novembre 2026 sur https://platform.claude.com/docs/en/about-claude/pricing
 # À revérifier : le compteur de coût et les plafonds en dépendent.
-checked_on: "2026-10-15"
+checked_on: "2026-11-06"
 models:
   claude-haiku-5-5:          # tri ; tarifs pour un prompt de 100 000 tokens au plus (cache compris)
     input: 0.10
@@ -37,5 +37,6 @@ models:
 batch_discount: 0.5          # -50 % en traitement différé (Batch)
 web_search_per_1000: 10.00   # recherche web, en plus des tokens
 budgets_usd_per_month:
-  watch: 5.00                # veille : économie à 80 %, règles seules à 100 %
-  reconstruction: 10.00      # reconstructions : devis et confirmation avant chaque lancement
+  watch: 6.50                # veille : économie à 80 %, règles seules à 100 % (relevé de 5 $ le 6 novembre 2026)
+  reconstruction: 8.50       # reconstructions : devis et confirmation avant chaque lancement (10 $ jusqu'au 6 novembre 2026)
+  watch_analyst: 1.50        # analyste par matière (lot 10), compté dans la veille : jamais plus de 1,50 $ du plafond

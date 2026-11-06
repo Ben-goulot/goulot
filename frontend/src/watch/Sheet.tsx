@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
 import { PersonalCard } from "../private/PersonalCard";
+import { Analyst } from "./Analyst";
 import { Comparables } from "./Comparables";
 import { DeleteMaterial, setWatched } from "./Lifecycle";
 import { ChainMap, type MapData } from "../map/ChainMap";
@@ -171,6 +172,8 @@ export function Sheet(props: {
           </button>
         </section>
       </div>
+
+      <Analyst reading={data.analyst} events={data.events} onSelect={setSelected} />
 
       {data.situation.length > 0 && (
         <section className="panel">

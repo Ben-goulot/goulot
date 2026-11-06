@@ -1,11 +1,14 @@
-"""Weekly digest (docs/SPEC.md, section 9; `prompts/digest_v1.md`).
+"""Weekly digest (docs/SPEC.md, section 9).
 
-Sunday from 18:00 (local time): one Batch request per validated material, unless the watch budget is in economy
-mode or beyond. Monday from 08:00, or at the first cycle after (the Mac may sleep): one message, where the code
-writes the verdict, X and the action window itself, adds the week's resolved advices and the ledger's last
-fingerprint (an outside, dated copy of the chain), and the model's text only where it passed every check. If the
-model disagrees with the verdict, the message says so without changing it. Each material's verdict at digest time
-is written to the ledger.
+Since lot 10 (6 November 2026) the digest makes no AI call of its own: Sunday evening the analyst of each material
+writes its weekly reading (`goulot/pipeline/analyst.py`), and the digest quotes it. `prompts/digest_v1.md` is no
+longer sent; a digest batch still in flight at the upgrade is collected and its cost recorded.
+
+Sunday from 18:00 (local time): one row per validated material. Monday from 08:00, or at the first cycle after (the
+Mac may sleep): one message, where the code writes the verdict, X and the action window itself, adds the week's
+resolved advices and the ledger's last fingerprint (an outside, dated copy of the chain), and the analyst's text
+only where it passed every check. If the analyst doubts the verdict, the message says so without changing it.
+Each material's verdict at digest time is written to the ledger.
 """
 
 from __future__ import annotations
@@ -24,9 +27,8 @@ from goulot.llm import batch
 from goulot.llm.batch import BatchBackend
 from goulot.llm.budget import Budget
 from goulot.llm.pricing import Usage, cost_usd
-from goulot.llm.prompts import escape, load_prompt, tag
-from goulot.llm.validate import DATE, SchemaError, parse_json_output, schema, validate_schema
-from goulot.prices import store as prices
+from goulot.llm.validate import DATE, SchemaError, parse_json_output, validate_schema
+from goulot.pipeline import analyst
 
 log = logging.getLogger("goulot.digest")
 
@@ -36,6 +38,7 @@ MAX_TOKENS = 4_000
 WORST_CASE = Usage(input_tokens=8_000, output_tokens=MAX_TOKENS)
 SUBMIT_DAY, SUBMIT_HOUR = 6, 18  # Sunday evening, local time
 SEND_DAY, SEND_HOUR = 0, 8  # Monday morning
+READING_MAX_AGE = timedelta(days=8)  # an older reading of the analyst is not quoted
 
 
 def week_of(local: datetime) -> str:
@@ -47,47 +50,6 @@ def _verdict_row(conn: sqlite3.Connection, material_id: str) -> sqlite3.Row | No
     row: sqlite3.Row | None = conn.execute(
         "SELECT * FROM verdicts WHERE material_id = ? AND scope = 'market' AND current = 1", (material_id,)).fetchone()
     return row
-
-
-def digest_params(conn: sqlite3.Connection, material: dict[str, Any], now: datetime) -> dict[str, Any]:
-    """Whitelisted public inputs only: no purchase data, no Ma chaîne, no verdict inputs."""
-    v = _verdict_row(conn, material["id"])
-    events = [dict(id=e["id"], status=e["event_status"], confirmation=e["confirmation"], c_fait=e["c_fait"],
-                   severity_hint=e["severity_hint"], title=e["title"])
-              for e in conn.execute("SELECT * FROM public_events WHERE material_id = ? AND last_seen_at >= ?",
-                                    (material["id"], (now - timedelta(days=7)).isoformat()))]
-    best = prices.best_series(conn, material["id"])
-    price = None
-    if best and best.points:
-        last = best.points[-1][1]
-        week = best.last_before(best.points[-1][0] - timedelta(days=7))
-        month = best.last_before(best.points[-1][0] - timedelta(days=28))
-        price = {"instrument": best.name, "rank": best.rank, "last": last,
-                 "change_1w_pct": round(100 * (last / week[1] - 1), 2) if week else None,
-                 "change_4w_pct": round(100 * (last / month[1] - 1), 2) if month else None}
-    previous = conn.execute("SELECT result FROM digests WHERE material_id = ? AND state = 'done' ORDER BY week DESC "
-                            "LIMIT 1", (material["id"],)).fetchone()
-    prev = json.loads(previous[0]) if previous else None
-    upcoming = [{"date": d["date"], "what": d["what"]} for d in store.load_chain(conn, material["id"])["dates"]]
-    parts = [
-        tag("material", escape(json.dumps({"name": material["name"], "cas": material["cas"]}, ensure_ascii=False))),
-        tag("verdict", escape(json.dumps({
-            "verdict": v["verdict"] if v else "ras", "x_weeks": v["x_weeks"] if v else None,
-            "mode": "rules_only" if v and v["rules_only"] else "ai", "events": json.loads(v["event_ids"]) if v else [],
-        }, ensure_ascii=False))),
-        tag("events", escape(json.dumps(events, ensure_ascii=False))),
-        tag("prices", escape(json.dumps(price, ensure_ascii=False)) if price else "none"),
-        tag("upcoming", escape(json.dumps(upcoming, ensure_ascii=False))),
-        tag("previous_digest", escape(json.dumps({"headline": prev["headline"], "what_changed": prev["what_changed"]},
-                                                 ensure_ascii=False)) if prev else "none"),
-    ]
-    return {
-        "model": MODEL, "max_tokens": MAX_TOKENS,
-        "system": [{"type": "text", "text": load_prompt(PROMPT)}],
-        "thinking": {"type": "between_tools"},
-        "output_config": {"effort": "medium", "format": {"type": "json_schema", "schema": schema(SCHEMA)}},
-        "messages": [{"role": "user", "content": "\n\n".join(parts)}],
-    }
 
 
 def check_digest(d: dict[str, Any]) -> list[str]:
@@ -111,30 +73,21 @@ def check_digest(d: dict[str, Any]) -> list[str]:
     return problems
 
 
-def submit(db: Database, budget: Budget, backend: BatchBackend | None, now: datetime, *, ai: bool,
-           budget_name: str = "watch") -> int:
+def submit(db: Database, now: datetime) -> int:
+    """Sunday evening: the week's rows, written by the code (the analyst's reading is its own request)."""
     local = now.astimezone()
     if (local.weekday(), local.hour) < (SUBMIT_DAY, SUBMIT_HOUR) and local.weekday() != SEND_DAY:
         return 0
     week = week_of(local if local.weekday() == SUBMIT_DAY else local - timedelta(days=local.weekday() + 1))
-    requests: list[tuple[str, dict[str, Any]]] = []
+    added = 0
     with db.transaction() as conn:
         for m in store.list_materials(conn):
             if m["status"] != "validated":
                 continue
             cid = f"dig_{week.replace('-', '')}_{m['id'].replace('-', '')[:16]}"
-            state = "pending" if ai and backend is not None else "skipped"
-            cur = conn.execute("INSERT OR IGNORE INTO digests (material_id, week, custom_id, state, created_at) VALUES "
-                               "(?, ?, ?, ?, ?)", (m["id"], week, cid, state, utcnow()))
-            if cur.rowcount and state == "pending":
-                requests.append((cid, digest_params(conn, store.get_material(conn, m["id"]) or m, now)))
-    if requests and backend is not None:
-        batch_id = batch.submit(db, budget, backend, "digest", budget_name, requests,
-                                len(requests) * cost_usd(MODEL, WORST_CASE, batch=True))
-        with db.transaction() as conn:
-            conn.executemany("UPDATE digests SET batch_id = ? WHERE custom_id = ?",
-                             [(batch_id, c) for c, _ in requests])
-    return len(requests)
+            added += conn.execute("INSERT OR IGNORE INTO digests (material_id, week, custom_id, state, created_at) "
+                                  "VALUES (?, ?, ?, 'skipped', ?)", (m["id"], week, cid, utcnow())).rowcount
+    return added
 
 
 def collect(db: Database, budget: Budget, backend: BatchBackend, budget_name: str = "watch") -> int:
@@ -171,9 +124,10 @@ def compose(db: Database, now: datetime) -> tuple[str, str] | None:
     week = week_of(local - timedelta(days=local.weekday() + 1))
     with db.transaction() as conn:
         rows = conn.execute("SELECT * FROM digests WHERE week = ? AND sent_at IS NULL", (week,)).fetchall()
-        if not rows or (any(r["state"] == "pending" for r in rows) and local - timedelta(hours=12) < local.replace(
-                hour=SEND_HOUR, minute=0)):
-            return None  # wait for the Batch, at most until 20:00 on Monday
+        waiting = conn.execute("SELECT 1 FROM analyst_notes WHERE week = ? AND state = 'pending'",
+                               (week,)).fetchone() is not None
+        if not rows or (waiting and local - timedelta(hours=12) < local.replace(hour=SEND_HOUR, minute=0)):
+            return None  # wait for the analyst's Batch, at most until 20:00 on Monday
         lines = [f"Goulot · synthèse de la semaine {week}"]
         for r in rows:
             material = store.get_material(conn, r["material_id"])
@@ -185,16 +139,17 @@ def compose(db: Database, now: datetime) -> tuple[str, str] | None:
             if v is not None and v["verdict"] in ("ant", "pot") and v["window_weeks"] is not None:
                 lines.append(f"Fenêtre d'action : {max(v['window_weeks'], 0):.0f} semaines"
                              + (" (délai fournisseur supposé)." if v["window_assumed"] else "."))
-            if r["state"] == "done" and r["result"]:
-                d = json.loads(r["result"])
-                lines.append(defang(d["headline"]))
-                lines += [f"• {defang(x)}" for x in d["what_changed"]]
-                lines.append(defang(d["verdict_explanation"]))
-                lines.append(defang(d["price_comment"]))
-                if d["disagrees_with_verdict"]:
-                    lines.append(f"L'IA conteste ce verdict, qui reste inchangé : {defang(d['disagreement_reason'])}")
+            reading = analyst.latest(conn, r["material_id"])
+            if reading is not None and now - datetime.fromisoformat(reading["created_at"]) <= READING_MAX_AGE:
+                note = reading["note"]
+                lines.append(defang(note["headline"]))
+                lines += [f"• {defang(c['text'])}" for c in note["changes"]]
+                lines.append(defang(note["situation"]))
+                if note["verdict_doubt"]["doubts"]:
+                    lines.append("L'analyste doute de ce verdict, qui reste inchangé : "
+                                 f"{defang(note['verdict_doubt']['reason'])}")
             else:
-                lines.append("Synthèse rédigée par le code seul (mode économie ou réponse de l'IA écartée).")
+                lines.append("Synthèse rédigée par le code seul (mode économie ou lecture de l'analyste écartée).")
             if v is not None:
                 outcomes.record_verdict(conn, r["material_id"], _VerdictView(v), inputs_digest=v["inputs_digest"],
                                         versions={"digest": week}, previous_pressure=v["pressure"], at=now)

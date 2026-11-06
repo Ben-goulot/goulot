@@ -20,7 +20,7 @@ from goulot.collect.runner import freshness, material_watch
 from goulot.db.connection import set_setting
 from goulot.ledger import chain, outcomes, replay, report
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
-from goulot.pipeline import analysis
+from goulot.pipeline import analysis, analyst
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS, describe
 from goulot.pipeline.visibility import serious_event, set_aside
 from goulot.prices import margin
@@ -220,9 +220,10 @@ def build_router(ctx: AppContext) -> APIRouter:
                      for n in nodes.values() if n["lat"] is not None]
             verdict = _verdict(conn, material_id)
             situation = _situation(conn, events, verdict["event_ids"]) if verdict else []
+            reading = analyst.latest(conn, material_id)
         return {
             "material": m, "verdict": verdict, "personal": locked_summary(ctx, material_id), "situation": situation,
-            "freshness": freshness(ctx.db, today), "events": events,
+            "analyst": reading, "freshness": freshness(ctx.db, today), "events": events,
             "series": _series_payload(best, 12), "links": series_links, "upcoming": upcoming, "sites": sites,
             "margin": {"trend": margin_trend[0], "change_pct_20": margin_trend[1],
                        "series": _series_payload(margin_series, 6)} if margin_trend else None,

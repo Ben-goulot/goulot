@@ -427,6 +427,8 @@ def build_parser() -> argparse.ArgumentParser:
     rw = dsub.add_parser("record-watch", help="enregistre le tri et l'analyse du scénario de veille (moins de 1 $)")
     rw.add_argument("--force", action="store_true",
                     help="recommence : les réponses de tri inchangées sont reprises sans être repayées")
+    ra = dsub.add_parser("record-analyst", help="essai réel de l'analyste sur les 3 CAS de test (moins de 0,50 $)")
+    ra.add_argument("--force", action="store_true", help="recommence et remplace les lectures enregistrées")
     pr = dsub.add_parser("probe", help="essai à blanc des schémas de sortie (moins de 0,15 $)")
     pr.add_argument("--only", help="noms séparés par des virgules, par exemple « cas »")
     rc = dsub.add_parser("record-cases", help="prépare les cas comparables d'un CAS de test, réponses enregistrées")

@@ -116,6 +116,29 @@ def run(db: Database, budget: Budget, vault: Vault, backend: BatchBackend, *, bu
     return summary(db, scenario)
 
 
+ANALYST_RECORDINGS = REPO_ROOT / "tests" / "fixtures" / "llm" / "analyst"
+TEST_CAS = ("107-13-1", "554-13-2", "7440-55-3")
+
+
+def analyst_material(db: Database, budget: Budget, vault: Vault, cas: str, backend: BatchBackend) -> datetime:
+    """A test CAS ready for its analyst: the fixed watch scenario for 107-13-1 (replayed, already paid), the
+    recorded chain alone for the two others (no event: a calm reading). Returns the scenario's date."""
+    now = datetime.fromisoformat(load()["now"])
+    if cas == CAS:
+        run(db, budget, vault, backend)
+        return now
+    chain_dir = REPO_ROOT / "tests" / "fixtures" / "llm" / cas
+    identity = json.loads((chain_dir / "identity.json").read_text(encoding="utf-8"))
+    with db.transaction() as conn:
+        material_id = store.create_material(conn, identity)
+    service.reconstruct(service.Deps(db, budget, ReplayBackend(chain_dir), None), material_id,
+                        service.start_job(db, material_id), budget_name="dev")
+    with db.transaction() as conn:
+        store.validate_material(conn, material_id, acknowledge_injection=False)
+    assess.refresh_verdicts(db, vault, now, verified=True, last_ok_cycle=now.isoformat())
+    return now
+
+
 def summary(db: Database, scenario: dict[str, Any]) -> dict[str, Any]:
     by_url = {a["url"]: a for a in scenario["articles"]}
     with db.connect() as conn:

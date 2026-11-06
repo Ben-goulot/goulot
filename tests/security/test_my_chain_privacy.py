@@ -80,6 +80,9 @@ def test_private_canary_never_leaves(client: TestClient, ctx: AppContext, opened
     cycle.process(ctx, NOW)
     prompts = json.dumps([req for batch in replay.batches.values() for req in batch], ensure_ascii=False)
     assert world["private_event"] in prompts  # it weighs for the user: it was sent to the analysis…
+    readings = [params for batch in replay.batches.values() for cid, params in batch if cid.startswith("anl_")]
+    assert readings and "Arrêt d'une usine" in json.dumps(readings, ensure_ascii=False)  # …the analyst reads public
+    assert "Séisme sur la côte" not in json.dumps(readings, ensure_ascii=False)  # events only (lot 10)
     with ctx.db.connect() as conn:
         alerts = " ".join(r[0] for r in conn.execute("SELECT text FROM alerts"))
         personal = conn.execute("SELECT * FROM verdicts WHERE scope = 'personal' AND current = 1").fetchone()

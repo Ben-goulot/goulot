@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -22,6 +21,8 @@ SUNDAY_EVENING = datetime(2026, 10, 18, 20, tzinfo=UTC)  # after 18:00 local tim
 MONDAY_MORNING = datetime(2026, 10, 19, 10, tzinfo=UTC)  # after 08:00 local time
 EXAMPLE: dict[str, Any] = json.loads(
     (REPO_ROOT / "schemas" / "examples" / "digest_v1.example.json").read_text(encoding="utf-8"))
+EXAMPLE_READING: dict[str, Any] = json.loads(
+    (REPO_ROOT / "schemas" / "examples" / "analyst_v1.example.json").read_text(encoding="utf-8"))
 
 
 def message(result: dict[str, Any]) -> dict[str, Any]:
@@ -94,56 +95,63 @@ def test_health_and_security_alerts(ctx: AppContext) -> None:
 
 
 # --- weekly digest ----------------------------------------------------------------------------------------
+def _weekly_reading(ctx: AppContext, **changes: Any) -> None:
+    """The analyst's Sunday reading (lot 10), answered from the schema example."""
+    from tests.test_analyst import answer, reading, send
+
+    backend, requests = send(ctx, SUNDAY_EVENING)
+    answer(ctx, backend, requests, lambda refs: reading(refs, **changes))
+
+
 def test_weekly_digest_from_sunday_to_monday(ctx: AppContext) -> None:
     prepared(ctx)
-    backend = ReplayBatchBackend()
-    assert digest.submit(ctx.db, ctx.budget, backend, NOW - timedelta(hours=8), ai=True) == 0  # Sunday morning
-    assert digest.submit(ctx.db, ctx.budget, backend, SUNDAY_EVENING, ai=True) == 1
-    (requests,) = backend.batches.values()
-    params = requests[0][1]
-    assert params["thinking"] == {"type": "between_tools"} and params["output_config"]["effort"] == "medium"
-    assert "<verdict>" in params["messages"][0]["content"] and "37.2917" not in json.dumps(params)
-    disagreeing = copy.deepcopy(EXAMPLE)
-    disagreeing.update(disagrees_with_verdict=True, disagreement_reason="Les stocks semblent suffire.",
-                       price_comment="Voir https://evil.example pour le détail.")
-    backend.responses = {requests[0][0]: message(disagreeing)}
-    assert digest.collect(ctx.db, ctx.budget, backend) == 1
+    assert digest.submit(ctx.db, NOW - timedelta(hours=8)) == 0  # Sunday morning
+    assert digest.submit(ctx.db, SUNDAY_EVENING) == 1
+    _weekly_reading(ctx, verdict_doubt={"doubts": True, "reason": "Les stocks semblent suffire."})
     assert digest.compose(ctx.db, SUNDAY_EVENING) is None  # sent on Monday only
     week, text = digest.compose(ctx.db, MONDAY_MORNING)  # type: ignore[misc]
     assert week == "2026-W42"
     assert "acrylonitrile : Problème potentiel à 6 semaines." in text
-    assert "L'IA conteste ce verdict, qui reste inchangé" in text
-    assert "https://" not in text and "evil[.]example" in text
-    assert "Empreinte du registre : " in text
+    assert EXAMPLE_READING["headline"] in text and EXAMPLE_READING["changes"][0]["text"] in text
+    assert "L'analyste doute de ce verdict, qui reste inchangé : Les stocks semblent suffire." in text
+    assert "https://" not in text and "Empreinte du registre : " in text
     assert digest.compose(ctx.db, MONDAY_MORNING) is None  # once a week
     with ctx.db.connect() as conn:
         entries = chain.entries(conn, kinds=("verdict",))
         assert chain.verify(conn).ok
+        assert conn.execute("SELECT COUNT(*) FROM llm_batches WHERE purpose = 'digest'").fetchone()[0] == 0
     assert entries[-1]["versions"] == {"digest": "2026-W42"}  # the verdict at digest time is in the ledger
 
 
-def test_digest_written_by_code_in_economy_mode(ctx: AppContext) -> None:
-    prepared(ctx)
-    backend = ReplayBatchBackend()
-    assert digest.submit(ctx.db, ctx.budget, backend, SUNDAY_EVENING, ai=False) == 0
-    assert backend.batches == {}
+def test_digest_written_by_code_without_a_reading(ctx: AppContext) -> None:
+    prepared(ctx)  # economy mode, or no reading this week: the code writes the message alone
+    assert digest.submit(ctx.db, SUNDAY_EVENING) == 1
     _, text = digest.compose(ctx.db, MONDAY_MORNING)  # type: ignore[misc]
     assert "Synthèse rédigée par le code seul" in text and "Problème potentiel à 6 semaines" in text
 
 
-def test_rejected_digest_falls_back_to_code(ctx: AppContext) -> None:
+def test_rejected_reading_falls_back_to_code(ctx: AppContext) -> None:
     prepared(ctx)
-    backend = ReplayBatchBackend()
-    digest.submit(ctx.db, ctx.budget, backend, SUNDAY_EVENING, ai=True)
-    (requests,) = backend.batches.values()
-    bad = copy.deepcopy(EXAMPLE)
-    bad["headline"] = " ".join(["mot"] * 20)  # too long
-    bad["injection_suspected"] = False
-    backend.responses = {requests[0][0]: message(bad)}
-    digest.collect(ctx.db, ctx.budget, backend)
+    digest.submit(ctx.db, SUNDAY_EVENING)
+    _weekly_reading(ctx, headline=" ".join(["mot"] * 30))  # far too long
     _, text = digest.compose(ctx.db, MONDAY_MORNING)  # type: ignore[misc]
     assert "mot mot mot" not in text and "code seul" in text
-    assert assess  # the verdict itself never comes from the digest
+    assert assess  # the verdict itself never comes from the analyst
+
+
+def test_digest_batch_sent_before_lot_10_is_still_collected(ctx: AppContext) -> None:
+    prepared(ctx)
+    backend = ReplayBatchBackend(responses={"dig_old": message(EXAMPLE)})
+    batch_id = backend.submit([("dig_old", {})])
+    with ctx.db.transaction() as conn:
+        mid = conn.execute("SELECT id FROM materials").fetchone()[0]
+        conn.execute("INSERT INTO llm_batches (id, purpose, status, request_count, submitted_at) VALUES "
+                     "(?, 'digest', 'submitted', 1, 'now')", (batch_id,))
+        conn.execute("INSERT INTO digests (material_id, week, custom_id, state, created_at) VALUES "
+                     "(?, '2026-W41', 'dig_old', 'pending', 'now')", (mid,))
+    assert digest.collect(ctx.db, ctx.budget, backend) == 1
+    with ctx.db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM llm_calls WHERE purpose = 'digest'").fetchone()[0] == 1
 
 
 def test_source_without_key_is_said_once_not_every_day(ctx: AppContext) -> None:

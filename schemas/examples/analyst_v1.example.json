@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "headline": "Propylène tendu aux États-Unis, transmission à l'acrylonitrile encore incertaine",
+  "situation": "Un vapocraqueur de la côte du Golfe est à l'arrêt depuis dix jours, ce qui réduit l'offre de propylène, première matière de l'acrylonitrile. L'indice proxy monte depuis un mois. Les autres signaux de la semaine sont mineurs ou anciens.",
+  "changes": [
+    {"text": "L'exploitant confirme l'arrêt et vise un redémarrage en novembre : le signal précoce devient un fait confirmé.", "event_refs": ["E1"]},
+    {"text": "L'indice proxy gagne 4,2 % sur une semaine, après 6,8 % sur quatre semaines.", "event_refs": []}
+  ],
+  "main_signal": {
+    "text": "L'arrêt du vapocraqueur retire une part notable du propylène américain ; l'analyse d'impact le classe en sévérité 2, avec 40 % de chances d'une hausse à 20 séances.",
+    "event_refs": ["E1"],
+    "novelty": "new",
+    "origin": "source officielle"
+  },
+  "set_aside": [
+    {"event_ref": "X1", "why": "Article de 2024 republié cette semaine : il décrit un arrêt déjà terminé."},
+    {"event_ref": "E2", "why": "Petit séisme loin des sites de la chaîne, sans dégât signalé."}
+  ],
+  "counter_evidence": [
+    {"text": "Le redémarrage annoncé pour novembre limiterait la durée de l'arrêt à quelques semaines.", "event_refs": ["E1"]},
+    {"text": "La chaîne type compte d'autres producteurs de propylène en Asie et en Europe.", "event_refs": []}
+  ],
+  "watch": [
+    {"what": "Annonce de redémarrage du vapocraqueur", "why": "Un redémarrage avant mi-novembre affaiblirait nettement le signal.", "date": "2026-11", "event_refs": ["E1"]},
+    {"what": "Indice proxy de l'acrylonitrile", "why": "Une hausse qui dure au-delà du redémarrage montrerait une autre cause.", "date": "unknown", "event_refs": []}
+  ],
+  "confidence": {
+    "level": "medium",
+    "basis": "Arrêt confirmé par l'exploitant et deux lignées de presse indépendantes ; prix observés sur un indice proxy, pas sur une cotation directe.",
+    "weak_points": ["Aucune cotation directe de l'acrylonitrile.", "Durée de l'arrêt annoncée par l'exploitant seul."]
+  },
+  "verdict_doubt": {"doubts": false, "reason": ""},
+  "injection_suspected": false
+}

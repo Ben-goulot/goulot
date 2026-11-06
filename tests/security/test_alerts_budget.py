@@ -93,11 +93,12 @@ def test_email_refuses_private_addresses(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_budget_cap_modes(ctx: AppContext) -> None:
     budget = ctx.budget
     assert watch_mode(budget).mode == NORMAL
-    spend(budget, 4.05)
+    assert budget.cap("watch") == 6.5 and budget.cap("reconstruction") == 8.5  # decision of 6 November 2026
+    spend(budget, 5.25)
     assert watch_mode(budget).mode == ECONOMY  # 81 %
-    spend(budget, 0.5)
+    spend(budget, 0.65)
     assert watch_mode(budget).mode == CRISIS  # 91 %
-    spend(budget, 0.5)
+    spend(budget, 0.65)
     assert watch_mode(budget).mode == RULES_ONLY  # 101 %
     assert cycle.allowance_for(ECONOMY).min_severity == 2 and cycle.allowance_for(CRISIS).min_severity == 3
     assert cycle.allowance_for(RULES_ONLY).rules_only
@@ -121,8 +122,8 @@ def test_budget_cap_modes(ctx: AppContext) -> None:
     with pytest.raises(BudgetExceeded):
         budget.raise_watch_cap(20)
     spend(budget, 2.0, "reconstruction", mode="standard")
-    assert budget.raise_watch_cap(3.0) == 8.0  # 15 − 2 of reconstructions − 5 of cap = 8 possible, 3 taken
-    assert watch_mode(budget).mode == NORMAL or watch_mode(budget).cap == 8.0
+    assert budget.raise_watch_cap(3.0) == 9.5  # 15 − 2 of reconstructions − 6.5 of cap = 6.5 possible, 3 taken
+    assert watch_mode(budget).mode == NORMAL or watch_mode(budget).cap == 9.5
 
 
 def test_raise_route_needs_a_serious_event(ctx: AppContext) -> None:
