@@ -307,3 +307,61 @@ a.button:hover { border-color: var(--accent); }
 .world-hotspots { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 12px; }
 .world-hotspots summary { cursor: pointer; font-weight: 600; }
 .world-hotspots li { margin-bottom: 8px; }
+
+/* Conformité (docs/SPEC.md, section 10): controls, A4 preview, checks; the report prints alone */
+.compliance-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 280px; gap: 16px; align-items: start; margin-top: 12px; }
+.compliance-side { display: grid; gap: 4px; padding: 16px; }
+.compliance-side .eyebrow:first-child { margin-top: 0; }
+.choice { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.choice input { min-height: 0; width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--accent); }
+.field { display: grid; gap: 4px; }
+.field textarea { font: inherit; color: var(--text); background: var(--row); border: 1px solid var(--border); border-radius: 8px; min-height: 64px; padding: 8px 10px; resize: vertical; }
+.measures { display: grid; gap: 6px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+.measures legend { padding: 0 4px; font-weight: 600; }
+.checks .check { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+.check.ok > span:first-child { color: #3ccb91; font-weight: 700; }
+.check.todo > span:first-child { color: var(--amber); font-weight: 700; }
+.compliance-preview { min-width: 0; overflow-x: auto; }
+.report { width: 100%; max-width: 210mm; margin: 0 auto; border-collapse: collapse; background: #fff; color: #1a1d22; border-radius: 6px;
+  font-size: 13px; line-height: 1.45; }
+.report > thead > tr > td, .report > tfoot > tr > td, .report > tbody > tr > td { padding: 0 18mm; }
+.report-marks { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-height: 14mm; align-items: center; }
+.report-mark { padding: 3px 10px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+.report-mark.draft { background: #fbf0d9; color: #7a5300; border: 1px solid #c99a2e; }
+.report-mark.confidential { background: #fbe3df; color: #9e2a17; border: 1px solid #c4553f; }
+.report-foot { display: grid; gap: 2px; padding: 4mm 0 6mm; border-top: 1px solid #c9ced6; color: #4a515c; font-size: 10.5px; }
+.report-page { padding: 4mm 0 8mm; }
+.report-page + .report-page { border-top: 1px dashed #c9ced6; }
+.report h2 { margin: 0 0 6px; font-size: 20px; color: #0f1216; }
+.report h3 { margin: 18px 0 8px; font-size: 15px; color: #0f1216; }
+.report h4 { margin: 14px 0 6px; font-size: 14px; color: #0f1216; }
+.report h5 { margin: 10px 0 4px; font-size: 12.5px; color: #0f1216; }
+.report p { margin: 0 0 6px; }
+.report ul, .report ol { margin: 0 0 6px; padding-left: 18px; }
+.report-muted { color: #5b636e; }
+.report-warn { color: #8a5a00; font-weight: 600; }
+.report-refs { color: #5b636e; font-size: 11px; }
+.report-url { font-size: 10.5px; word-break: break-all; color: #3d4450; }
+.report-table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 12px; }
+.report-table th, .report-table td { text-align: left; vertical-align: top; padding: 5px 6px; border-bottom: 1px solid #dde1e7; }
+.report-table th { background: #f2f4f7; font-weight: 600; color: #2b3038; }
+.report-bench { display: inline-flex; padding: 1px 8px; border-radius: 4px; font-weight: 600; font-size: 11.5px; background: #e2f4ea; color: #1d6b43; }
+.report-bench.bench-dpass { background: #fbe3df; color: #9e2a17; }
+.report-bench.bench-lalimite { background: #fbf0d9; color: #7a5300; }
+.report-bench.bench-sansobjet { background: #eceff3; color: #4a515c; }
+.report-sign { margin-top: 14px; padding-top: 8px; border-top: 1px solid #dde1e7; }
+.report .pv { color: inherit; }
+@media (max-width: 1200px) { .compliance-layout { grid-template-columns: 1fr; } }
+@media print {
+  @page { size: A4; margin: 10mm 0; }
+  .compliance-layout { display: block; margin: 0; }
+  .compliance-preview { overflow: visible; }
+  .content.wide { max-width: none; margin: 0; padding: 0; }
+  .report { max-width: none; border-radius: 0; font-size: 11pt; }
+  .report-page { break-after: page; }
+  .report-page:last-child { break-after: auto; }
+  .report-page + .report-page { border-top: none; }
+  .report-table tr { break-inside: avoid; }
+  .report thead { display: table-header-group; }
+  .report tfoot { display: table-footer-group; }
+}

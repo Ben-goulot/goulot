@@ -1,0 +1,39 @@
+# Modèle d'export « Questionnaire client » (docs/SPEC.md, section 10) : réponse type aux questionnaires de risque
+# d'approvisionnement des clients. Mêmes données et mêmes contrôles que « Article 24 », titres adaptés.
+# Toute modification crée client_questionnaire_v2.yaml ; un rapport garde la version de modèle qui l'a produit.
+
+id: client_questionnaire
+version: 1
+title: Réponse au questionnaire de risque d'approvisionnement
+subtitle: Modèle générique pour les questionnaires de tes clients
+reference: Questionnaire de risque d'approvisionnement (modèle générique)
+disclaimer: >-
+  Document préparé avec Goulot à partir de sources publiques. Aide à la préparation : ne vaut ni avis juridique ni
+  attestation de conformité.
+benchmarks:
+  single_country_share_max_pct: 65
+  hhi_bands: {low: 1500, high: 2500}
+chain_max_age_months: 12
+
+sections:
+  - id: mapping
+    title: Origine des matières
+    required: [stage_countries, sources]
+  - id: factors
+    title: Risques identifiés
+    required: [concentration_top_country, hhi, benchmark_65]
+  - id: vulnerability
+    title: Capacité à livrer en cas de rupture
+    required: [time_to_impact_weeks, substitutes]
+    optional: [company_coverage]
+  - id: mitigation
+    title: Plan de continuité
+    choices: [stock_de_securite, second_fournisseur, contrat_cadre, substitution, autre]
+    required: [at_least_one_choice]
+    written_by: user
+  - id: method
+    title: Sources et méthode
+    required: [sources, method, chain_date, signatory]
+
+outputs: [pdf, json, csv]
+draft_label: "Brouillon : rapport incomplet"

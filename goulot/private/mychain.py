@@ -403,8 +403,12 @@ def market_concentration(model: Model) -> dict[str, Any]:
 
 
 def my_concentration(model: Model) -> dict[str, Any]:
-    """Shares by country at the production level, on the user's declared volume: a producing site counts with its
-    country; what a distributor does not declare is spread like the market."""
+    return _hhi(my_country_shares(model))
+
+
+def my_country_shares(model: Model) -> dict[str, float]:
+    """Shares by country (percent) at the production level, on the user's declared volume: a producing site counts
+    with its country; what a distributor does not declare is spread like the market."""
     market: dict[str, float] = {}
     for k in model.producers():
         n = model.nodes[k]
@@ -436,8 +440,8 @@ def my_concentration(model: Model) -> dict[str, Any]:
     walk(ME, 1.0, 0)
     total = sum(by_country.values())
     if total <= 0:
-        return _hhi({})
-    return _hhi({c: 100 * v / total for c, v in by_country.items()})
+        return {}
+    return {c: 100 * v / total for c, v in by_country.items()}
 
 
 # --- CSV import (in memory) -------------------------------------------------------------------------------------

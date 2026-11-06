@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from goulot.compliance import store as compliance_store
 from goulot.db.backup import last_backup_age
 from goulot.db.connection import Database
 from goulot.net.allowlist import load_allowlist
@@ -165,7 +166,8 @@ def run_checks(settings: Settings) -> list[Check]:
             details.append("clé maîtresse absente du trousseau : « ./bin/goulot vault recover »")
         else:
             try:
-                n = coverage.verify_all(db, vault) + records.verify_all(db, vault)
+                n = (coverage.verify_all(db, vault) + records.verify_all(db, vault)
+                     + compliance_store.verify_all(db, vault))
                 details.append(f"{n} champ(s) chiffré(s) déchiffrables")
             except VaultError as exc:
                 status = FAIL

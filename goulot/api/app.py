@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from goulot import __version__
 from goulot.api.case_routes import build_router as build_case_router
 from goulot.api.chain_routes import build_router
+from goulot.api.compliance_routes import build_router as build_compliance_router
 from goulot.api.context import AppContext
 from goulot.api.middleware import SecurityMiddleware
 from goulot.api.private_routes import build_router as build_private_router
@@ -263,6 +264,7 @@ def create_app(ctx: AppContext) -> FastAPI:
     app.include_router(build_case_router(ctx))
     app.include_router(build_private_router(ctx))
     app.include_router(build_system_router(ctx))
+    app.include_router(build_compliance_router(ctx))
 
     # --- frontend (static, no data) --------------------------------------------------------------------
     dist = ctx.settings.frontend_dist

@@ -144,7 +144,7 @@ Chaque test est écrit dans sa phase et doit vraiment exercer le contrôle : pas
 - **Phase 3 (suite)** : `test_ledger_append_only`, `test_ledger_tamper_detected`, `test_private_canary_never_leaves` (couverture et devis : prompts, requêtes, alertes, journaux), `test_export_no_private_fields` (export de l'historique), `test_case_requires_reliable_source`, `test_event_response_computed_by_code`, `test_unverified_case_excluded`.
 - **Phase 4** : `test_locked_view_leaks_nothing` (aucune valeur canari ni marque « ta chaîne » dans les réponses hors `/api/private/`), `test_private_canary_never_leaves` étendu à Ma chaîne, aux signaux et aux verdicts personnels, `test_csv_import_in_memory`. Les tests qui énumèrent les routes parcourent aussi celles des sous-routeurs (`tests/conftest.py`, `api_routes`).
 - **Phase 5** : les tests de `docs/UPDATES.md`.
-- **Phase 6** : `test_export_no_private_fields` étendu au rapport de conformité, `test_export_offline`, `test_private_export_requires_vault`.
+- **Phase 6** : `test_export_no_private_fields` étendu au rapport de conformité, `test_export_offline`, `test_private_export_requires_vault`. Les trois sont dans `tests/security/test_compliance_export.py` : rapport public sans mesure, couverture, signataire ni Ma chaîne ; rapport sur Ma chaîne servi en `no-store`, sans aucune copie en clair dans la base, son WAL, une sauvegarde ou le dossier de l'app ; aucun appel réseau ni IA pendant l'aperçu ou l'export.
 
 ## Ce que fait l'utilisateur, une seule fois
 

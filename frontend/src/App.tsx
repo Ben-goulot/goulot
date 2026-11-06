@@ -3,6 +3,7 @@ import { api, ApiError, exchange, hasVaultToken, loadSession, setVaultToken, typ
 import { assertionToJson, creationOptions, parseFragment, registrationToJson, requestOptions } from "./webauthn";
 import { AddMaterial } from "./chain/AddMaterial";
 import { ChainView } from "./chain/ChainView";
+import { Compliance } from "./compliance/Compliance";
 import { CaseLibrary } from "./watch/CaseLibrary";
 import { CENSUS_NOTICE } from "./watch/types";
 import { Markets } from "./watch/Markets";
@@ -21,6 +22,7 @@ type Page =
   | "coffre"
   | "ajout"
   | "fiabilite"
+  | "conformite"
   | `chaine/${string}`
   | `matiere/${string}`
   | `fiabilite/${string}`
@@ -33,6 +35,7 @@ function pageFromPath(): Page {
   if (path.startsWith("/coffre")) return "coffre";
   if (path === "/ajout") return "ajout";
   if (path === "/fiabilite") return "fiabilite";
+  if (path === "/conformite") return "conformite";
   const m = WITH_ID.exec(path);
   return m ? (`${m[1]}/${m[2]}` as Page) : "accueil";
 }
@@ -171,6 +174,9 @@ export default function App() {
           <button className={page.startsWith("fiabilite") ? "tab active" : "tab"} onClick={() => go("fiabilite")}>
             Fiabilité
           </button>
+          <button className={page === "conformite" ? "tab active" : "tab"} onClick={() => go("conformite")}>
+            Conformité
+          </button>
           <button className={page === "coffre" ? "tab active" : "tab"} onClick={() => go("coffre")}>
             Réglages
           </button>
@@ -200,6 +206,7 @@ export default function App() {
         )}
         {page.startsWith("cas/") && <CaseLibrary materialId={page.slice(4)} onBack={() => go(`matiere/${page.slice(4)}`)} />}
         {page.startsWith("fiabilite") && <Reliability key={String(vaultOpen)} materialId={page.length > 10 ? page.slice(10) : null} onMaterial={(id) => go(id ? `fiabilite/${id}` : "fiabilite")} />}
+        {page === "conformite" && <Compliance key={String(vaultOpen)} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
         {page === "coffre" && (

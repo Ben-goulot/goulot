@@ -11,6 +11,7 @@ import getpass
 import socket
 import sys
 import webbrowser
+from pathlib import Path
 
 from goulot import __version__
 from goulot.db.backup import backup
@@ -26,9 +27,7 @@ from goulot.vault.keys import Vault, VaultError
 from goulot.vault.recovery import RecoveryKeyError
 from goulot.vault.tokens import VaultTokenService
 
-LATER = {
-    "export": "Export de conformité : disponible en phase 6.",
-}
+LATER: dict[str, str] = {}
 CLEAR_SCREEN = "\033[2J\033[3J\033[H"
 ALERT_SECRETS = frozenset({"telegram_bot", "smtp_password"})
 PRINT_HELP = "affiche le lien sans ouvrir le navigateur par défaut (pour le coller dans un autre navigateur)"
@@ -446,6 +445,13 @@ def build_parser() -> argparse.ArgumentParser:
     rel = dsub.add_parser("release", help="lance la publication d'une version (approbation sur GitHub)")
     rel.add_argument("--bump", choices=("patch", "minor", "major"), default="patch")
     dsub.add_parser("bootstrap", help="première installation de la dernière version publiée")
+    export = sub.add_parser("export", help="rapport de conformité sur la chaîne type (annexes JSON et CSV, brouillon)")
+    export.add_argument("--template", default="article24", help="modèle : article24 ou client_questionnaire")
+    export.add_argument("--cas", nargs="+", required=True, metavar="CAS", help="numéros CAS des matières validées")
+    export.add_argument("--out", default=".", help="dossier où écrire les annexes (par défaut : le dossier courant)")
+    export.add_argument("--entreprise", default="", help="nom de l'entreprise")
+    export.add_argument("--signataire", default="", help="nom du signataire")
+    export.add_argument("--fonction", default="", help="fonction du signataire")
     for name, message in LATER.items():
         p = sub.add_parser(name, help=message)
         p.add_argument("rest", nargs=argparse.REMAINDER)
@@ -565,6 +571,46 @@ def cmd_ledger(settings: Settings, args: argparse.Namespace) -> None:
     sys.exit(f"❌ Registre altéré à l'entrée n° {result.at_seq} : {result.problem}.")
 
 
+def cmd_export(settings: Settings, args: argparse.Namespace) -> None:
+    """Typical chain only: the CLI never reads private data (CLAUDE.md, rule 13), so mitigation choices, coverage
+    and Ma chaîne are left out and the report stays a draft. The full report is made on the Conformité screen."""
+    from datetime import UTC, datetime
+
+    from goulot.compliance import report, store, templates
+
+    try:
+        template = templates.get(args.template, settings.config_dir)
+    except templates.TemplateError:
+        sys.exit(f"Modèle inconnu : {args.template} (article24 ou client_questionnaire).")
+    db = _db(settings)
+    with db.connect() as conn:
+        ids = []
+        for cas in args.cas:
+            row = conn.execute("SELECT id, status FROM materials WHERE cas = ?", (cas.strip(),)).fetchone()
+            if row is None:
+                sys.exit(f"Matière inconnue : CAS {cas}.")
+            if row["status"] != "validated":
+                sys.exit(f"Chaîne non validée pour le CAS {cas} : validez-la d'abord dans l'app.")
+            ids.append(row["id"])
+    out = Path(args.out).expanduser()
+    if not out.is_dir():
+        sys.exit(f"Dossier introuvable : {out}")
+    req = report.Request(template=template, material_ids=list(dict.fromkeys(ids)), company=args.entreprise,
+                         signatory_name=args.signataire, signatory_role=args.fonction, reviewed=False)
+    at = datetime.now(UTC)
+    with db.transaction() as conn:
+        doc = report.build(conn, req, at)
+        doc["ledger_seq"] = store.record(conn, doc, at=at)
+    name = f"goulot_{template['id']}_{at.strftime('%Y-%m-%d')}_{doc['fingerprint'][:8]}"
+    for suffix, content in (("json", report.annex_json(doc)), ("csv", report.annex_csv(doc))):
+        path = out / f"{name}.{suffix}"
+        path.write_text(content, encoding="utf-8")
+        print(f"✅ {path}")
+    print(f"Empreinte {doc['fingerprint']} · registre n° {doc['ledger_seq']}.")
+    print("Brouillon : les mesures d'atténuation, la couverture et Ma chaîne sont dans le coffre. Le rapport complet, "
+          "et son PDF, se font dans l'écran Conformité, coffre ouvert.")
+
+
 def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
     if args.dev_action in ("keygen", "release", "bootstrap"):
         from goulot.cli import updates
@@ -606,6 +652,7 @@ def main(argv: list[str] | None = None) -> None:
         "vault": cmd_vault,
         "dev": cmd_dev,
         "ledger": cmd_ledger,
+        "export": cmd_export,
         "history": cmd_history,
         "cases": cmd_cases,
         "update": cmd_update,

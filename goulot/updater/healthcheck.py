@@ -118,6 +118,7 @@ def _app_answers(home: Path, port: int) -> int:
 
 def release_check(settings: Settings, release_dir: Path) -> list[str]:
     """Raise HealthFailure at the first problem; return what was checked."""
+    from goulot.compliance import store as compliance_store
     from goulot.ledger.chain import verify
     from goulot.private import coverage, records
     from goulot.vault.keys import Vault
@@ -155,7 +156,8 @@ def release_check(settings: Settings, release_dir: Path) -> list[str]:
             if not vault.master_available():
                 raise HealthFailure("clé maîtresse du coffre illisible dans le trousseau")
             try:
-                n = coverage.verify_all(db, vault) + records.verify_all(db, vault)
+                n = (coverage.verify_all(db, vault) + records.verify_all(db, vault)
+                     + compliance_store.verify_all(db, vault))
             except Exception as exc:
                 raise HealthFailure("un champ chiffré ne se déchiffre plus") from exc
             done.append(f"{n} champ(s) chiffré(s) déchiffrables")

@@ -1,0 +1,25 @@
+# Matières premières stratégiques, annexe I, section 1, du règlement (UE) 2024/1252, texte publié le 3 mai 2024.
+# Sert seulement à dire, dans le rapport, si une matière semble concernée par l'article 24 ; le rapprochement se fait
+# sur le nom de la matière et reste « à confirmer » (le grade exigé n'est pas connu de Goulot).
+# La liste est révisée au moins tous les quatre ans : toute modification crée strategic_raw_materials_v2.yaml.
+
+version: 1
+source: Règlement (UE) 2024/1252, annexe I, section 1
+entries:
+  - {label: "Bauxite, alumine, aluminium", words: [bauxite, alumine, aluminium, alumina, aluminum]}
+  - {label: "Bismuth", words: [bismuth]}
+  - {label: "Bore, qualité métallurgique", words: [bore, boron]}
+  - {label: "Cobalt", words: [cobalt]}
+  - {label: "Cuivre", words: [cuivre, copper]}
+  - {label: "Gallium", words: [gallium]}
+  - {label: "Germanium", words: [germanium]}
+  - {label: "Lithium, qualité batterie", words: [lithium]}
+  - {label: "Magnésium métal", words: [magnésium, magnesium]}
+  - {label: "Manganèse, qualité batterie", words: [manganèse, manganese]}
+  - {label: "Graphite, qualité batterie", words: [graphite]}
+  - {label: "Nickel, qualité batterie", words: [nickel]}
+  - {label: "Métaux du groupe du platine", words: [platine, platinum, palladium, rhodium, ruthénium, ruthenium, iridium, osmium]}
+  - {label: "Terres rares pour aimants", words: [néodyme, neodymium, praséodyme, praseodymium, terbium, dysprosium, gadolinium, samarium, cérium, cerium, "terres rares", "rare earth"]}
+  - {label: "Silicium métal", words: [silicium, silicon]}
+  - {label: "Titane métal", words: [titane, titanium]}
+  - {label: "Tungstène", words: [tungstène, tungsten]}

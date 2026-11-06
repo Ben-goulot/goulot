@@ -33,6 +33,8 @@ PHASE_5 = {
     "test_rollback_keeps_ledger_and_private_inputs", "test_update_pause_after_two_failures", "test_key_rotation", "test_update_unapproved_release_rejected",
 }
 
+PHASE_6 = {"test_export_no_private_fields", "test_export_offline", "test_private_export_requires_vault"}
+
 
 def _security_tests() -> dict[str, ast.FunctionDef]:
     found: dict[str, ast.FunctionDef] = {}
@@ -45,7 +47,7 @@ def _security_tests() -> dict[str, ast.FunctionDef]:
 
 def test_security_tests_of_finished_phases_present_and_real() -> None:
     found = _security_tests()
-    missing = (PHASE_1 | PHASE_2 | PHASE_3 | PHASE_4 | PHASE_5) - found.keys()
+    missing = (PHASE_1 | PHASE_2 | PHASE_3 | PHASE_4 | PHASE_5 | PHASE_6) - found.keys()
     assert not missing, missing
     for name, node in found.items():
         source = ast.unparse(node)

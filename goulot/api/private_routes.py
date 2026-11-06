@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from goulot.api.context import AppContext
 from goulot.chain import lifecycle, store
 from goulot.collect.runner import freshness
+from goulot.compliance import store as compliance_store
 from goulot.ledger import chain as ledger_chain
 from goulot.ledger import personal as ledger_personal
 from goulot.ledger import replay as ledger_replay
@@ -186,6 +187,7 @@ def build_router(ctx: AppContext) -> APIRouter:
         and coverage of the material are erased with it, whether or not they exist. The ledger is never touched."""
         material(material_id)
         guarded(lambda: records.erase_material(ctx.db, ctx.vault, material_id))
+        guarded(lambda: compliance_store.forget_material(ctx.db, ctx.vault, material_id))
         try:
             with ctx.db.transaction() as conn:
                 lifecycle.delete(conn, material_id, body.name)
