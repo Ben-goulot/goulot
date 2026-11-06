@@ -188,3 +188,20 @@ def test_validated_material_without_rules_is_repaired_at_the_next_cycle(ctx: App
     assert result.kept >= 1
     with ctx.db.connect() as conn:
         assert report.history(conn, NOW)["materials"][0]["rules"]["keyword"] > 0
+
+
+def test_report_breaks_down_impact_analyses(ctx: AppContext) -> None:
+    """Where the impact analyses' money goes: origin, type, trigger, severity hint and conclusion."""
+    from tests.test_screens_api import prepared
+
+    prepared(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE analyses SET cost_usd = 0.06")
+    with ctx.db.connect() as conn:
+        found = report.history(conn, NOW + timedelta(hours=1))
+    impact = found["impact"]
+    assert impact and sum(i["analyses"] for i in impact) >= 1
+    suez = next(i for i in impact if i["trigger"] == "détroit ou voie d'eau")
+    assert suez["outcome"] == "sévérité 2" and suez["cost"] > 0
+    text = report.render(found, None)
+    assert "Analyses d'impact" in text and "détroit ou voie d'eau" in text

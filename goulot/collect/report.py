@@ -85,7 +85,47 @@ def history(conn: sqlite3.Connection, now: datetime, days: int = 14) -> dict[str
         "GROUP BY purpose ORDER BY purpose", (since,))]
     return {"days": days, "has_matched": has_matched, "cycles": cycles, "sources": per_source,
             "materials": materials, "base": base, "outcomes": outcomes, "copies": copies, "costs": costs,
-            "verdicts": _verdicts(conn, since)}
+            "impact": _impact(conn, since), "verdicts": _verdicts(conn, since)}
+
+
+def _trigger(conn: sqlite3.Connection, event_id: str) -> str:
+    """Why an event met the analysis trigger, read from the nodes it touches (the first reason that applies)."""
+    rows = conn.execute(
+        "SELECT n.node_type, n.global_share_pct FROM event_links l JOIN chain_nodes n ON n.material_id = l.material_id "
+        "AND n.node_key = l.node_key AND n.valid_to IS NULL WHERE l.event_id = ?", (event_id,)).fetchall()
+    if not rows:
+        return "sans maillon"
+    if any(r["node_type"] in ("chokepoint", "waterway") for r in rows):
+        return "détroit ou voie d'eau"
+    if any(r["global_share_pct"] is not None and r["global_share_pct"] >= 0.5 for r in rows):
+        return "part connue ≥ 0,5 %"
+    if any(r["global_share_pct"] is None for r in rows):
+        return "part inconnue"
+    return "part < 0,5 %"
+
+
+def _impact(conn: sqlite3.Connection, since: str | None) -> list[dict[str, Any]]:
+    """Where the impact analyses' money went: by origin and type of event, trigger, severity hint, and what the
+    analysis concluded (severity 0 means it found no material impact). Read-only, no AI."""
+    groups: dict[tuple[str, str, str, int, str], dict[str, Any]] = {}
+    rows = conn.execute(
+        "SELECT a.event_id, a.state, a.cost_usd, a.result, e.origin, e.event_type, e.severity_hint, "
+        "m.name AS material FROM analyses a JOIN events e ON e.id = a.event_id "
+        "JOIN materials m ON m.id = a.material_id WHERE a.created_at >= ?", (since or "",)).fetchall()
+    for r in rows:
+        result = json.loads(r["result"]) if r["result"] else {}
+        top = max((c.get("severity", 0) for c in result.get("commodity_impacts", [])), default=None)
+        outcome = r["state"] if r["state"] != "done" else ("impact nul" if not top else f"sévérité {top}")
+        key = (r["origin"], r["event_type"], _trigger(conn, r["event_id"]), r["severity_hint"], outcome)
+        g = groups.setdefault(key, {"analyses": 0, "events": set(), "cost": 0.0, "materials": set()})
+        g["analyses"] += 1
+        g["events"].add(r["event_id"])
+        g["cost"] += r["cost_usd"] or 0.0
+        g["materials"].add(r["material"])
+    out = [{"origin": k[0], "type": k[1], "trigger": k[2], "severity_hint": k[3], "outcome": k[4],
+            "analyses": g["analyses"], "events": len(g["events"]), "cost": round(g["cost"], 4),
+            "materials": len(g["materials"])} for k, g in groups.items()]
+    return sorted(out, key=lambda x: -x["cost"])
 
 
 def _verdicts(conn: sqlite3.Connection, since: str | None) -> list[dict[str, Any]]:
@@ -192,6 +232,13 @@ def render(report: dict[str, Any], sample: list[dict[str, Any]] | None) -> str:
         lines += ["", f"Coût IA de la veille : {total:.2f} $ sur {days} jours, soit environ "
                       f"{total * 30 / days:.2f} $ par mois :"]
         lines += [f"  {c['purpose']:<28} {c['calls']:>5} appels  {c['cost'] or 0:.3f} $" for c in report["costs"]]
+    if report.get("impact"):
+        total = sum(i["cost"] for i in report["impact"])
+        lines += ["", f"Analyses d'impact : {total:.2f} $ — par origine, type, déclencheur, sévérité préliminaire et "
+                      "conclusion (analyses / événements / coût) :"]
+        for i in report["impact"][:25]:
+            lines.append(f"  {i['origin']:<9} {i['type'][:26]:<26} {i['trigger']:<22} s{i['severity_hint']} "
+                         f"→ {i['outcome']:<12} {i['analyses']:>3} / {i['events']:>3}  {i['cost']:.3f} $")
     if report.get("verdicts"):
         lines += ["", "Verdict de chaque matière et événements qui le justifient :"]
         for v in report["verdicts"]:
