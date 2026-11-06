@@ -226,12 +226,12 @@ def test_portwatch_names_compared_with_the_table(monkeypatch: pytest.MonkeyPatch
     from goulot.net.client import build_client
 
     names = [*[c["portwatch_name"] for c in places.chokepoints().values()][1:], "Strait of Somewhere"]
-    answer = {"features": [{"attributes": {"portname": n}} for n in names]}
+    answer = {"features": [{"attributes": {"portname": n, "date": "2026-10-25"}} for n in names]}
     monkeypatch.setattr(check_sources, "build_client", lambda allowlist: build_client(
         Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(lambda r: httpx2.Response(200, json=answer))))
     monkeypatch.setattr(check_sources, "SAMPLES", tmp_path)
-    unknown, missing = check_sources.portwatch_names(settings)
-    assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"]
+    unknown, missing, latest = check_sources.portwatch_names(settings)
+    assert unknown == ["Strait of Somewhere"] and missing == ["Suez Canal"] and latest == "2026-10-25"
     refused = {"error": {"code": 400, "message": "Cannot perform query. Invalid query parameters."}}
     monkeypatch.setattr(check_sources, "build_client", lambda allowlist: build_client(
         Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(lambda r: httpx2.Response(200, json=refused))))

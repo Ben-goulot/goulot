@@ -7,6 +7,7 @@ import json
 from datetime import timedelta
 
 import httpx2
+import pytest
 from fastapi.testclient import TestClient
 
 from goulot.api.context import AppContext
@@ -289,3 +290,38 @@ def test_portwatch_without_any_transit_is_a_failure(ctx: AppContext) -> None:
     with ctx.db.connect() as conn:
         ok, error = conn.execute("SELECT ok, error FROM collect_runs WHERE source = 'imf_portwatch_chokepoints'").fetchone()
     assert ok == 0 and "no transit" in error
+
+
+QUOTA = {"error": {"code": 429, "message": "Unable to perform query. Too many requests.",
+                   "details": ["API calls quota exceeded (6412 request units)! maximum allowed request units (6000) "
+                               "per Minute. Retry after 60 sec."]}}
+
+
+def test_portwatch_asked_again_after_its_quota_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """6 November 2026: the PortWatch service shares its quota with all its users and refuses most queries with
+    « retry after 60 sec ». Asked again after that delay, at most twice; then a failure, never a calm."""
+    from goulot.collect import sources as src
+
+    monkeypatch.setattr(src, "ARCGIS_RETRY_MAX_S", 90.0)
+    waits: list[float] = []
+    monkeypatch.setattr(src.time, "sleep", waits.append)
+    feats = [{"attributes": {"date": (NOW - timedelta(days=30 - i)).date().isoformat(), "portid": "cp1",
+                             "portname": "Suez Canal", "n_total": 60 if i < 29 else 20}} for i in range(30)]
+    answers = [QUOTA, {"features": feats}]
+    client = build_client(Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(
+        lambda r: httpx2.Response(200, json=answers.pop(0))))
+    drop = src.portwatch(client, NOW)
+    assert waits == [60.0] and len(drop) == 1 and drop[0].details["chokepoint"] == "Suez Canal"
+    seen: list[int] = []
+
+    def always_refused(request: httpx2.Request) -> httpx2.Response:
+        seen.append(1)
+        return httpx2.Response(200, json=QUOTA)
+
+    client = build_client(Allowlist({"services9.arcgis.com"}), transport=httpx2.MockTransport(always_refused))
+    with pytest.raises(src.SourceError, match="refused: Unable to perform query"):
+        hotspots.fetch_traffic(client, NOW.date())
+    assert len(seen) == 1 + src.ARCGIS_RETRIES and waits == [60.0, 60.0, 60.0]
+    assert src.quota_wait({"error": {"code": 429, "details": []}}) == src.ARCGIS_RETRY_DEFAULT_S
+    assert src.quota_wait({"error": {"code": 429, "details": ["Retry after 600 sec."]}}) == src.ARCGIS_RETRY_MAX_S
+    assert src.quota_wait({"error": {"code": 400}}) is None and src.quota_wait({"features": []}) is None

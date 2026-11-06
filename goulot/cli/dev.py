@@ -457,9 +457,9 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         print("Interrogation des sources depuis votre Mac (sans IA, sans clé) ; réponses gardées dans .samples/.")
         check_sources.run(settings)
         try:
-            unknown, missing = check_sources.portwatch_names(settings)
-            print(f"  PortWatch : {len(unknown)} détroit(s) absent(s) de la table {unknown} ; "
-                  f"{len(missing)} nom(s) de la table introuvable(s) {missing}")
+            unknown, missing, latest = check_sources.portwatch_names(settings)
+            print(f"  PortWatch : dernier jour publié {latest or '?'} ; {len(unknown)} détroit(s) absent(s) de la "
+                  f"table {unknown} ; {len(missing)} nom(s) de la table introuvable(s) {missing}")
         except (httpx2.HTTPError, ValueError, KeyError) as exc:
             print(f"  ❌ PortWatch : {type(exc).__name__}, {str(exc)[:200]}")
         try:

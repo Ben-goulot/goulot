@@ -169,14 +169,14 @@ sources:
 
   # Médias en anglais d'Asie, du Golfe et d'Amérique latine (proposés le 5 novembre 2026, adresses à vérifier).
   - id: media_focustaiwan
-    enabled: false
+    enabled: true
     family: media
     url: https://feeds.feedburner.com/rsscna/engnews
     lang: en
     auth: none
     frequency: 3h
     use: Focus Taiwan (agence CNA), toute l'actualité en anglais ; Formosa Plastics, détroit de Taïwan, semi-conducteurs
-    notes: "le 6 novembre 2026 : /rss/business.xml répondait 404 ; adresse du flux relevée dans la page de Focus Taiwan, servie par FeedBurner, à vérifier"
+    notes: "le 6 novembre 2026 : /rss/business.xml répondait 404 ; le flux FeedBurner, seul lien RSS de focustaiwan.tw, donne 54 articles datés avec résumé, liens vers focustaiwan.tw (vu dans un navigateur, à confirmer par check-sources)"
   - id: media_businesstimes_sg
     enabled: true
     family: media
@@ -214,14 +214,14 @@ sources:
     use: Nikkei Asia ; chimie japonaise, métaux rares, contrôles chinois à l'export
     notes: "le 6 novembre 2026 : 50 titres sans date ni résumé : écarté par la règle du 4 novembre, laissé désactivé"
   - id: media_gulftimes
-    enabled: false
+    enabled: true
     family: media
-    url: https://www.gulf-times.com/rss/business
+    url: https://www.gulf-times.com/rssFeed/2
     lang: en
     auth: none
     frequency: 3h
     use: Gulf Times (Qatar), économie ; méthanol et gaz du Golfe, détroit d'Ormuz
-    notes: "le 6 novembre 2026 : l'adresse renvoie une page web, pas un flux ; adresse à trouver"
+    notes: "le 6 novembre 2026 : /rss/business renvoyait la page qui liste les flux ; « Business » y est /rssFeed/2 : 50 articles datés avec résumé (vu dans un navigateur, à confirmer par check-sources)"
   - id: media_bnamericas
     enabled: false
     family: media

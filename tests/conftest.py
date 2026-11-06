@@ -71,6 +71,7 @@ def no_api_pause(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(sources, "PAUSE_S", 0.0)
     monkeypatch.setattr(collect_sources, "GDELT_PAUSE_S", 0.0)
+    monkeypatch.setattr(collect_sources, "ARCGIS_RETRY_MAX_S", 0.0)
 
 
 @pytest.fixture

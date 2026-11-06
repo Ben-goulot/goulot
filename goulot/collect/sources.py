@@ -11,6 +11,7 @@ import csv
 import io
 import json
 import logging
+import re
 import time
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
@@ -62,6 +63,12 @@ GDELT_RETRY_AFTER_MAX_S = 120.0
 _gdelt_last = 0.0
 KAUB_LOW_WATER_CM = 100  # below 1 m at Kaub, Rhine barges load partially (78 cm: critical)
 PORTWATCH_DROP = 0.6  # a day under 60 % of the 30-day mean counts as a disruption signal
+# The PortWatch service shares a quota of 6,000 request units a minute between all its users, PortWatch's own site
+# included: on 6 November 2026 most queries were refused (code 429 in an HTTP 200 body, « retry after 60 sec »).
+# A refused query is asked again after the delay it names, at most twice; then the source fails for this cycle.
+ARCGIS_RETRIES = 2
+ARCGIS_RETRY_DEFAULT_S = 60.0
+ARCGIS_RETRY_MAX_S = 90.0
 NS = {
     "georss": "http://www.georss.org/georss",
     "gdacs": "http://www.gdacs.org",
@@ -116,6 +123,34 @@ def _json(client: httpx2.Client, url: str, params: dict[str, str] | None = None)
         raise SourceError("invalid JSON") from exc
     refused(data)
     return data
+
+
+def arcgis_query(client: httpx2.Client, url: str, params: dict[str, str]) -> Any:
+    """An ArcGIS (PortWatch) query, asked again after the delay named by a quota refusal."""
+    for attempt in range(ARCGIS_RETRIES + 1):
+        result = fetch(client, url, params=params)
+        if result.status != 200:
+            raise SourceError(f"HTTP {result.status}")
+        try:
+            data = json.loads(result.content)
+        except json.JSONDecodeError as exc:
+            raise SourceError("invalid JSON") from exc
+        wait = quota_wait(data)
+        if wait is None or attempt == ARCGIS_RETRIES:
+            refused(data)
+            return data
+        log.info("arcgis: quota exceeded, asked again in %.0f s", wait)
+        time.sleep(wait)
+    raise AssertionError("unreachable")
+
+
+def quota_wait(data: Any) -> float | None:
+    """Seconds to wait when ArcGIS refuses a query for its quota (code 429), None otherwise."""
+    error = data.get("error") if isinstance(data, dict) else None
+    if not isinstance(error, dict) or error.get("code") != 429:
+        return None
+    found = re.search(r"retry after (\d+)", " ".join(str(d) for d in error.get("details") or []), re.I)
+    return min(float(found.group(1)) if found else ARCGIS_RETRY_DEFAULT_S, ARCGIS_RETRY_MAX_S)
 
 
 def refused(data: Any) -> None:
@@ -324,7 +359,7 @@ def nhc(client: httpx2.Client) -> list[Item]:
 def portwatch(client: httpx2.Client, now: datetime) -> list[Item]:
     """Chokepoints whose latest daily transit count falls under 60 % of their 30-day mean."""
     since = (now - timedelta(days=35)).strftime("%Y-%m-%d")
-    data = _json(client, PORTWATCH, {
+    data = arcgis_query(client, PORTWATCH, {
         "where": f"date >= DATE '{since}'", "outFields": "date,portid,portname,n_total", "orderByFields": "date",
         "resultRecordCount": "2000", "f": "json",
     })

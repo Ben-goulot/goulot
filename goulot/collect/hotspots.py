@@ -28,7 +28,6 @@ from goulot.chain.countries import name_fr
 from goulot.collect import sources
 from goulot.collect.base import Item, clean_text, enabled, fold, iso, parse_datetime
 from goulot.db.connection import Database
-from goulot.net.client import fetch
 
 log = logging.getLogger("goulot.collect")
 
@@ -79,17 +78,10 @@ def fetch_traffic(client: httpx2.Client, since: date) -> list[tuple[str, str, st
     """(portid, portname, YYYY-MM-DD, transits) since a day, page by page."""
     out: list[tuple[str, str, str, float]] = []
     for page in range(MAX_PAGES):
-        result = fetch(client, sources.PORTWATCH, params={
+        data = sources.arcgis_query(client, sources.PORTWATCH, {
             "where": f"date >= DATE '{since.isoformat()}'", "outFields": "date,portid,portname,n_total",
             "orderByFields": "date,portid", "resultOffset": str(page * PAGE), "resultRecordCount": str(PAGE),
             "f": "json"})
-        if result.status != 200:
-            raise sources.SourceError(f"HTTP {result.status}")
-        try:
-            data = json.loads(result.content)
-        except json.JSONDecodeError as exc:
-            raise sources.SourceError("invalid JSON") from exc
-        sources.refused(data)
         features = (data or {}).get("features", []) or []
         for feat in features:
             a = feat.get("attributes") or {}

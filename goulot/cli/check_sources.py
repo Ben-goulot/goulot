@@ -46,6 +46,8 @@ def targets(today: date) -> list[tuple[str, str]]:
         ("nbs_liste", "https://www.stats.gov.cn/sj/zxfb/"),
         ("ecics_acrylonitrile", "https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_list.jsp"
                                 "?Lang=en&offset=0&Cas=107-13-1&sortOrder=1"),
+        # The Economic Times lists its feeds there: the metals and mining one answered empty on 6 November 2026.
+        ("et_liste_flux", "https://economictimes.indiatimes.com/rss.cms"),
     ]
 
 
@@ -134,29 +136,32 @@ def google_news_probe(settings: Settings, client: httpx2.Client | None = None) -
             client.close()
 
 
-def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list[str], list[str]]:
-    """Names of the IMF PortWatch chokepoints of the last days compared with the embedded table
-    (goulot/data/chokepoints.json): (in PortWatch but not in the table, in the table but not in PortWatch). The answer
-    is kept in .samples/ like the others."""
-    from goulot.chain.places import chokepoints
-    from goulot.collect.sources import PORTWATCH
+PORTWATCH_DAYS = 30  # PortWatch publishes about two weeks late (25 October on 6 November 2026)
 
-    since = (today or date.today()) - timedelta(days=10)
+
+def portwatch_names(settings: Settings, today: date | None = None) -> tuple[list[str], list[str], str]:
+    """Names of the IMF PortWatch chokepoints of the last 30 days compared with the embedded table
+    (goulot/data/chokepoints.json): (in PortWatch but not in the table, in the table but not in PortWatch, latest
+    day published). The answer is kept in .samples/ like the others."""
+    from goulot.chain.places import chokepoints
+    from goulot.collect.sources import PORTWATCH, SourceError, arcgis_query
+
+    since = (today or date.today()) - timedelta(days=PORTWATCH_DAYS)
     client = build_client(load_allowlist(settings.config_dir))
     try:
-        result = fetch(client, PORTWATCH, params={"where": f"date >= DATE '{since.isoformat()}'",
-                                                  "outFields": "portid,portname", "returnGeometry": "false",
-                                                  "orderByFields": "date", "resultRecordCount": "2000", "f": "json"},
-                       max_bytes=MAX_BYTES)
+        answer = arcgis_query(client, PORTWATCH, {"where": f"date >= DATE '{since.isoformat()}'",
+                                                  "outFields": "date,portid,portname", "returnGeometry": "false",
+                                                  "orderByFields": "date", "resultRecordCount": "2000", "f": "json"})
+    except SourceError as exc:  # ArcGIS reports a refused query in a JSON body
+        raise ValueError(f"PortWatch refused the query: {str(exc)[:160]}") from exc
     finally:
         client.close()
     SAMPLES.mkdir(exist_ok=True)
-    (SAMPLES / "portwatch_noms.bin").write_bytes(result.content)
-    answer = json.loads(result.content)
-    if result.status != 200 or "error" in answer:  # ArcGIS reports a refused query in a JSON body
-        raise ValueError(f"PortWatch refused the query: {str(answer.get('error', result.status))[:160]}")
-    found = {str(f["attributes"]["portname"]) for f in answer.get("features", [])}
+    (SAMPLES / "portwatch_noms.bin").write_text(json.dumps(answer, ensure_ascii=False), encoding="utf-8")
+    features = [f.get("attributes") or {} for f in answer.get("features", [])]
+    found = {str(a["portname"]) for a in features if a.get("portname")}
     if not found:
-        raise ValueError("PortWatch answered no transit for the last 10 days")
+        raise ValueError(f"PortWatch answered no transit for the last {PORTWATCH_DAYS} days")
+    latest = max((str(a.get("date") or "")[:10] for a in features), default="")
     table = {c["portwatch_name"] for c in chokepoints().values()}
-    return sorted(found - table), sorted(table - found)
+    return sorted(found - table), sorted(table - found), latest
