@@ -176,7 +176,7 @@ sources:
     auth: none
     frequency: 3h
     use: Focus Taiwan (agence CNA), toute l'actualité en anglais ; Formosa Plastics, détroit de Taïwan, semi-conducteurs
-    notes: "le 6 novembre 2026 : /rss/business.xml répondait 404 ; le flux FeedBurner, seul lien RSS de focustaiwan.tw, donne 54 articles datés avec résumé, liens vers focustaiwan.tw (vu dans un navigateur, à confirmer par check-sources)"
+    notes: "le 6 novembre 2026 : /rss/business.xml répondait 404 ; le flux FeedBurner, seul lien RSS de focustaiwan.tw, donne 54 articles datés avec résumé, liens vers focustaiwan.tw ; vérifié depuis le Mac le 6 novembre 2026"
   - id: media_businesstimes_sg
     enabled: true
     family: media
@@ -186,24 +186,24 @@ sources:
     frequency: 3h
     use: The Business Times (Singapour) ; transport maritime, Malacca, pétrochimie de Jurong
     notes: vérifié depuis le Mac le 6 novembre 2026 (100 articles datés avec résumé)
-  - id: media_et_chemicals
+  - id: media_et_energy
     enabled: true
     family: media
-    url: https://economictimes.indiatimes.com/industry/indl-goods/svs/chem-/-fertilisers/rssfeeds/13358350.cms
+    url: https://economictimes.indiatimes.com/industry/energy/rssfeeds/13358350.cms
     lang: en
     auth: none
     frequency: 3h
-    use: The Economic Times (Inde), chimie et engrais ; importations, droits antidumping indiens
-    notes: vérifié depuis le Mac le 6 novembre 2026 (50 articles datés avec résumé)
-  - id: media_et_metals
-    enabled: false
+    use: The Economic Times (Inde), énergie ; pétrole, gaz, GNL, matières premières de la pétrochimie
+    notes: "vérifié depuis le Mac le 6 novembre 2026 (50 articles datés avec résumé) ; d'abord pris pour la rubrique chimie et engrais : le site ne lit que le numéro final, 13358350 est la rubrique énergie"
+  - id: media_et_indl_goods
+    enabled: true
     family: media
-    url: https://economictimes.indiatimes.com/industry/indl-goods/svs/metals-mining/rssfeeds/13358363.cms
+    url: https://economictimes.indiatimes.com/industry/indl-goods/svs/rssfeeds/13357688.cms
     lang: en
     auth: none
     frequency: 3h
-    use: The Economic Times (Inde), métaux et mines
-    notes: "le 6 novembre 2026 : flux valide mais vide (identifiant de rubrique sans doute périmé) ; à corriger"
+    use: The Economic Times (Inde), biens industriels ; métaux et mines, acier, chimie et engrais, importations et droits antidumping indiens
+    notes: "le 6 novembre 2026 : la page des flux du site (relevée par check-sources) n'a plus de rubrique métaux ni chimie ; ce flux les regroupe ; à confirmer par check-sources"
   - id: media_nikkei_asia
     enabled: false
     family: media
@@ -221,7 +221,7 @@ sources:
     auth: none
     frequency: 3h
     use: Gulf Times (Qatar), économie ; méthanol et gaz du Golfe, détroit d'Ormuz
-    notes: "le 6 novembre 2026 : /rss/business renvoyait la page qui liste les flux ; « Business » y est /rssFeed/2 : 50 articles datés avec résumé (vu dans un navigateur, à confirmer par check-sources)"
+    notes: "le 6 novembre 2026 : /rss/business renvoyait la page qui liste les flux ; « Business » y est /rssFeed/2 : 50 articles datés avec résumé ; vérifié depuis le Mac le 6 novembre 2026"
   - id: media_bnamericas
     enabled: false
     family: media
