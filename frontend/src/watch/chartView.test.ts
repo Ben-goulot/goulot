@@ -69,7 +69,10 @@ describe("repères du graphique", () => {
 
 describe("délais", () => {
   it("n'écrit jamais « 1 à 1 sem. »", () => {
-    expect(weeksRange(1.2, 0.9)).toBe("1 sem.");
-    expect(weeksRange(1, 3)).toBe("1 à 3 sem.");
+    expect(weeksRange(1.2, 0.9)).toBe("dans 1 sem.");
+    expect(weeksRange(1, 3)).toBe("dans 1 à 3 sem.");
+    expect(weeksRange(0, 0.3)).toBe("cette semaine"); // never « 0 sem. »
+    expect(weeksRange(-1, 0)).toBe("cette semaine");
+    expect(weeksRange(0, 4)).toBe("d'ici 4 sem.");
   });
 });

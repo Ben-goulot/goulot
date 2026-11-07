@@ -19,7 +19,7 @@ const HIDDEN_LOCK_MS = 5 * 60_000;
 type Passkey = { id: string; label: string; created_at: string; last_used_at: string | null };
 type Page =
   | "accueil"
-  | "coffre"
+  | "reglages"
   | "ajout"
   | "fiabilite"
   | "conformite"
@@ -32,7 +32,7 @@ const WITH_ID = /^\/(chaine|matiere|fiabilite|cas)\/([0-9a-f-]{36})$/;
 
 function pageFromPath(): Page {
   const path = window.location.pathname;
-  if (path.startsWith("/coffre")) return "coffre";
+  if (path === "/reglages" || path.startsWith("/coffre")) return "reglages"; // /coffre: links from before Nov. 2026
   if (path === "/ajout") return "ajout";
   if (path === "/fiabilite") return "fiabilite";
   if (path === "/conformite") return "conformite";
@@ -65,11 +65,11 @@ export default function App() {
       try {
         if (window.location.pathname === "/auth") {
           const { token, grant: g } = parseFragment(window.location.hash);
-          history.replaceState(null, "", g ? "/coffre" : "/");
-          if (!token) throw new ApiError(401, "Lien incomplet : relancez « ./bin/goulot open ».");
+          history.replaceState(null, "", g ? "/reglages" : "/");
+          if (!token) throw new ApiError(401, "Lien incomplet : relance « ./bin/goulot open ».");
           await exchange(token);
           grant.current = g;
-          setPage(g ? "coffre" : "accueil");
+          setPage(g ? "reglages" : "accueil");
         }
         await loadSession();
         await refresh();
@@ -161,39 +161,29 @@ export default function App() {
       <div className={presenting ? "app presenting" : "app"}>
       <header className="topbar">
         <span className="brand">Goulot</span>
-        <nav>
-          <button
-            className={page === "accueil" || page.startsWith("chaine") || page.startsWith("matiere") || page.startsWith("cas/") ? "tab active" : "tab"}
-            onClick={() => go("accueil")}
-          >
-            Marchés
-          </button>
-          <button className={page === "ajout" ? "tab active" : "tab"} onClick={() => go("ajout")}>
-            Ajouter une matière
-          </button>
-          <button className={page.startsWith("fiabilite") ? "tab active" : "tab"} onClick={() => go("fiabilite")}>
-            Fiabilité
-          </button>
-          <button className={page === "conformite" ? "tab active" : "tab"} onClick={() => go("conformite")}>
-            Conformité
-          </button>
-          <button className={page === "coffre" ? "tab active" : "tab"} onClick={() => go("coffre")}>
-            Réglages
-          </button>
+        <nav aria-label="Écrans">
+          {NAV.map((item) => {
+            const active = item.match(page);
+            return (
+              <button key={item.page} className={active ? "tab active" : "tab"} aria-current={active ? "page" : undefined} onClick={() => go(item.page)}>
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
-        <button className={presenting ? "pill presenting-on" : "pill closed"} onClick={() => setPresenting(!presenting)} title="Touche P">
-          Mode présentation
-        </button>
-        <VaultPill status={status} onUnlock={unlock} onLock={lock} />
+        <div className="top-right">
+          <TopStatus />
+          <button className={presenting ? "pill presenting-on" : "pill closed"} onClick={() => setPresenting(!presenting)} title="Touche P">
+            Mode présentation
+          </button>
+          <VaultPill status={status} onUnlock={unlock} onLock={lock} />
+        </div>
       </header>
       {presenting && <p className="banner presenting-banner">Mode présentation : noms et chiffres floutés, même coffre ouvert. Touche P pour en sortir.</p>}
       {message && <p className="banner">{message}</p>}
-      <main className={page === "accueil" || page === "ajout" || page === "coffre" ? "content" : "content wide"}>
+      <main className={page === "accueil" || page === "ajout" || page === "reglages" ? "content" : "content wide"}>
         {page === "accueil" && (
-          <>
-            <Markets onOpen={(id) => go(`matiere/${id}`)} onChain={(id) => go(`chaine/${id}`)} onAdd={() => go("ajout")} />
-            <Home />
-          </>
+          <Markets onOpen={(id) => go(`matiere/${id}`)} onChain={(id) => go(`chaine/${id}`)} onAdd={() => go("ajout")} />
         )}
         {page.startsWith("matiere/") && (
           <Sheet
@@ -209,11 +199,12 @@ export default function App() {
         {page === "conformite" && <Compliance key={String(vaultOpen)} />}
         {page === "ajout" && <AddMaterial onOpenChain={(id) => go(`chaine/${id}`)} />}
         {page.startsWith("chaine/") && <ChainView materialId={page.slice(7)} onBack={() => go("accueil")} />}
-        {page === "coffre" && (
+        {page === "reglages" && (
           <>
             <WatchSettings />
             <SystemSettings />
             <VaultPage status={status} grant={grant} refresh={refresh} onUnlock={unlock} setMessage={setMessage} />
+            <Secrets />
           </>
         )}
       </main>
@@ -251,14 +242,62 @@ function VaultPill(props: { status: VaultStatus; onUnlock: () => void; onLock: (
   );
 }
 
-function Home() {
+const NAV: { page: Page; label: string; match: (p: Page) => boolean }[] = [
+  { page: "accueil", label: "Marchés", match: (p) => p === "accueil" || p.startsWith("chaine") || p.startsWith("matiere") || p.startsWith("cas/") },
+  { page: "ajout", label: "Ajouter une matière", match: (p) => p === "ajout" },
+  { page: "fiabilite", label: "Fiabilité", match: (p) => p.startsWith("fiabilite") },
+  { page: "conformite", label: "Conformité", match: (p) => p === "conformite" },
+  { page: "reglages", label: "Réglages", match: (p) => p === "reglages" },
+];
+
+type TopBudget = { spent_usd: number; cap_usd: number; freshness?: { last_ok_cycle: string | null; verified: boolean } };
+
+/** « il y a 2 h 10 » from an ISO date; coarse on purpose. */
+export function ago(iso: string, now: number = Date.now()): string {
+  const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return "à l'instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `il y a ${hours} h${minutes % 60 ? ` ${String(minutes % 60).padStart(2, "0")}` : ""}`;
+  return `il y a ${Math.floor(hours / 24)} jours`;
+}
+
+/** Top bar chips of the mockup: last successful collection and the month's AI spend (watch budget). */
+function TopStatus() {
+  const [b, setB] = useState<TopBudget | null>(null);
+  useEffect(() => {
+    const load = () => api.get<TopBudget>("/api/budget").then(setB, () => undefined);
+    void load();
+    const id = window.setInterval(load, POLL_MS);
+    return () => window.clearInterval(id);
+  }, []);
+  if (!b) return null;
+  const last = b.freshness?.last_ok_cycle;
+  const verified = b.freshness?.verified ?? false;
+  return (
+    <div className="top-status">
+      <span className={verified ? "chip" : "chip warn"} title={last ? `Dernière collecte réussie : ${new Date(last).toLocaleString("fr-FR")}` : "Aucune collecte réussie pour l'instant"}>
+        {last ? `Collecte ${ago(last)}` : "Aucune collecte"}
+        {!verified && " · non vérifié"}
+      </span>
+      <span className={b.spent_usd >= 0.8 * b.cap_usd ? "chip warn" : "chip"} title="Dépense IA de la veille ce mois-ci, sur le plafond mensuel">
+        IA : {usdFr(b.spent_usd)} sur {usdFr(b.cap_usd)}
+      </span>
+    </div>
+  );
+}
+
+export const usdFr = (v: number) => `${v.toFixed(2).replace(".", ",")} $`;
+
+function Secrets() {
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   useEffect(() => {
     api.get<Record<string, string>>("/api/settings/secrets").then(setSecrets, () => undefined);
   }, []);
   return (
     <section className="panel">
-      <h3>Secrets du trousseau</h3>
+      <h2>Secrets du trousseau</h2>
+      <p className="muted">Les clés restent dans le trousseau de macOS ; seule leur présence s'affiche ici. Pour en ajouter : « ./bin/goulot setup » dans le Terminal.</p>
       <ul className="plain">
         {Object.entries(secrets).map(([name, state]) => (
           <li key={name}>
@@ -356,7 +395,7 @@ function VaultPage(props: {
         <p className="muted">
           {status.passkeys === 0
             ? "Première clé : dans le Terminal, « ./bin/goulot vault add-passkey » (la clé de secours y est demandée)."
-            : "Ouvrez le coffre avec une clé existante (moins de 2 minutes avant), ou passez par « ./bin/goulot vault add-passkey »."}
+            : "Ouvre le coffre avec une clé existante (moins de 2 minutes avant), ou passe par « ./bin/goulot vault add-passkey »."}
         </p>
       )}
 
@@ -394,7 +433,7 @@ function VaultPage(props: {
         </>
       )}
       {!status.unlocked && status.passkeys > 0 && (
-        <p className="muted">Coffre fermé : ouvrez-le avec le cadenas pour gérer les clés.</p>
+        <p className="muted">Coffre fermé : ouvre-le avec le cadenas pour gérer les clés.</p>
       )}
     </section>
   );

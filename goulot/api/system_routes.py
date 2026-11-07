@@ -115,6 +115,18 @@ def _update_checks(ctx: AppContext, now: datetime) -> list[Check]:
     return checks
 
 
+_MODE_FR = {"normal": "mode normal", "economy": "mode économie", "crisis_reserve": "réserve de crise",
+            "rules_only": "règles seules"}
+
+
+def _usd(value: float) -> str:
+    return f"{value:.2f}".replace(".", ",") + " $"
+
+
+def _count(n: int, singular: str, plural: str) -> str:
+    return f"{n} {singular if n <= 1 else plural}"
+
+
 def security_report(ctx: AppContext) -> list[Check]:
     now = datetime.now(UTC)
     checks: list[Check] = []
@@ -123,8 +135,9 @@ def security_report(ctx: AppContext) -> list[Check]:
     checks.append(check_listening(ctx.settings))
     configured = [s for s in SECRETS if has_secret(s.name)]
     anthropic = has_secret("anthropic")
+    secrets = _count(len(configured), "secret enregistré", "secrets enregistrés")
     checks.append(Check(OK if anthropic else WARN, "Secrets du trousseau",
-                        f"{len(configured)} configuré(s), clé Anthropic {'présente' if anthropic else 'absente'}"))
+                        f"{secrets}, clé Anthropic {'présente' if anthropic else 'absente'}"))
     v = ctx.vault
     passkeys = ctx.passkeys.count()
     if not v.is_configured():
@@ -132,15 +145,16 @@ def security_report(ctx: AppContext) -> list[Check]:
     else:
         problems = ([] if v.recovery_confirmed() else ["clé de secours non confirmée"]) + (
             [] if passkeys else ["aucune clé d'accès"])
-        detail = f"{passkeys} clé(s) d'accès, fermeture après {int(ctx.vault_tokens.sliding_ttl() // 60)} min"
+        minutes = int(ctx.vault_tokens.sliding_ttl() // 60)
+        detail = f"{_count(passkeys, 'clé', 'clés')} d'accès, fermeture après {minutes} min"
         checks.append(Check(WARN if problems else OK, "Coffre", " ; ".join([*problems, detail])))
     checks.append(check_ledger(ctx.db))
     checks += _update_checks(ctx, now)
     mode = watch_mode(ctx.budget)
     share = mode.spent / mode.cap if mode.cap else 0
     checks.append(Check(OK if share < 0.8 else WARN, "Dépense IA du mois",
-                        f"{mode.spent:.2f} $ sur {mode.cap:.2f} $ ({mode.mode})"))
-    checks.append(Check(WARN, "Jeton GitHub", "présent : vérifiez sa date d'expiration sur github.com")
+                        f"{_usd(mode.spent)} sur {_usd(mode.cap)} ({_MODE_FR.get(mode.mode, mode.mode)})"))
+    checks.append(Check(WARN, "Jeton GitHub", "présent : vérifie sa date d'expiration sur github.com")
                   if has_secret("github_token") else Check(OK, "Jeton GitHub", "aucun (dépôt public)"))
     return checks
 

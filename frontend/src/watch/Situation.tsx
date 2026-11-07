@@ -42,6 +42,8 @@ export function Situation(props: { events: SituationEvent[]; onSelect: (id: stri
             {facts(e)}
             {e.nodes.length > 0 ? ` · maillon : ${clip(e.nodes.join(", "), 80)}` : ""}
           </p>
+          <details className="fold">
+            <summary>Lire le détail : transmission, amortisseurs, incertitudes, sources</summary>
           <div className="situation-grid">
             <div>
               <List title="Comment ça se transmet" items={e.transmission} />
@@ -85,6 +87,7 @@ export function Situation(props: { events: SituationEvent[]; onSelect: (id: stri
               )}
             </div>
           </div>
+          </details>
         </article>
       ))}
     </>

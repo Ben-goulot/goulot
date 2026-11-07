@@ -100,7 +100,8 @@ def check_ledger(db: Database) -> Check:
     with db.connect() as conn:
         result = verify(conn)
     if result.ok:
-        return Check(OK, "Registre des conseils", f"chaîne d'empreintes intacte ({result.entries} entrée(s))")
+        entries = f"{result.entries} entrée{'s' if result.entries > 1 else ''}"
+        return Check(OK, "Registre des conseils", f"chaîne d'empreintes intacte ({entries})")
     return Check(FAIL, "Registre des conseils", f"altéré à l'entrée n° {result.at_seq} : {result.problem}")
 
 

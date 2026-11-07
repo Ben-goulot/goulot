@@ -1,4 +1,4 @@
-import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } from "@xyflow/react";
+import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node, Panel } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "../api";
@@ -316,11 +316,14 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
               setDraft(null);
             }}
             nodesConnectable={false}
+            zoomOnScroll={false}
+            preventScrolling={false}
             fitView
             colorMode="dark"
           >
             <Background />
             <Controls showInteractive={false} />
+            <Panel position="top-right" className="graph-hint">Zoom : boutons + et −, ou pincer le pavé tactile</Panel>
             <HoverLabels edges={shown.edges} step={zoomStep} />
           </ReactFlow>
         </div>

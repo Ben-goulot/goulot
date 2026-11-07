@@ -73,7 +73,10 @@ export function dayMarks(events: EventMark[], points: Point[]): DayMark[] {
 
 /** « 1 sem. » or « 1 à 3 sem. », never « 1 à 1 sem. ». */
 export function weeksRange(low: number, high: number): string {
-  const a = low.toFixed(0);
-  const b = high.toFixed(0);
-  return a === b ? `${a} sem.` : `${a} à ${b} sem.`;
+  const a = Math.max(0, Math.round(low));
+  const b = Math.max(0, Math.round(high));
+  if (b === 0) return "cette semaine";
+  if (a === b) return `dans ${a} sem.`;
+  if (a === 0) return `d'ici ${b} sem.`;
+  return `dans ${a} à ${b} sem.`;
 }

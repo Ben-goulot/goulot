@@ -55,6 +55,9 @@ def test_verdict_text_says_what_a_late_order_means() -> None:
     assert "2 événements retenus." in on_time and "dans 5 à 7 semaines" in on_time
     assert "Il reste environ 2 semaines pour commander à temps (délai : 4 semaines)." in on_time
     assert "au moment de l'impact" in describe(ANTICIPATE, 1, 1, 4.0, 4.0, 0.0, 4.0, True, False)
+    now = describe(ANTICIPATE, 1, 1, 0.0, 0.2, -4.0, 0.0, True, False)
+    assert "Impact attendu dès cette semaine." in now and "0 semaine" not in now
+    assert "Impact attendu d'ici 3 semaines." in describe(POTENTIAL, 0, 1, 0.0, 3.0, None, None, False, False)
 
 
 def test_sheet_shows_the_situation_of_the_event_behind_the_verdict(client: TestClient, ctx: AppContext) -> None:

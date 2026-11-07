@@ -3,7 +3,7 @@ import { api, ApiError } from "../api";
 import { clip } from "../chain/types";
 import { DeleteMaterial, setWatched } from "./Lifecycle";
 import { WorldHotspots } from "./WorldHotspots";
-import { RANK_LABEL, signed, verdictClass, watchLabel, type Freshness, type MarketRow, type SeriesPayload } from "./types";
+import { RANK_LABEL, signed, verdictClass, watchLabel, type MarketRow, type SeriesPayload } from "./types";
 
 const POLL_MS = 60_000;
 
@@ -25,16 +25,14 @@ export function Sparkline(props: { series: SeriesPayload }) {
 export function Markets(props: { onOpen: (id: string) => void; onChain: (id: string) => void; onAdd: () => void }) {
   const [rows, setRows] = useState<MarketRow[] | null>(null);
   const [archived, setArchived] = useState<{ id: string; name: string; cas: string; open_advice: number }[]>([]);
-  const [fresh, setFresh] = useState<Freshness | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () =>
-      api.get<{ materials: MarketRow[]; freshness: Freshness; archived: typeof archived }>("/api/markets").then(
+      api.get<{ materials: MarketRow[]; archived: typeof archived }>("/api/markets").then(
         (d) => {
           setRows(d.materials);
           setArchived(d.archived ?? []);
-          setFresh(d.freshness);
         },
         (e) => setError(e instanceof ApiError ? e.message : "Erreur."),
       );
@@ -48,15 +46,7 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
 
   return (
     <section className="panel">
-      <div className="row spread">
-        <h2>Marchés</h2>
-        <span className={fresh?.verified ? "muted" : "warn"}>
-          {fresh?.last_ok_cycle
-            ? `Dernière veille réussie : ${new Date(fresh.last_ok_cycle).toLocaleString("fr-FR")}`
-            : "Aucune veille réussie pour l'instant"}
-          {fresh && !fresh.verified ? " · non vérifié" : ""}
-        </span>
-      </div>
+      <h2>Marchés</h2>
       {breakIn && <p className="muted">Rodage : les verdicts des 90 premiers jours sont à prendre avec recul.</p>}
       {rows.length === 0 ? (
         <p className="muted">Aucune matière suivie pour l'instant.</p>
@@ -79,27 +69,45 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
               const last = r.series?.points[r.series.points.length - 1];
               const ready = r.status === "validated";
               const watch = watchLabel(r.watch);
+              const change = r.series?.change_pct;
+              const open = () => (ready ? props.onOpen(r.id) : props.onChain(r.id));
               return (
-                <tr key={r.id} className={ready ? "clickable" : ""} onClick={() => (ready ? props.onOpen(r.id) : props.onChain(r.id))}>
-                  <td>
+                <tr
+                  key={r.id}
+                  className="clickable"
+                  tabIndex={0}
+                  aria-label={`${r.name} : ouvrir ${ready ? "la fiche" : "la chaîne"}`}
+                  onClick={open}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      open();
+                    }
+                  }}
+                >
+                  <td className="cell-name">
                     {clip(r.name, 60)}
                     <div className={`small ${watch.warn ? "warn" : "muted"}`}>{watch.text}</div>
                   </td>
-                  <td className="mono muted">{r.cas}</td>
-                  <td className="mono">
+                  <td className="mono muted" data-label="CAS">{r.cas}</td>
+                  <td className="mono" data-label="Prix ou indice">
                     {last ? last.value.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) : "—"}
                     {r.series && <span className="muted"> · {RANK_LABEL[r.series.rank]}</span>}
                   </td>
-                  <td className={`mono ${(r.series?.change_pct ?? 0) >= 0 ? "up" : "down"}`}>{signed(r.series?.change_pct)} %</td>
-                  <td>{r.series ? <Sparkline series={r.series} /> : <span className="muted">—</span>}</td>
-                  <td>
+                  {change === null || change === undefined ? (
+                    <td className="mono muted" data-label="Variation">—</td>
+                  ) : (
+                    <td className={`mono ${change >= 0 ? "up" : "down"}`} data-label="Variation">{signed(change)} %</td>
+                  )}
+                  <td data-label="2 mois">{r.series ? <Sparkline series={r.series} /> : <span className="muted">—</span>}</td>
+                  <td data-label="Verdict">
                     {ready ? (
                       <span className={verdictClass(r.verdict)}>{r.verdict?.label ?? "Pas encore de verdict"}</span>
                     ) : (
                       <span className="badge neutral">Chaîne à valider</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Pour toi">
                     {r.personal ? (
                       <span className={`badge ${r.personal.verdict}`} title={r.personal.reason}>
                         {r.personal.label}
@@ -108,12 +116,25 @@ export function Markets(props: { onOpen: (id: string) => void; onChain: (id: str
                       <span className="muted">—</span>
                     )}
                   </td>
-                  <td>{r.verdict ? <Pressure value={r.verdict.pressure} label={r.verdict.pressure_label} /> : "—"}</td>
+                  <td data-label="Pression">{r.verdict ? <Pressure value={r.verdict.pressure} label={r.verdict.pressure_label} /> : "—"}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+      )}
+      {rows.length > 0 && (
+        <ul className="legend-line verdict-legend" aria-label="Lire les verdicts">
+          <li>
+            <span className="badge neutral">Rien à signaler</span> aucun goulot qui pèse sur la matière
+          </li>
+          <li>
+            <span className="badge pot">Problème potentiel à X semaines</span> surveiller : tu as le temps de te couvrir
+          </li>
+          <li>
+            <span className="badge ant">Anticiper stock</span> agir maintenant : sécuriser du stock
+          </li>
+        </ul>
       )}
       <button className="primary" onClick={props.onAdd}>
         Ajouter une matière

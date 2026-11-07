@@ -278,7 +278,8 @@ def build_router(ctx: AppContext) -> APIRouter:
         return {"mode": mode.mode, "spent_usd": mode.spent, "cap_usd": mode.cap,
                 "reconstruction_spent_usd": round(ctx.budget.spent("reconstruction"), 4),
                 "reconstruction_cap_usd": ctx.budget.cap("reconstruction"), "serious_event": serious,
-                "raise_headroom_usd": raise_headroom(ctx.budget) if serious else 0.0}
+                "raise_headroom_usd": raise_headroom(ctx.budget) if serious else 0.0,
+                "freshness": freshness(ctx.db, now())}  # for the top bar, next to the month's AI spend
 
     @router.post("/budget/raise")
     def budget_raise(body: RaiseBody) -> dict[str, float]:

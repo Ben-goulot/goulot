@@ -365,3 +365,70 @@ a.button:hover { border-color: var(--accent); }
   .report thead { display: table-header-group; }
   .report tfoot { display: table-footer-group; }
 }
+
+/* Design and ergonomics pass (7 November 2026). */
+.topbar { position: sticky; top: 0; z-index: 20; flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+.topbar { gap: 8px 16px; }
+nav { flex: 1 0 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+nav .tab { white-space: nowrap; }
+.tab[aria-current="page"] { color: var(--text); }
+.top-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.top-status { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--text-2); font-size: 0.8rem; white-space: nowrap; }
+.chip.warn { border-color: var(--amber); color: var(--amber); }
+.content > .panel + .panel { margin-top: 16px; }
+.lead { max-width: 70ch; color: var(--text-2); margin: 0 0 12px; }
+.grow { flex: 1 1 260px; min-width: 0; }
+.search-row { max-width: 640px; }
+.how strong { color: var(--text); font-weight: 500; }
+.how { font-size: 0.95rem; gap: 10px; }
+.verdict-legend { margin: 0 0 16px; }
+.verdict-legend .badge { margin-right: 4px; }
+.watchlist tr.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Sheet: the verdict first, big, as in the mockup's « Analyse IA » cards. */
+.verdict-card { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--neutral-border); border-radius: 10px; background: var(--row); }
+.verdict-card p { margin: 0; }
+.verdict-title { font-size: 1.35rem; font-weight: 600; color: var(--neutral); }
+.verdict-when { margin-top: 4px !important; color: var(--text); }
+.verdict-card.ant { border-color: #ff8a4c; background: rgba(255, 138, 76, 0.1); }
+.verdict-card.ant .verdict-title { color: #ff8a4c; }
+.verdict-card.pot { border-color: var(--amber); background: rgba(245, 184, 65, 0.08); }
+.verdict-card.pot .verdict-title { color: var(--amber); }
+.verdict-card.unverified { border-color: var(--amber); border-style: dashed; }
+.verdict-card.unverified .verdict-title { color: var(--amber); }
+@media (max-width: 1000px) { .sheet-grid > .verdict-panel { order: -1; } }
+
+/* Long AI texts folded behind « Lire le détail » (native details: keyboard and screen readers for free). */
+.fold { margin: 8px 0 12px; }
+.fold > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--row); color: var(--accent); cursor: pointer; list-style: none; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸"; }
+.fold[open] > summary::before { content: "▾"; }
+.fold[open] > summary { margin-bottom: 8px; }
+.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Chain graph: the wheel scrolls the page; zoom with the buttons or a pinch. */
+.graph-hint { margin: 8px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); color: var(--text-2);
+  font-size: 0.75rem; }
+
+/* Narrow windows and phones: no sideways scrolling. */
+@media (max-width: 760px) {
+  .topbar { position: static; gap: 8px 12px; padding: 6px 12px; } /* too tall to stay pinned on a phone */
+  nav { order: 3; flex: 1 1 100%; margin: 0 -4px; }
+  .top-right { margin-left: auto; }
+  .top-status { order: 4; flex: 1 1 100%; }
+  .content, .content.wide { padding: 0 12px; }
+  .panel { padding: 16px; }
+  .watchlist, .watchlist tbody, .watchlist tr, .watchlist td { display: block; width: 100%; }
+  .watchlist thead { display: none; }
+  .watchlist tr { padding: 10px 4px; border-bottom: 1px solid var(--border); }
+  .watchlist td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 4px 0; border: none; white-space: normal; }
+  .watchlist td::before { content: attr(data-label); color: var(--text-2); font-size: 0.8rem; }
+  .watchlist td.cell-name { display: block; font-weight: 600; padding-bottom: 6px; }
+  .watchlist td.cell-name::before { content: none; }
+  .sheet-head { align-items: center; }
+  .graph-hint { display: none; }
+}

@@ -136,7 +136,9 @@ def test_raise_route_needs_a_serious_event(ctx: AppContext) -> None:
         h = unsafe_headers(login(client, ctx))
         r = client.post("/api/budget/raise", json={"extra_usd": 2}, headers=h)
         assert r.status_code == 409 and "grave" in r.json()["detail"]
-        assert client.get("/api/budget").json()["raise_headroom_usd"] == 0.0
+        status = client.get("/api/budget").json()
+        assert status["raise_headroom_usd"] == 0.0
+        assert status["freshness"] == {"last_ok_cycle": None, "verified": False}  # top bar: no cycle yet
 
 
 def test_circuit_breaker(ctx: AppContext) -> None:

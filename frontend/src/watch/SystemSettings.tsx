@@ -17,7 +17,7 @@ type Updates = {
 type Item = { status: "ok" | "warn" | "fail"; label: string; detail: string };
 
 const MODES: { mode: Mode; label: string; hint: string }[] = [
-  { mode: "auto", label: "Automatique", hint: "Chaque nuit à 4 h 30 et à l'ouverture de session, une version que vous avez approuvée sur GitHub" },
+  { mode: "auto", label: "Automatique", hint: "Chaque nuit à 4 h 30 et à l'ouverture de session, une version que tu as approuvée sur GitHub" },
   { mode: "ask", label: "Me demander", hint: "Une alerte annonce la version ; « goulot update --install » l'installe" },
   { mode: "off", label: "Désactivé", hint: "Aucune vérification" },
 ];
@@ -55,6 +55,7 @@ export function SystemSettings() {
   };
 
   return (
+    <>
     <section className="panel">
       <h2>Mises à jour</h2>
       {message && <p className="banner">{message}</p>}
@@ -89,7 +90,12 @@ export function SystemSettings() {
           <p className="muted">{MODES.find((m) => m.mode === updates.mode)?.hint}. Retour à la version précédente : « goulot update --rollback ».</p>
         </>
       )}
-      <h2>Bilan sécurité</h2>
+    </section>
+    <section className="panel">
+      <div className="row spread">
+        <h2>Bilan sécurité</h2>
+        <button onClick={() => void load()}>Actualiser</button>
+      </div>
       {report === null ? (
         <p className="muted">Chargement…</p>
       ) : (
@@ -101,7 +107,7 @@ export function SystemSettings() {
           ))}
         </ul>
       )}
-      <button onClick={() => void load()}>Actualiser</button>
     </section>
+    </>
   );
 }

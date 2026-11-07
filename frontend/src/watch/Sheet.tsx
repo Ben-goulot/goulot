@@ -10,7 +10,7 @@ import { Pressure } from "./Markets";
 import { changePct, defaultRange, RANGES, slicePoints, usableRanges, weeksRange, type EventMark, type RangeKey } from "./chartView";
 import { PriceChart } from "./PriceChart";
 import { Situation } from "./Situation";
-import { RANK_LABEL, signed, verdictClass, type Sheet as SheetData } from "./types";
+import { RANK_LABEL, signed, type Sheet as SheetData } from "./types";
 
 const SOURCES = [
   ["fred", "FRED"],
@@ -97,17 +97,6 @@ export function Sheet(props: {
           {data.freshness.last_ok_cycle ? `Vérifié le ${new Date(data.freshness.last_ok_cycle).toLocaleString("fr-FR")}` : "Jamais vérifié"}
         </span>
         {v?.break_in ? <span className="badge neutral">rodage</span> : null}
-        {data.material.status === "validated" && (
-          <button
-            className="tab"
-            onClick={async () => {
-              setMessage(await setWatched(props.materialId, false));
-              await load();
-            }}
-          >
-            Arrêter le suivi
-          </button>
-        )}
       </header>
       {message && <p className="banner">{message}</p>}
 
@@ -145,18 +134,18 @@ export function Sheet(props: {
           )}
         </section>
 
-        <section className="panel">
-          <p className="eyebrow">Analyse</p>
+        <section className="panel verdict-panel">
+          <p className="eyebrow">Verdict</p>
           {v ? (
             <>
-              <p>
-                <span className={verdictClass(v)}>{v.label}</span>{" "}
-                {v.x_low !== null && v.x_high !== null && v.verdict !== "ras" && !(v.verdict === "pot" && v.x_low.toFixed(0) === v.x_high.toFixed(0)) && (
-                  <span className="muted">· {weeksRange(v.x_low, v.x_high)}</span>
+              <div className={`verdict-card ${v.verdict}`}>
+                <p className="verdict-title">{v.label}</p>
+                {v.x_low !== null && v.x_high !== null && v.verdict !== "ras" && v.verdict !== "unverified" && (
+                  <p className="verdict-when">Impact attendu {weeksRange(v.x_low, v.x_high)}</p>
                 )}
-              </p>
+              </div>
               <p>
-                <Pressure value={v.pressure} label={v.pressure_label} />
+                Pression de prix : <Pressure value={v.pressure} label={v.pressure_label} />
               </p>
               <p>{clip(v.explanation)}</p>
               {v.rules_only ? <p className="warn">Estimation sans IA (plafond de veille atteint).</p> : null}
@@ -271,8 +260,24 @@ export function Sheet(props: {
         </div>
       </section>
       <section className="panel">
-        <h3>Supprimer cette matière</h3>
-        <DeleteMaterial materialId={props.materialId} name={data.material.name} onDone={props.onBack} />
+        <h3>Arrêter ou supprimer</h3>
+        <p className="muted">
+          Arrêter le suivi : plus de requête ni d'appel IA pour cette matière ; elle passe dans « Archivées » sur Marchés, d'où tu peux la
+          reprendre. Supprimer efface sa chaîne, ses règles et ses liens de prix ; les conseils passés restent au registre.
+        </p>
+        <div className="row">
+          {data.material.status === "validated" && (
+            <button
+              onClick={async () => {
+                setMessage(await setWatched(props.materialId, false));
+                await load();
+              }}
+            >
+              Arrêter le suivi
+            </button>
+          )}
+          <DeleteMaterial materialId={props.materialId} name={data.material.name} onDone={props.onBack} />
+        </div>
       </section>
     </div>
   );

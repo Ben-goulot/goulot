@@ -69,6 +69,8 @@ export function Analyst(props: { reading: AnalystReading | null; events: SheetEv
       {r.verdict_changed_since && <p className="muted small">Le verdict a changé depuis cette lecture ; la suivante en tiendra compte.</p>}
       <p>{clip(n.situation, 700)}</p>
 
+      <details className="fold">
+        <summary>Lire le détail : ce qui a changé, ce qui contredit l'alerte, à surveiller, confiance</summary>
       <div className="situation-grid">
         <div>
           <p className="eyebrow">Ce qui a changé</p>
@@ -139,6 +141,7 @@ export function Analyst(props: { reading: AnalystReading | null; events: SheetEv
           )}
         </div>
       </div>
+      </details>
       <p className="muted small">Texte rédigé par l'IA à partir des seules données publiques de la veille, vérifié par le code. Le verdict reste calculé par le code.</p>
     </section>
   );

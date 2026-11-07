@@ -223,8 +223,15 @@ def describe(verdict: str, pressure: int, event_count: int, x_low: float | None,
     else:
         base = f"{event_count} événement{'s' if event_count > 1 else ''} retenu{'s' if event_count > 1 else ''}."
         if x_low is not None and x_high is not None:
-            same = round(x_low) == round(x_high)
-            base += f" Impact attendu dans {f'environ {_weeks(x_low)}' if same else f'{x_low:.0f} à {_weeks(x_high)}'}."
+            low, high = max(0, round(x_low)), max(0, round(x_high))
+            if high == 0:
+                base += " Impact attendu dès cette semaine."
+            elif low == high:
+                base += f" Impact attendu dans environ {_weeks(low)}."
+            elif low == 0:
+                base += f" Impact attendu d'ici {_weeks(high)}."
+            else:
+                base += f" Impact attendu dans {low} à {_weeks(high)}."
         if window_weeks is not None and x_weeks is not None:
             lead = _weeks(x_weeks - window_weeks) + (" supposées" if window_assumed else "")
             if round(window_weeks) < 0:

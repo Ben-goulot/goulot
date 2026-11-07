@@ -72,8 +72,15 @@ export function AddMaterial(props: { onOpenChain: (id: string) => void; resume?:
     <section className="panel">
       <h2>Ajouter une matière</h2>
       {!material && (
-        <div className="row">
+        <p className="lead">
+          Tape le nom de la matière ou son numéro CAS, par exemple <span className="mono">7440-55-3</span> pour le gallium. Le numéro CAS
+          évite les confusions entre substances proches.
+        </p>
+      )}
+      {!material && (
+        <div className="row search-row">
           <input
+            className="grow"
             value={query}
             maxLength={100}
             placeholder="Nom ou numéro CAS"
@@ -87,6 +94,26 @@ export function AddMaterial(props: { onOpenChain: (id: string) => void; resume?:
         </div>
       )}
       {error && <p className="warn">{error}</p>}
+
+      {!shown && !quote && !job && (
+        <div className="card">
+          <p className="eyebrow">Comment ça se passe</p>
+          <ol className="how">
+            <li>
+              <strong>Identification</strong> <span className="muted">· gratuite : PubChem, Wikidata et l'ECICS confirment la substance.</span>
+            </li>
+            <li>
+              <strong>Devis</strong> <span className="muted">· Goulot annonce le coût estimé et le maximum, en général moins de 3 $. Rien n'est lancé sans ta confirmation.</span>
+            </li>
+            <li>
+              <strong>Reconstruction</strong> <span className="muted">· quelques minutes : recherche sourcée, maillons, pays, sites et délais.</span>
+            </li>
+            <li>
+              <strong>Relecture</strong> <span className="muted">· tu corriges les maillons douteux et valides la chaîne ; la veille démarre ensuite.</span>
+            </li>
+          </ol>
+        </div>
+      )}
 
       {shown && (
         <div className="card">
