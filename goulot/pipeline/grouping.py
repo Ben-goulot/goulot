@@ -264,11 +264,12 @@ def _fire_joins_press(conn: sqlite3.Connection, item: sqlite3.Row, by_material: 
         if not near:
             continue
         marks = ",".join("?" * len(near))
-        for e in conn.execute(
-                f"SELECT DISTINCT e.id, e.event_type FROM events e JOIN event_links l ON l.event_id = e.id "  # noqa: S608
-                f"WHERE e.material_id = ? AND e.origin = 'news' AND l.node_key IN ({marks}) AND e.last_seen_at >= ? "
-                f"AND e.first_seen_at <= ?",
-                (material_id, *near, (seen - FIRE_WAIT).isoformat(), (seen + FIRE_WAIT).isoformat())):
+        # `marks` holds placeholders only ("?, ?"): every value goes through the parameters.
+        sql = (f"SELECT DISTINCT e.id, e.event_type FROM events e JOIN event_links l "  # noqa: S608  # nosec B608
+               f"ON l.event_id = e.id WHERE e.material_id = ? AND e.origin = 'news' AND l.node_key IN ({marks}) "
+               f"AND e.last_seen_at >= ? AND e.first_seen_at <= ?")
+        for e in conn.execute(sql, (material_id, *near, (seen - FIRE_WAIT).isoformat(),
+                                    (seen + FIRE_WAIT).isoformat())):
             if e["event_type"] not in TYPE_FAMILIES[0]:  # a fire tells nothing about a strike or a sanction
                 continue
             conn.execute("INSERT OR IGNORE INTO event_articles (event_id, article_id, lineage_key, reliability) "
@@ -284,11 +285,13 @@ def _kaub_counts(conn: sqlite3.Connection, material_id: str, nodes: list[str], l
     if level is not None and level < KAUB_CRITICAL_CM:
         return True
     marks = ",".join("?" * len(nodes)) or "''"
+    types = ",".join("?" * len(SITE_NODE_TYPES))  # placeholders only, like `marks`
     neighbours = conn.execute(
-        f"SELECT n.lat FROM chain_edges ed JOIN chain_nodes n ON n.material_id = ed.material_id AND n.valid_to IS NULL "  # noqa: S608
+        f"SELECT n.lat FROM chain_edges ed JOIN chain_nodes n ON n.material_id = ed.material_id "  # noqa: S608  # nosec B608
+        f"AND n.valid_to IS NULL "
         f"AND n.node_key = CASE WHEN ed.from_key IN ({marks}) THEN ed.to_key ELSE ed.from_key END "
         f"WHERE ed.material_id = ? AND ed.valid_to IS NULL AND (ed.from_key IN ({marks}) OR ed.to_key IN ({marks})) "
-        f"AND n.node_type IN ({','.join('?' * len(SITE_NODE_TYPES))}) AND n.lat IS NOT NULL",
+        f"AND n.node_type IN ({types}) AND n.lat IS NOT NULL",
         (*nodes, material_id, *nodes, *nodes, *SITE_NODE_TYPES)).fetchall()
     return any(r["lat"] < KAUB_LAT for r in neighbours)
 
