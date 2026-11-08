@@ -6,7 +6,7 @@ import { ChainMap, type MapData, type MineSite } from "../map/ChainMap";
 import { MyChainSide, overlay, useMyChain } from "../private/MyChainSide";
 import { Locked, usePrivacy } from "../private/privacy";
 import { ChainEdge, HoverLabels } from "./ChainEdge";
-import { emphasize, hoverStep, type Hover } from "./hover";
+import { emphasize, hoverStep, loadHoverEffect, saveHoverEffect, type Hover } from "./hover";
 import { HEADER_Y, layout } from "./layout";
 import { approximate, BASIS, clip, CONFIDENCE, COORD_SOURCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
 
@@ -122,6 +122,8 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
   const [view, setView] = useState<"graph" | "map">("graph");
   const [map, setMap] = useState<MapData | null>(null);
   const [hover, setHover] = useState<Hover>(null);
+  const [hoverOn, setHoverOn] = useState<boolean>(loadHoverEffect);
+  const pointAt = (h: Hover) => setHover(hoverOn ? h : null);
   const [zoomStep, setZoomStep] = useState<1 | 2 | 3 | 4>(1);
   const { vaultOpen, presenting } = usePrivacy();
   const my = useMyChain(props.materialId);
@@ -266,6 +268,25 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             Carte
           </button>
         </div>
+        {view === "graph" && (
+          <div className="segmented" role="group" aria-label="Effet au survol" title="Agrandit le maillon ou le lien sous la souris et estompe le reste">
+            <span className="segmented-label">Effet au survol</span>
+            {[true, false].map((on) => (
+              <button
+                key={String(on)}
+                className={hoverOn === on ? "tab active" : "tab"}
+                aria-pressed={hoverOn === on}
+                onClick={() => {
+                  setHoverOn(on);
+                  saveHoverEffect(on);
+                  setHover(null);
+                }}
+              >
+                {on ? "Activé" : "Désactivé"}
+              </button>
+            ))}
+          </div>
+        )}
         {mode === "mine" && vaultOpen && view === "graph" && (
           <span className="legend">
             <span className="swatch mine" /> Ma chaîne (épaisseur = part) <span className="swatch private" /> Site privé{" "}
@@ -303,9 +324,9 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             nodes={shown.nodes}
             edges={shown.edges}
             edgeTypes={EDGE_TYPES}
-            onNodeMouseEnter={(_, n) => setHover(n.id.startsWith("col:") ? null : { kind: "node", id: n.id })}
+            onNodeMouseEnter={(_, n) => pointAt(n.id.startsWith("col:") ? null : { kind: "node", id: n.id })}
             onNodeMouseLeave={() => setHover(null)}
-            onEdgeMouseEnter={(_, e) => setHover({ kind: "edge", id: e.id })}
+            onEdgeMouseEnter={(_, e) => pointAt({ kind: "edge", id: e.id })}
             onEdgeMouseLeave={() => setHover(null)}
             onPaneClick={() => setHover(null)}
             onInit={(rf) => setZoomStep(hoverStep(rf.getZoom()))}

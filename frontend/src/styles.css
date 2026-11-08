@@ -432,3 +432,5 @@ nav .tab { white-space: nowrap; }
   .sheet-head { align-items: center; }
   .graph-hint { display: none; }
 }
+.segmented { align-items: center; }
+.segmented-label { padding: 0 8px 0 10px; color: var(--text-2); font-size: 0.85rem; }

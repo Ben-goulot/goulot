@@ -1,6 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
-import { describe, expect, it } from "vitest";
-import { emphasize, focus, hoverStep, spreadLabels } from "./hover";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { emphasize, focus, hoverStep, loadHoverEffect, saveHoverEffect, spreadLabels } from "./hover";
 
 const n = (id: string, className = "chain-node"): Node => ({ id, position: { x: 0, y: 0 }, data: {}, className });
 const e = (id: string, source: string, target: string): Edge => ({ id, source, target, className: "chain-edge" });
@@ -61,5 +61,21 @@ describe("chain hover", () => {
     expect(near[1] - near[0]).toBeGreaterThanOrEqual(18);
     expect(near[2] - near[1]).toBeGreaterThanOrEqual(18);
     expect(out.map((l) => l.x).sort()).toEqual([100, 900, 905, 910]); // only moved down, never sideways
+  });
+});
+
+describe("hover effect switch", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("is on by default, remembers « off », and survives blocked storage", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("window", { localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) } });
+    expect(loadHoverEffect()).toBe(true);
+    saveHoverEffect(false);
+    expect(loadHoverEffect()).toBe(false);
+    saveHoverEffect(true);
+    expect(loadHoverEffect()).toBe(true);
+    vi.stubGlobal("window", { localStorage: { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } } });
+    expect(() => saveHoverEffect(false)).not.toThrow();
+    expect(loadHoverEffect()).toBe(true);
   });
 });

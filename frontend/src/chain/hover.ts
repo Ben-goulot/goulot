@@ -85,3 +85,23 @@ export function spreadLabels(labels: Label[], fontSize: number): Label[] {
   }
   return placed;
 }
+
+const HOVER_KEY = "goulot.chain.hover";
+
+/** The hover effect (enlarged node, dimmed neighbours) can be switched off; a per-viewer convenience kept in the
+ * browser. Storage may be missing or refuse: the effect is then on, and a choice lasts for this page only. */
+export function loadHoverEffect(): boolean {
+  try {
+    return window.localStorage.getItem(HOVER_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function saveHoverEffect(on: boolean): void {
+  try {
+    window.localStorage.setItem(HOVER_KEY, on ? "on" : "off");
+  } catch {
+    // private window or blocked storage
+  }
+}
