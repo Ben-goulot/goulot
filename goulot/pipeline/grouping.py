@@ -5,8 +5,13 @@
   shared company, site or port, or else the same country and similar titles; otherwise they open a new one. The
   purchased material itself is matched by nearly every article: it never links two articles alone.
 - Hazard and logistics items come from official measurements (GDACS, USGS, NOAA, PortWatch, PEGELONLINE): the
-  code turns them into events without AI. A satellite fire detection near a site stays an early signal. A reading
-  of the same source at the same place within 7 days prolongs the ongoing event instead of opening a new one.
+  code turns them into events without AI. A reading of the same source at the same place within 7 days prolongs the
+  ongoing event instead of opening a new one.
+- Decision of 8 November 2026, only what is really linked: a satellite fire detection never opens an event alone
+  (crop burning and flares around a site); within 5 km of the site and not a recurring heat source, it joins an
+  event the press reports there within 3 days. A GDACS drought opens none (its effects reach a purchase through
+  river levels and the press). The Kaub gauge counts fully for Rhine sites upstream of Kaub, the barges' bottleneck;
+  for a site downstream (Cologne, Rotterdam) only at the critical level.
 - After each change, the event's corroboration is recomputed from its articles' lineages.
 """
 
@@ -35,6 +40,12 @@ TYPE_FAMILIES = (
     {"labor_action", "civil_unrest", "armed_conflict"},
 )
 NAMED_KINDS = {"company", "site", "port", "chokepoint"}
+FIRE_SITE_KM = 5.0  # a satellite hot spot farther from the site is a field or another plant
+FIRE_WAIT = timedelta(days=3)  # how long a hot spot waits for the press to report a fire at the site
+FLARE_LOOKBACK, FLARE_DAYS, FLARE_KM = timedelta(days=30), 3, 1.0  # seen on 3 days of 30 within 1 km: a flare
+KAUB_LAT = 50.08  # Kaub gauge; the Rhine flows north: a site south of it is upstream
+KAUB_CRITICAL_CM = 78  # below, barges are severely limited on the whole Rhine
+SITE_NODE_TYPES = ("mine", "plant", "recycler", "company", "port", "distributor")
 HAZARD_TYPES = {"IND": "industrial_outage", "LS": "natural_disaster", "TS": "natural_disaster",
                 "FL": "natural_disaster", "EQ": "natural_disaster", "VO": "natural_disaster",
                 "DR": "extreme_weather", "TC": "extreme_weather", "WF": "industrial_outage"}
@@ -221,10 +232,75 @@ def _station(title: str) -> str:
     return re.sub(r"[\d.,]+", "", title).strip().lower()
 
 
-def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
+def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from goulot.chain.leadtimes import great_circle_km
+
+    return great_circle_km(lat1, lon1, lat2, lon2)
+
+
+def _recurring_heat(conn: sqlite3.Connection, item: sqlite3.Row) -> bool:
+    """A hot spot seen at the same place on several days of the last month: a flare or a furnace, not a fire."""
+    seen = datetime.fromisoformat(item["first_seen_at"])
+    days = set()
+    for r in conn.execute("SELECT lat, lon, first_seen_at FROM articles WHERE source = 'nasa_firms' AND id != ? "
+                          "AND first_seen_at >= ? AND first_seen_at <= ? AND lat BETWEEN ? AND ? "
+                          "AND lon BETWEEN ? AND ?",
+                          (item["id"], (seen - FLARE_LOOKBACK).isoformat(), item["first_seen_at"],
+                           item["lat"] - 0.02, item["lat"] + 0.02, item["lon"] - 0.03, item["lon"] + 0.03)):
+        if _distance_km(item["lat"], item["lon"], r["lat"], r["lon"]) <= FLARE_KM:
+            days.add(r["first_seen_at"][:10])
+    days.add(item["first_seen_at"][:10])
+    return len(days) >= FLARE_DAYS
+
+
+def _fire_joins_press(conn: sqlite3.Connection, item: sqlite3.Row, by_material: dict[str, list[str]],
+                      sites: dict[tuple[str, str], tuple[float, float]]) -> bool:
+    """Attach a satellite hot spot to the press events of the site it lies on. Returns True when it joined one."""
+    seen = datetime.fromisoformat(item["first_seen_at"])
+    joined = False
+    for material_id, nodes in by_material.items():
+        near = [k for k in nodes if (material_id, k) in sites
+                and _distance_km(item["lat"], item["lon"], *sites[(material_id, k)]) <= FIRE_SITE_KM]
+        if not near:
+            continue
+        marks = ",".join("?" * len(near))
+        for e in conn.execute(
+                f"SELECT DISTINCT e.id, e.event_type FROM events e JOIN event_links l ON l.event_id = e.id "  # noqa: S608
+                f"WHERE e.material_id = ? AND e.origin = 'news' AND l.node_key IN ({marks}) AND e.last_seen_at >= ? "
+                f"AND e.first_seen_at <= ?",
+                (material_id, *near, (seen - FIRE_WAIT).isoformat(), (seen + FIRE_WAIT).isoformat())):
+            if e["event_type"] not in TYPE_FAMILIES[0]:  # a fire tells nothing about a strike or a sanction
+                continue
+            conn.execute("INSERT OR IGNORE INTO event_articles (event_id, article_id, lineage_key, reliability) "
+                         "VALUES (?, ?, '', 0)", (e["id"], item["id"]))
+            refresh_corroboration(conn, e["id"])
+            joined = True
+    return joined
+
+
+def _kaub_counts(conn: sqlite3.Connection, material_id: str, nodes: list[str], level: float | None) -> bool:
+    """The Kaub gauge for a material: always when a site next to its Rhine node lies upstream of Kaub; for sites
+    downstream only, at the critical level."""
+    if level is not None and level < KAUB_CRITICAL_CM:
+        return True
+    marks = ",".join("?" * len(nodes)) or "''"
+    neighbours = conn.execute(
+        f"SELECT n.lat FROM chain_edges ed JOIN chain_nodes n ON n.material_id = ed.material_id AND n.valid_to IS NULL "  # noqa: S608
+        f"AND n.node_key = CASE WHEN ed.from_key IN ({marks}) THEN ed.to_key ELSE ed.from_key END "
+        f"WHERE ed.material_id = ? AND ed.valid_to IS NULL AND (ed.from_key IN ({marks}) OR ed.to_key IN ({marks})) "
+        f"AND n.node_type IN ({','.join('?' * len(SITE_NODE_TYPES))}) AND n.lat IS NOT NULL",
+        (*nodes, material_id, *nodes, *nodes, *SITE_NODE_TYPES)).fetchall()
+    return any(r["lat"] < KAUB_LAT for r in neighbours)
+
+
+def events_from_measurements(conn: sqlite3.Connection, now: datetime | None = None) -> list[str]:
     """Hazard and logistics items become events directly, linked to the nodes whose rules they triggered."""
     created: list[str] = []
+    now = now or datetime.fromisoformat(utcnow())
     rules = {r["id"]: r for r in conn.execute("SELECT id, material_id, node_key FROM watch_rules")}
+    sites = {(r["material_id"], r["node_key"]): (r["lat"], r["lon"]) for r in conn.execute(
+        "SELECT material_id, node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone' "
+        "AND lat IS NOT NULL AND lon IS NOT NULL")}
     for item in conn.execute("SELECT * FROM articles WHERE status = 'new' AND kind IN ('hazard', 'logistics') "
                              "ORDER BY id").fetchall():
         details = json.loads(item["details"])
@@ -237,6 +313,19 @@ def events_from_measurements(conn: sqlite3.Connection) -> list[str]:
                     by_material[r["material_id"]].append(r["node_key"])
         for material_id in json.loads(item["materials"]):
             by_material.setdefault(material_id, [])  # found near a site of Ma chaîne only: no public link
+        if item["source"] == "nasa_firms":
+            if item["lat"] is None or _recurring_heat(conn, item):
+                conn.execute("UPDATE articles SET status = 'irrelevant' WHERE id = ?", (item["id"],))
+            elif _fire_joins_press(conn, item, by_material, sites):
+                conn.execute("UPDATE articles SET status = 'grouped' WHERE id = ?", (item["id"],))
+            elif now - datetime.fromisoformat(item["first_seen_at"]) > FIRE_WAIT:
+                conn.execute("UPDATE articles SET status = 'irrelevant' WHERE id = ?", (item["id"],))
+            continue  # otherwise it waits, still « new », for the press of the next cycles
+        if item["source"] == "gdacs" and str(details.get("event_type", "")) == "DR":
+            conn.execute("UPDATE articles SET status = 'irrelevant' WHERE id = ?", (item["id"],))
+            continue
+        if item["source"] == "pegelonline" and details.get("station") == "KAUB":
+            by_material = {m: n for m, n in by_material.items() if _kaub_counts(conn, m, n, item["magnitude"])}
         for material_id, nodes in by_material.items():
             severity = _measurement_severity(item["source"], item, details)
             ongoing = _same_measurement(conn, material_id, item)

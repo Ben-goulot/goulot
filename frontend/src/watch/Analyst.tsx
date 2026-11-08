@@ -20,29 +20,30 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
-/** Event chips: the event's letter when it is on the sheet, else its title (a set-aside event). */
-function Refs(props: { ids: string[]; events: SheetEvent[]; titles: Record<string, string>; onSelect: (id: string) => void }) {
-  if (props.ids.length === 0) return null;
+const MAX_REFS = 3; // chips per line; the rest is counted
+const CAPS = { changes: 2, counter: 2, watch: 3, aside: 3, weak: 2 }; // older, longer readings are cut on screen
+
+/** Event chips: the event's letter when it is on the sheet. An event no longer shown (set aside, noise of a
+ * measurement) gets no chip: only a count, never its title. */
+function Refs(props: { ids: string[]; events: SheetEvent[]; onSelect: (id: string) => void }) {
+  const shown = props.ids.map((id) => props.events.find((x) => x.id === id)).filter((e): e is SheetEvent => e !== undefined);
+  const chips = shown.slice(0, MAX_REFS);
+  const more = props.ids.length - chips.length;
+  if (chips.length === 0 && more === 0) return null;
   return (
     <span className="analyst-refs">
-      {props.ids.map((id) => {
-        const e = props.events.find((x) => x.id === id);
-        return e ? (
-          <button key={id} className={`letter ${e.status}`} title={clip(e.title, 140)} onClick={() => props.onSelect(id)}>
-            {e.letter}
-          </button>
-        ) : (
-          <span key={id} className="muted small">
-            « {clip(props.titles[id] ?? "événement écarté", 80)} »
-          </span>
-        );
-      })}
+      {chips.map((e) => (
+        <button key={e.id} className={`letter ${e.status}`} title={clip(e.title, 140)} aria-label={`Événement ${e.letter} : ${clip(e.title, 140)}`} onClick={() => props.onSelect(e.id)}>
+          {e.letter}
+        </button>
+      ))}
+      {more > 0 && <span className="muted small">+{more}</span>}
     </span>
   );
 }
 
-/** The analyst's reading of the material: what is going on, what changed, what counts, what to watch, how far to
- * trust it. Model texts, checked by the code, rendered as text and clipped. The verdict stays the code's. */
+/** The analyst's reading of the material: the headline, the situation and what really counts first; the rest
+ * folded. Model texts, checked by the code, rendered as text and clipped. The verdict stays the code's. */
 export function Analyst(props: { reading: AnalystReading | null; events: SheetEvent[]; onSelect: (id: string) => void }) {
   const r = props.reading;
   if (r === null) {
@@ -54,93 +55,94 @@ export function Analyst(props: { reading: AnalystReading | null; events: SheetEv
     );
   }
   const n = r.note;
-  const refs = (ids: string[]) => <Refs ids={ids} events={props.events} titles={r.titles} onSelect={props.onSelect} />;
+  const refs = (ids: string[]) => <Refs ids={ids} events={props.events} onSelect={props.onSelect} />;
+  const aside = n.set_aside.slice(0, CAPS.aside).filter((s) => s.why.trim());
   return (
     <section className="panel analyst">
       <p className="eyebrow">Lecture de l'analyste</p>
       <h3>{clip(n.headline, 160)}</h3>
       <p className="muted small">
-        {day(r.created_at)} · {TRIGGER[r.trigger] ?? r.trigger}
+        {day(r.created_at)} · {TRIGGER[r.trigger] ?? r.trigger} · confiance {LEVEL[n.confidence.level] ?? n.confidence.level}
         {r.pending ? " · nouvelle lecture en cours" : ""}
       </p>
       {n.verdict_doubt.doubts && (
         <p className="warn">L'analyste doute du verdict, qui reste calculé par le code : {clip(n.verdict_doubt.reason, 400)}</p>
       )}
       {r.verdict_changed_since && <p className="muted small">Le verdict a changé depuis cette lecture ; la suivante en tiendra compte.</p>}
-      <p>{clip(n.situation, 700)}</p>
-
-      <details className="fold">
-        <summary>Lire le détail : ce qui a changé, ce qui contredit l'alerte, à surveiller, confiance</summary>
-      <div className="situation-grid">
-        <div>
-          <p className="eyebrow">Ce qui a changé</p>
-          <ul className="plain">
-            {n.changes.map((c, i) => (
-              <li key={i}>
-                {clip(c.text, 300)} {refs(c.event_ids)}
-              </li>
-            ))}
-          </ul>
+      <p className="analyst-situation">{clip(n.situation, 500)}</p>
+      {n.main_signal.novelty !== "none" && (
+        <div className="analyst-main">
           <p className="eyebrow">Ce qui compte vraiment</p>
           <p>
-            {clip(n.main_signal.text, 500)} {refs(n.main_signal.event_ids)}
+            {clip(n.main_signal.text, 400)} {refs(n.main_signal.event_ids)}
           </p>
-          {n.main_signal.novelty !== "none" && (
-            <p className="muted small">
-              {NOVELTY[n.main_signal.novelty]}
-              {n.main_signal.origin && n.main_signal.origin !== "unknown" ? ` · source d'origine : ${clip(n.main_signal.origin, 80)}` : ""}
-            </p>
-          )}
-          {n.set_aside.length > 0 && (
-            <>
-              <p className="eyebrow">Écarté ou relativisé</p>
-              <ul className="plain">
-                {n.set_aside.map((s, i) => (
-                  <li key={i}>
-                    {refs(s.event_id ? [s.event_id] : [])} {clip(s.why, 240)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <p className="muted small">
+            {NOVELTY[n.main_signal.novelty]}
+            {n.main_signal.origin && n.main_signal.origin !== "unknown" ? ` · source d'origine : ${clip(n.main_signal.origin, 80)}` : ""}
+          </p>
         </div>
-        <div>
-          {n.counter_evidence.length > 0 && (
-            <>
-              <p className="eyebrow">Ce qui contredit l'alerte</p>
-              <ul className="plain">
-                {n.counter_evidence.map((c, i) => (
-                  <li key={i}>
-                    {clip(c.text, 300)} {refs(c.event_ids)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {n.watch.length > 0 && (
-            <>
-              <p className="eyebrow">À surveiller</p>
-              <ul className="plain">
-                {n.watch.map((w, i) => (
-                  <li key={i}>
-                    <strong>{clip(w.what, 140)}</strong>
-                    {w.date !== "unknown" && <span className="mono"> · {w.date}</span>} — {clip(w.why, 240)} {refs(w.event_ids)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          <p className="eyebrow">Confiance : {LEVEL[n.confidence.level] ?? n.confidence.level}</p>
-          <p>{clip(n.confidence.basis, 400)}</p>
-          {n.confidence.weak_points.length > 0 && (
-            <ul className="plain muted small">
-              {n.confidence.weak_points.map((p, i) => (
-                <li key={i}>{clip(p, 200)}</li>
+      )}
+
+      <details className="fold">
+        <summary>Lire le détail</summary>
+        <div className="situation-grid">
+          <div>
+            <p className="eyebrow">Ce qui a changé</p>
+            <ul className="plain">
+              {n.changes.slice(0, CAPS.changes).map((c, i) => (
+                <li key={i}>
+                  {clip(c.text, 240)} {refs(c.event_ids)}
+                </li>
               ))}
             </ul>
-          )}
+            {n.counter_evidence.length > 0 && (
+              <>
+                <p className="eyebrow">Ce qui contredit l'alerte</p>
+                <ul className="plain">
+                  {n.counter_evidence.slice(0, CAPS.counter).map((c, i) => (
+                    <li key={i}>
+                      {clip(c.text, 240)} {refs(c.event_ids)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {aside.length > 0 && (
+              <>
+                <p className="eyebrow">Écarté</p>
+                <ul className="plain muted">
+                  {aside.map((s, i) => (
+                    <li key={i}>{clip(s.why, 200)}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+          <div>
+            {n.watch.length > 0 && (
+              <>
+                <p className="eyebrow">À surveiller</p>
+                <ul className="plain">
+                  {n.watch.slice(0, CAPS.watch).map((w, i) => (
+                    <li key={i}>
+                      <strong>{clip(w.what, 120)}</strong>
+                      {w.date !== "unknown" && <span className="mono"> · {w.date}</span>} — {clip(w.why, 200)} {refs(w.event_ids)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <p className="eyebrow">Sur quoi repose la confiance</p>
+            <p>{clip(n.confidence.basis, 300)}</p>
+            {n.confidence.weak_points.length > 0 && (
+              <ul className="plain muted small">
+                {n.confidence.weak_points.slice(0, CAPS.weak).map((p, i) => (
+                  <li key={i}>{clip(p, 160)}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-      </div>
       </details>
       <p className="muted small">Texte rédigé par l'IA à partir des seules données publiques de la veille, vérifié par le code. Le verdict reste calculé par le code.</p>
     </section>

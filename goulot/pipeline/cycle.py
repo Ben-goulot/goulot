@@ -132,7 +132,7 @@ def process(ctx: AppContext, now: datetime) -> None:
     mode = watch_mode(ctx.budget)
     allowance = allowance_for(mode.mode)
     with ctx.db.transaction() as conn:
-        grouping.events_from_measurements(conn)
+        grouping.events_from_measurements(conn, now)
     try:
         std = ctx.llm_backend()
     except MissingAPIKey:

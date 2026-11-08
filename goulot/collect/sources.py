@@ -298,12 +298,13 @@ def usgs_quakes(client: httpx2.Client, min_magnitude: float = 5.0) -> list[Item]
 
 def firms(client: httpx2.Client, key: str, boxes: Iterable[tuple[str, float, float]], days: int = 1,
           min_frp: float = 10.0) -> list[Item]:
-    """Active fires near located sites. `boxes`: (node_key, lat, lon); one request per box of ±0.5° and per
-    satellite. A fire seen by both satellites the same day, within about 1 km, is kept once."""
+    """Active fires near located sites. `boxes`: (node_key, lat, lon); one request per box of ±0.1° (about 11 km)
+    and per satellite: only the site's surroundings, the grouping keeps what lies within 5 km. A fire seen by both
+    satellites the same day, within about 1 km, is kept once."""
     items = []
     seen: set[str] = set()
     for node_key, lat, lon in boxes:
-        area = f"{lon - 0.5:.3f},{lat - 0.5:.3f},{lon + 0.5:.3f},{lat + 0.5:.3f}"
+        area = f"{lon - 0.1:.3f},{lat - 0.1:.3f},{lon + 0.1:.3f},{lat + 0.1:.3f}"
         rows: list[dict[str, str]] = []
         for product in FIRMS_PRODUCTS:
             result = fetch(client, f"{FIRMS}/{quote(key, safe='')}/{product}/{area}/{days}")

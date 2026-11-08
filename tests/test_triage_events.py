@@ -208,21 +208,102 @@ def test_measurements_become_events_without_ai(ctx: AppContext) -> None:
     validated_chain(ctx)
     collect_cycle(ctx)
     with ctx.db.transaction() as conn:
-        created = grouping.events_from_measurements(conn)
+        created = grouping.events_from_measurements(conn, NOW)
         events = {e["id"]: dict(e) for e in conn.execute("SELECT * FROM events")}
         links = {r[0]: r[1] for r in conn.execute("SELECT event_id, node_key FROM event_links")}
     by_title = {e["title"]: e for e in events.values()}
     flood = by_title["Flood alert in Netherlands"]
     assert flood["confirmation"] == "confirmed" and flood["severity_hint"] == 2 and flood["official_source"]
     assert links[flood["id"]] == "port_rotterdam"
-    fire = next(e for e in events.values() if e["title"].startswith("Incendie détecté"))
-    assert fire["confirmation"] == "early_signal"  # a satellite hot spot needs the press to be confirmed
+    assert not any(e["title"].startswith("Incendie détecté") for e in events.values())  # never an event alone
     suez = next(e for e in events.values() if "Suez" in e["title"])
     assert suez["event_type"] == "maritime_disruption" and links[suez["id"]] == "chokepoint_suez"
-    assert len(created) >= 4
+    assert len(created) >= 3
     with ctx.db.connect() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM articles WHERE kind IN ('hazard', 'logistics') "
-                            "AND status = 'new'").fetchone()[0] == 0
+        waiting = conn.execute("SELECT source FROM articles WHERE kind IN ('hazard', 'logistics') "
+                               "AND status = 'new'").fetchall()
+    assert [r[0] for r in waiting] == ["nasa_firms"]  # the hot spot waits 3 days for the press
+
+
+# --- only what is really linked (decision of 8 November 2026) ----------------------------------------------
+def _measure(conn: Any, source: str, title: str, seen: datetime, lat: float | None = None, lon: float | None = None,
+             magnitude: float | None = None, **details: Any) -> int:
+    rule = conn.execute("SELECT id FROM watch_rules WHERE active = 1 AND kind = 'zone' AND node_key = 'port_rotterdam'"
+                        ).fetchone()[0]
+    strait = conn.execute("SELECT id FROM watch_rules WHERE active = 1 AND kind = 'strait' "
+                          "AND node_key = 'waterway_rhine'").fetchone()[0]
+    rules = [strait] if source == "pegelonline" else [rule]
+    kind = "logistics" if source == "pegelonline" else "hazard"
+    cur = conn.execute(
+        "INSERT INTO articles (source, kind, url, url_hash, title, first_seen_at, collected_at, lat, lon, magnitude, "
+        "details, rules_hit, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')",
+        (source, kind, f"https://x.example/{title}{seen}", f"h-{title}-{seen.isoformat()}-{lat}", title,
+         seen.isoformat(), seen.isoformat(), lat, lon, magnitude, json.dumps(details), json.dumps(rules)))
+    return int(cur.lastrowid or 0)
+
+
+def _status(conn: Any, article_id: int) -> str:
+    return str(conn.execute("SELECT status FROM articles WHERE id = ?", (article_id,)).fetchone()[0])
+
+
+def test_satellite_fire_only_backs_a_press_report_at_the_site(ctx: AppContext) -> None:
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        far = _measure(conn, "nasa_firms", "Incendie détecté par satellite (puissance 40 MW)", NOW, 52.02, 4.14,
+                       40.0, event_type="WF", near_node="port_rotterdam")  # about 8 km away: a field
+        near = _measure(conn, "nasa_firms", "Incendie détecté par satellite (puissance 60 MW)", NOW, 51.96, 4.15,
+                        60.0, event_type="WF", near_node="port_rotterdam")
+        assert grouping.events_from_measurements(conn, NOW) == []
+        assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+        assert _status(conn, near) == "new"  # waits for the press
+        # The press reports a fire at the port the next day: the nearby hot spot backs it, the far one does not.
+        conn.execute("INSERT INTO events (id, material_id, event_type, event_status, origin, title, first_seen_at, "
+                     "last_seen_at, confirmation, updated_at) VALUES ('EVT-1', ?, 'industrial_outage', 'ongoing', "
+                     "'news', 'Incendie au port', ?, ?, 'early_signal', ?)",
+                     (material_id, (NOW + timedelta(days=1)).isoformat(), (NOW + timedelta(days=1)).isoformat(),
+                      NOW.isoformat()))
+        conn.execute("INSERT INTO event_links (event_id, material_id, node_key) VALUES ('EVT-1', ?, 'port_rotterdam')",
+                     (material_id,))
+        grouping.events_from_measurements(conn, NOW + timedelta(days=1))
+        assert _status(conn, near) == "grouped" and _status(conn, far) == "new"
+        attached = [r[0] for r in conn.execute("SELECT article_id FROM event_articles WHERE event_id = 'EVT-1'")]
+        assert attached == [near]
+        grouping.events_from_measurements(conn, NOW + timedelta(days=4))
+        assert _status(conn, far) == "irrelevant"  # no press after 3 days: dropped
+
+
+def test_recurring_heat_is_a_flare(ctx: AppContext) -> None:
+    validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        for days in (10, 5):
+            old = _measure(conn, "nasa_firms", f"Incendie détecté par satellite ({days})", NOW - timedelta(days=days),
+                           51.955, 4.145, 30.0, event_type="WF", near_node="port_rotterdam")
+            conn.execute("UPDATE articles SET status = 'irrelevant' WHERE id = ?", (old,))
+        today = _measure(conn, "nasa_firms", "Incendie détecté par satellite (puissance 30 MW)", NOW, 51.956, 4.146,
+                         30.0, event_type="WF", near_node="port_rotterdam")
+        grouping.events_from_measurements(conn, NOW)
+        assert _status(conn, today) == "irrelevant"
+
+
+def test_drought_alert_opens_no_event(ctx: AppContext) -> None:
+    validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        dry = _measure(conn, "gdacs", "Drought in Netherlands", NOW, 51.9, 4.2, None, event_type="DR",
+                       alert_level="Orange")
+        assert grouping.events_from_measurements(conn, NOW) == []
+        assert _status(conn, dry) == "irrelevant"
+
+
+def test_kaub_counts_downstream_only_at_the_critical_level(ctx: AppContext) -> None:
+    """The test chain's Rhine sits next to Rotterdam, downstream of Kaub."""
+    validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        _measure(conn, "pegelonline", "Basses eaux : KAUB à 92 cm", NOW, magnitude=92.0, station="KAUB",
+                 waterway="Rhin (Rhine, Rhein)")
+        assert grouping.events_from_measurements(conn, NOW) == []
+        _measure(conn, "pegelonline", "Basses eaux : KAUB à 70 cm", NOW + timedelta(days=8), magnitude=70.0,
+                 station="KAUB", waterway="Rhin (Rhine, Rhein)")
+        assert len(grouping.events_from_measurements(conn, NOW + timedelta(days=8))) == 1
 
 
 def test_irrelevant_articles_purged_after_30_days(ctx: AppContext) -> None:
@@ -290,3 +371,32 @@ def test_same_reading_again_prolongs_its_event(ctx: AppContext) -> None:
         assert again["last_seen_at"] > suez["last_seen_at"] and again["severity_hint"] == 3  # worse: hint raised
         reading(2, "Bab el-Mandeb : 6 passages le 20/10, contre 60 en moyenne")  # another strait: another event
         assert len(grouping.events_from_measurements(conn)) == 1
+
+
+def test_old_noise_events_are_set_aside_and_explained(ctx: AppContext) -> None:
+    """Events stored before the decision of 8 November 2026 (a hot spot alone) leave the screens and the analyst;
+    every shown event says why it concerns the material."""
+    from goulot.api.watch_routes import link_reason
+    from goulot.pipeline.visibility import set_aside, unrelated
+
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        spot = _measure(conn, "nasa_firms", "Incendie détecté par satellite (puissance 26 MW)", NOW, 51.96, 4.15, 26.0,
+                        event_type="WF", near_node="port_rotterdam")
+        conn.execute("INSERT INTO events (id, material_id, event_type, event_status, origin, title, first_seen_at, "
+                     "last_seen_at, confirmation, updated_at) VALUES ('EVT-old', ?, 'industrial_outage', 'ongoing', "
+                     "'hazard', 'Incendie détecté par satellite', ?, ?, 'early_signal', ?)",
+                     (material_id, NOW.isoformat(), NOW.isoformat(), NOW.isoformat()))
+        conn.execute("INSERT INTO event_articles VALUES ('EVT-old', ?, '', 0)", (spot,))
+        assert unrelated(conn, "EVT-old") and set_aside(conn, "EVT-old")
+    nodes = {"port_rotterdam": {"name": "Port de Rotterdam", "tier": 2, "node_type": "port", "lat": 51.95, "lon": 4.14},
+             "waterway_rhine": {"name": "Rhin", "tier": 2, "node_type": "waterway", "lat": None, "lon": None},
+             "acrylonitrile": {"name": "Acrylonitrile", "tier": 0, "node_type": "material", "lat": None, "lon": None}}
+    flood = {"origin": "hazard", "lat": 51.99, "lon": 4.14}
+    assert link_reason(flood, ["port_rotterdam"], nodes, {}) == "à 4 km de Port de Rotterdam"
+    low = {"origin": "logistics", "lat": None, "lon": None}
+    assert "niveau critique" in link_reason(low, ["waterway_rhine"], nodes,
+                                           {"station": "KAUB", "waterway": "Rhin (Rhine, Rhein)", "level_cm": 21})
+    news = {"origin": "news", "lat": None, "lon": None}
+    assert link_reason(news, ["acrylonitrile"], nodes, {}) == "l'article cite la matière"
+    assert link_reason(news, ["acrylonitrile", "port_rotterdam"], nodes, {}) == "l'article cite Port de Rotterdam"

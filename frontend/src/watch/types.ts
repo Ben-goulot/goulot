@@ -103,6 +103,9 @@ export type SheetEvent = {
   analysis_state: string;
   impact: { p10: number; p90: number; probability: number; unit: string } | null;
   headline: string;
+  why?: string; // why it concerns the material, written by the code
+  confirmation?: "confirmed" | "early_signal";
+  severity_hint?: number;
 };
 
 /** One event behind the verdict: the situation as the analysis sums it up, and the sources read. */

@@ -434,3 +434,8 @@ nav .tab { white-space: nowrap; }
 }
 .segmented { align-items: center; }
 .segmented-label { padding: 0 8px 0 10px; color: var(--text-2); font-size: 0.85rem; }
+.event-why { color: var(--text); font-size: 0.9rem; }
+.analyst-situation { font-size: 1.02rem; }
+.analyst-main { margin: 12px 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--row); border-radius: 0 8px 8px 0; }
+.analyst-main .eyebrow { margin-top: 0; }
+.analyst-main p { margin: 4px 0; }

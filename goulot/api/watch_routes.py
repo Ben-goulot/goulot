@@ -21,6 +21,7 @@ from goulot.db.connection import set_setting
 from goulot.ledger import chain, outcomes, replay, report
 from goulot.llm.budget import BudgetExceeded, raise_headroom, watch_mode
 from goulot.pipeline import analysis, analyst
+from goulot.pipeline.grouping import KAUB_CRITICAL_CM
 from goulot.pipeline.verdict import LABELS, PRESSURE_LABELS, describe
 from goulot.pipeline.visibility import serious_event, set_aside
 from goulot.prices import margin
@@ -131,6 +132,33 @@ def _hazard_details(conn: Any, event_id: str) -> dict[str, Any]:
     return json.loads(row[0]) if row else {}
 
 
+def link_reason(e: dict[str, Any], links: list[str], nodes: dict[str, dict[str, Any]], details: dict[str, Any]) -> str:
+    """Why the event concerns the material, in a few words, computed from its links (never from the model)."""
+    from goulot.chain.leadtimes import great_circle_km
+
+    linked = [nodes[k] for k in links if k in nodes]
+    upstream = [n for n in linked if n["tier"] > 0]
+    names = ", ".join(n["name"] for n in upstream[:2])
+    if e["origin"] == "logistics" and details.get("station"):
+        river, station = str(details.get("waterway", "fleuve")).split(" (")[0], str(details["station"]).title()
+        level = details.get("level_cm")
+        if isinstance(level, int | float) and level < KAUB_CRITICAL_CM:
+            return f"{river} au niveau critique à {station} : péniches très limitées sur tout le fleuve"
+        return f"niveau du {river} à {station}, passage des péniches vers les sites en amont"
+    if e["origin"] in ("hazard", "logistics"):
+        passages = [n["name"] for n in upstream if n["node_type"] in ("chokepoint", "waterway")]
+        if passages:
+            return f"passage obligé de la chaîne : {', '.join(passages[:2])}"
+        located = [n for n in upstream if n["lat"] is not None and n["lon"] is not None]
+        if e["lat"] is not None and e["lon"] is not None and located:
+            dist, site = min((great_circle_km(e["lat"], e["lon"], n["lat"], n["lon"]), n["name"]) for n in located)
+            return f"sur le site de {site}" if dist < 1 else f"à {dist:.0f} km de {site}"
+        return f"zone de {names}" if names else "zone de la chaîne"
+    if e["origin"] == "policy":
+        return f"mesure qui vise {names}" if names else "mesure qui vise la matière"
+    return f"l'article cite {names}" if names else "l'article cite la matière"
+
+
 def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today: datetime) -> list[dict[str, Any]]:
     """Events of the last 60 days, lettered in order; an event without a place sits on its first located node."""
     events = []
@@ -147,6 +175,7 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
         publishers = [r[0] for r in conn.execute(
             "SELECT DISTINCT COALESCE(NULLIF(a.provider_domain, ''), a.domain) FROM event_articles ea "
             "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? LIMIT 5", (e["id"],))]
+        details = _hazard_details(conn, e["id"]) if e["origin"] in ("hazard", "logistics") else {}
         lat, lon = e["lat"], e["lon"]
         if lat is None:
             located = [nodes[k] for k in links if k in nodes and nodes[k]["lat"] is not None]
@@ -163,7 +192,9 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
             "headline": (result or {}).get("headline", ""),
             "future_dates": json.loads(e["future_dates"]),
             "event_type": e["event_type"], "origin": e["origin"], "country_iso2": e["country_iso2"],
-            "details": _hazard_details(conn, e["id"]) if e["origin"] == "hazard" else {},
+            "details": details if e["origin"] == "hazard" else {},
+            "why": link_reason(dict(e), links, nodes, details),
+            "confirmation": e["confirmation"], "severity_hint": e["severity_hint"],
         })
     return events
 

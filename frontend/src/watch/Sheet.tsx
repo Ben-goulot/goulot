@@ -10,7 +10,7 @@ import { Pressure } from "./Markets";
 import { changePct, defaultRange, RANGES, slicePoints, usableRanges, weeksRange, type EventMark, type RangeKey } from "./chartView";
 import { PriceChart } from "./PriceChart";
 import { Situation } from "./Situation";
-import { RANK_LABEL, signed, type Sheet as SheetData } from "./types";
+import { RANK_LABEL, signed, type Sheet as SheetData, type SheetEvent } from "./types";
 
 const SOURCES = [
   ["fred", "FRED"],
@@ -81,6 +81,36 @@ export function Sheet(props: {
     await api.post(`/api/materials/${props.materialId}/links/${encodeURIComponent(instrument)}/validate`);
     await load();
   };
+
+  // What weighs first (behind the verdict, confirmed, serious or analysed), the weak signals folded.
+  const retainedIds = new Set(v?.event_ids ?? []);
+  const isKey = (e: SheetEvent) =>
+    retainedIds.has(e.id) || e.confirmation === "confirmed" || (e.severity_hint ?? 0) >= 2 || e.impact !== null;
+  const keyEvents = data.events.filter(isKey);
+  const weakEvents = data.events.filter((e) => !isKey(e));
+  const eventItem = (e: SheetEvent) => (
+    <li key={e.id}>
+      <button className={selected === e.id ? "event selected" : "event"} onClick={() => setSelected(e.id)}>
+        <span className={`letter ${e.status}`}>{e.letter}</span>
+        <span className="event-body">
+          <strong>{clip(e.title, 140)}</strong>
+          {e.why && <span className="event-why">Lien avec la matière : {clip(e.why, 160)}</span>}
+          <span className="muted">
+            {e.place ? `${clip(e.place, 60)} · ` : ""}
+            {e.status_label} · {e.lineages} source{e.lineages > 1 ? "s" : ""} indépendante{e.lineages > 1 ? "s" : ""}
+            {retainedIds.has(e.id) ? " · retenu pour le verdict" : ""}
+          </span>
+          {e.impact && (
+            <span className="mono">
+              {signed(e.impact.p10)} à {signed(e.impact.p90)} {e.impact.unit === "percent" ? "%" : "unités"} sous 20 séances · probabilité{" "}
+              {(e.impact.probability * 100).toFixed(0)} %
+            </span>
+          )}
+          {e.publishers.length > 0 && <span className="muted small">{e.publishers.join(", ")}</span>}
+        </span>
+      </button>
+    </li>
+  );
 
   return (
     <div className="sheet">
@@ -191,30 +221,21 @@ export function Sheet(props: {
           {data.events.length === 0 ? (
             <p className="muted">Aucun événement sur la chaîne ces 60 derniers jours.</p>
           ) : (
-            <ul className="plain events">
-              {data.events.map((e) => (
-                <li key={e.id}>
-                  <button className={selected === e.id ? "event selected" : "event"} onClick={() => setSelected(e.id)}>
-                    <span className={`letter ${e.status}`}>{e.letter}</span>
-                    <span className="event-body">
-                      <strong>{clip(e.title, 140)}</strong>
-                      <span className="muted">
-                        {clip(e.place, 60)} · {e.status_label} · {e.lineages} source{e.lineages > 1 ? "s" : ""} indépendante
-                        {e.lineages > 1 ? "s" : ""}
-                        {e.nodes.length > 0 ? ` · maillon : ${clip(e.nodes.join(", "), 80)}` : ""}
-                      </span>
-                      {e.impact && (
-                        <span className="mono">
-                          {signed(e.impact.p10)} à {signed(e.impact.p90)} {e.impact.unit === "percent" ? "%" : "unités"} sous 20 séances ·
-                          probabilité {(e.impact.probability * 100).toFixed(0)} %
-                        </span>
-                      )}
-                      {e.publishers.length > 0 && <span className="muted">{e.publishers.join(", ")}</span>}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {keyEvents.length === 0 ? (
+                <p className="muted">Aucun événement confirmé ni retenu pour le verdict : seulement des signaux faibles.</p>
+              ) : (
+                <ul className="plain events">{keyEvents.map(eventItem)}</ul>
+              )}
+              {weakEvents.length > 0 && (
+                <details className="fold">
+                  <summary>
+                    Signaux faibles ({weakEvents.length}) : une seule source, non confirmés
+                  </summary>
+                  <ul className="plain events">{weakEvents.map(eventItem)}</ul>
+                </details>
+              )}
+            </>
           )}
         </section>
         <section className="panel">

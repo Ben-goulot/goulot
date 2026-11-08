@@ -115,7 +115,7 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
     ("www.nhc.noaa.gov", "/index-ep.xml"): (200, b"<rss><channel></channel></rss>"),
     ("services9.arcgis.com", sources.PORTWATCH.split("arcgis.com", 1)[1]): (200, json.dumps(portwatch_json()).encode()),
     ("www.pegelonline.wsv.de", "/webservices/rest-api/v2/stations/KAUB/W/currentmeasurement.json"):
-        (200, json.dumps({"timestamp": "2026-10-18T06:00:00+02:00", "value": 82}).encode()),
+        (200, json.dumps({"timestamp": "2026-10-18T06:00:00+02:00", "value": 70}).encode()),  # critical: counts downstream too
     ("mapping.emergency.copernicus.eu", "/activations/api/activations/"):
         (200, (Path(__file__).parent / "fixtures" / "sources" / "copernicus_activations.json").read_bytes()),
     ("eur-lex.europa.eu", "/EN/display-feed.rss"):
@@ -236,7 +236,7 @@ def test_hazard_and_logistics_parsers() -> None:
     drop = sources.portwatch(http(), NOW)
     assert len(drop) == 1 and drop[0].details["chokepoint"] == "Suez Canal" and drop[0].magnitude < 0.6
     low = sources.pegel(http())
-    assert len(low) == 1 and low[0].magnitude == 82
+    assert len(low) == 1 and low[0].magnitude == 70
     fr = sources.federal_register(http(), ["acrylonitrile"], NOW - timedelta(days=2))
     assert fr[0].kind == "policy" and "2926.10" in fr[0].excerpt
 

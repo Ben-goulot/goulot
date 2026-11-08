@@ -43,9 +43,20 @@ def from_headlines(conn: sqlite3.Connection, event_id: str) -> bool:
     return bool(rows) and not others and all(headline_only(r["title"], r["excerpt"]) for r in rows)
 
 
+def unrelated(conn: sqlite3.Connection, event_id: str) -> bool:
+    """Born from measurements that tell nothing about the material by themselves (decision of 8 November 2026;
+    grouping.events_from_measurements now stops them): satellite hot spots alone (crop burning, flares around a
+    site) or a GDACS drought. Not even mentioned to the analyst."""
+    rows = conn.execute("SELECT a.source, a.details FROM event_articles ea JOIN articles a ON a.id = ea.article_id "
+                        "WHERE ea.event_id = ?", (event_id,)).fetchall()
+    return bool(rows) and all(r["source"] == "nasa_firms" or (r["source"] == "gdacs" and str(
+        json.loads(r["details"]).get("event_type", "")) == "DR") for r in rows)
+
+
 def set_aside(conn: sqlite3.Connection, event_id: str) -> bool:
     """An event that enters neither a verdict, nor an analysis, nor a screen."""
-    return from_old_news(conn, event_id) or minor_alert(conn, event_id) or from_headlines(conn, event_id)
+    return (from_old_news(conn, event_id) or minor_alert(conn, event_id) or from_headlines(conn, event_id)
+            or unrelated(conn, event_id))
 
 
 def is_public(conn: sqlite3.Connection, event_id: str) -> bool:

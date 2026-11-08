@@ -1,4 +1,4 @@
-"""The analyst of each material (lot 10, docs/SPEC.md, section 4; `prompts/analyst_v1.md`).
+"""The analyst of each material (lot 10, docs/SPEC.md, section 4; `prompts/analyst_v2.md` since 8 November 2026).
 
 Claude Sonnet 5.5, in a Batch, rereads what the watch knows about one material (retained and set-aside events, the
 impact analyses already paid for, prices, the typical chain, the hot spots touching it, known dates and its own
@@ -36,12 +36,12 @@ from goulot.llm.pricing import Usage, cost_usd, monthly_budget
 from goulot.llm.prompts import escape, load_prompt, tag
 from goulot.llm.validate import SchemaError, parse_json_output, schema, validate_schema
 from goulot.pipeline import analysis
-from goulot.pipeline.visibility import from_headlines, from_old_news, minor_alert
+from goulot.pipeline.visibility import from_headlines, from_old_news, minor_alert, unrelated
 from goulot.prices import store as prices
 
 log = logging.getLogger("goulot.pipeline.analyst")
 
-PROMPT = SCHEMA = "analyst_v1"
+PROMPT, SCHEMA = "analyst_v2", "analyst_v1"  # v2: shorter, only what is really linked; same output schema
 MODEL = "claude-sonnet-5-5"
 MAX_TOKENS = 8_000
 WORST_CASE = Usage(input_tokens=20_000, output_tokens=MAX_TOKENS)
@@ -109,7 +109,7 @@ def serious_keys(conn: sqlite3.Connection, material_id: str, now: datetime) -> l
     analyses of severity ≥ 2, still active."""
     keys = set()
     for e in _active_events(conn, material_id, now):
-        if set_aside_reason(conn, e) is not None:
+        if set_aside_reason(conn, e) is not None or unrelated(conn, e["id"]):
             continue
         if e["confirmation"] == "confirmed" and e["severity_hint"] >= SERIOUS_SEVERITY:
             keys.add(f"e:{e['id']}")
@@ -213,6 +213,8 @@ def build_dossier(conn: sqlite3.Connection, material: dict[str, Any], now: datet
     retained: list[tuple[sqlite3.Row, str | None]] = []
     aside: list[tuple[sqlite3.Row, str | None]] = []
     for e in _active_events(conn, mid, now):
+        if unrelated(conn, e["id"]):
+            continue  # noise of a measurement (satellite hot spots, drought): not worth a line
         reason = set_aside_reason(conn, e)
         (aside if reason else retained).append((e, reason))
     # The verdict's events first, then the most severe, then the most recent; shown in the order they appeared.
