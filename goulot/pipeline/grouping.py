@@ -3,7 +3,8 @@
 - Triaged relevant articles join an event of the same material within 7 days: a type of the same family (the
   triage may call one fire an outage or an infrastructure failure), then a shared upstream node, the same place or a
   shared company, site or port, or else the same country and similar titles; otherwise they open a new one. The
-  purchased material itself is matched by nearly every article: it never links two articles alone.
+  purchased material itself is matched by nearly every article, and a country node by every story of that
+  country: neither links two articles alone.
 - Hazard and logistics items come from official measurements (GDACS, USGS, NOAA, PortWatch, PEGELONLINE): the
   code turns them into events without AI. A reading of the same source at the same place within 7 days prolongs the
   ongoing event instead of opening a new one.
@@ -116,9 +117,12 @@ def _names(triage: dict[str, Any]) -> set[str]:
 
 def _find_event(conn: sqlite3.Connection, material_id: str, t: dict[str, Any], seen: datetime) -> str | None:
     family = _family(t["event_type"])
-    purchased = {r[0] for r in conn.execute(
-        "SELECT node_key FROM chain_nodes WHERE material_id = ? AND tier = 0 AND valid_to IS NULL", (material_id,))}
-    upstream = set(t["matched_node_ids"]) - purchased
+    # The purchased material and a whole country are matched by many unrelated stories: neither links two articles
+    # alone (decision of 10 November 2026: a fire and a quake in the same country are two events).
+    too_wide = {r[0] for r in conn.execute(
+        "SELECT node_key FROM chain_nodes WHERE material_id = ? AND (tier = 0 OR node_type = 'country') "
+        "AND valid_to IS NULL", (material_id,))}
+    upstream = set(t["matched_node_ids"]) - too_wide
     names = _names(t)
     candidates = conn.execute(
         "SELECT * FROM events WHERE material_id = ? AND origin IN ('news', 'policy') AND last_seen_at >= ?",

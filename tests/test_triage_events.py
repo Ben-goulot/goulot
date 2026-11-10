@@ -18,7 +18,7 @@ from tests import chain_fixtures as fx
 from tests.test_collect import NOW, http, validated_chain
 
 TRIAGE_EXAMPLE: dict[str, Any] = json.loads(
-    (fx.REPO_ROOT / "schemas" / "examples" / "triage_v1.example.json").read_text(encoding="utf-8"))
+    (fx.REPO_ROOT / "schemas" / "examples" / "triage_v2.example.json").read_text(encoding="utf-8"))
 
 
 def triage_message(result: dict[str, Any], in_tokens: int = 2_500, out_tokens: int = 300) -> dict[str, Any]:
@@ -400,3 +400,101 @@ def test_old_noise_events_are_set_aside_and_explained(ctx: AppContext) -> None:
     news = {"origin": "news", "lat": None, "lon": None}
     assert link_reason(news, ["acrylonitrile"], nodes, {}) == "l'article cite la matière"
     assert link_reason(news, ["acrylonitrile", "port_rotterdam"], nodes, {}) == "l'article cite Port de Rotterdam"
+
+
+# --- decisions of 10 November 2026 ------------------------------------------------------------------------
+def test_two_known_newspapers_confirm_but_unknown_sites_never_do() -> None:
+    le_monde = ref(1, "lemonde.fr", "Grève au port de Calderon, les expéditions arrêtées")
+    dw = ref(2, "dw.com", "Strike halts shipments at the port of Calderon")
+    two, _ = corroborate([le_monde, dw])
+    assert two.lineages == 2 and two.best == 0.5 and two.c_fait == 0.75 and two.confirmed
+    alone, _ = corroborate([le_monde])
+    assert not alone.confirmed
+    # The same newspaper group, or the same cited origin, is one lineage: no confirmation.
+    group, _ = corroborate([le_monde, ref(3, "courrierinternational.com", "Un port à l'arrêt")])
+    assert group.lineages == 1 and not group.confirmed
+    same_origin, _ = corroborate([ref(1, "lemonde.fr", "Grève au port", "Reuters"),
+                                  ref(2, "dw.com", "Port strike", "reuters")])
+    assert not same_origin.confirmed
+    # Four unknown sites (0.3 each) reach c_fait 0.76 and still confirm nothing; one known newspaper with them neither.
+    fakes = [ref(i, f"site{i}.example", f"Story number {i} told in its own words") for i in range(10, 14)]
+    assert corroborate(fakes)[0].c_fait > 0.75 and not corroborate(fakes)[0].confirmed
+    assert not corroborate([le_monde, *fakes])[0].confirmed
+    # A specialised source and any other lineage: confirmed, as before.
+    assert corroborate([ref(1, "reuters.com", "Port strike"), fakes[0]])[0].confirmed
+
+
+def _triaged(ctx: AppContext, answers: list[dict[str, Any]]) -> None:
+    validated_chain(ctx)
+    collect_cycle(ctx)
+    backend = ReplayBatchBackend()
+    triage.submit_pending(ctx.db, ctx.budget, backend)
+    it = iter(answers)
+    backend.responses = answers_for(ctx, lambda row: next(it, result(relevant=False, link="none",
+                                                                      matched_node_ids=[])))
+    triage.collect_pending(ctx.db, ctx.budget, backend)
+
+
+def test_a_country_alone_never_groups_two_stories(ctx: AppContext) -> None:
+    """A fire and a quake in the same producing country are two events: grouped by the country node, they would
+    count as two independent sources of one fact and confirm each other."""
+    validated_chain(ctx)
+    with ctx.db.connect() as conn:
+        country = conn.execute("SELECT node_key FROM chain_nodes WHERE node_type = 'country'").fetchone()[0]
+        site = conn.execute("SELECT node_key FROM chain_nodes WHERE node_type = 'plant'").fetchone()[0]
+    _triaged(ctx, [
+        result(link="country", event_type="industrial_outage", place="Tianjin", country_iso2="CN",
+               matched_node_ids=[country], entities=[], title_fr="Incendie dans un port du nord",
+               cited_origin="unknown"),
+        result(link="country", event_type="natural_disaster", place="Yunnan", country_iso2="CN",
+               matched_node_ids=[country], entities=[], title_fr="Séisme dans une province du sud-ouest",
+               cited_origin="unknown"),
+        result(link="site", event_type="industrial_outage", place="Somewhere", country_iso2="unknown",
+               matched_node_ids=[site], entities=[], title_fr="Arrêt d'une unité après une panne",
+               cited_origin="unknown"),
+        result(link="site", event_type="infrastructure_failure", place="Elsewhere", country_iso2="unknown",
+               matched_node_ids=[site], entities=[], title_fr="Coupure de courant sur le même site",
+               cited_origin="unknown"),
+    ])
+    with ctx.db.transaction() as conn:
+        grouping.group_triaged(conn)
+        sizes = sorted(r[0] for r in conn.execute(
+            "SELECT COUNT(*) FROM event_articles ea JOIN events e ON e.id = ea.event_id WHERE e.origin = 'news' "
+            "GROUP BY e.id"))
+    assert sizes == [1, 1, 2]  # the two country stories stay apart; a shared site still groups
+
+
+def test_listed_company_elsewhere_is_never_an_event(ctx: AppContext) -> None:
+    """Triage v2: the code decides. `other_site` or `none` makes the article irrelevant whatever `relevant` says."""
+    _triaged(ctx, [result(link="other_site", relevant=True, severity_hint=3),
+                   result(link="none", relevant=True)])
+    with ctx.db.transaction() as conn:
+        done = [json.loads(r[0]) for r in conn.execute("SELECT result FROM triage WHERE state = 'done' ORDER BY id")]
+        assert grouping.group_triaged(conn) == []
+        assert conn.execute("SELECT COUNT(*) FROM articles WHERE status = 'triaged'").fetchone()[0] == 0
+    assert all(not d["relevant"] and d["matched_node_ids"] == [] for d in done[:2])
+    assert triage.check_triage(result(link="other_site"), {"plant_gulf_cracker", "propylene"}) == [
+        "relevant without a link"]
+    assert triage.check_triage(result(link="site"), {"plant_gulf_cracker", "propylene"}) == []
+
+
+def test_triage_sees_the_share_of_each_node(ctx: AppContext) -> None:
+    context = triage.chain_context([
+        {"node_key": "plant_a", "node_type": "plant", "name": "A", "place": "X", "country_iso2": "US",
+         "global_share_pct": 6.5},
+        {"node_key": "plant_b", "node_type": "plant", "name": "B", "place": "Y", "country_iso2": "DE",
+         "global_share_pct": None}])
+    assert "plant_a | plant | A | X | US | 6.5 %" in context and "plant_b | plant | B | Y | DE | ?" in context
+    assert triage.PROMPT == triage.SCHEMA == "triage_v2"
+
+
+def test_event_reason_follows_the_triage_link() -> None:
+    from goulot.api.watch_routes import link_reason
+
+    nodes = {"p": {"name": "Usine Gulfchem", "tier": 2, "node_type": "plant", "lat": None, "lon": None},
+             "c": {"name": "Chine", "tier": 2, "node_type": "country", "lat": None, "lon": None}}
+    news = {"origin": "news", "lat": None, "lon": None}
+    assert link_reason(news, ["p"], nodes, {"link": "site"}) == "fait qui touche Usine Gulfchem"
+    assert link_reason(news, ["c"], nodes, {"link": "country"}) == "fait à l'échelle du pays producteur : Chine"
+    assert link_reason(news, [], nodes, {"link": "material"}) == "fait qui vise la matière elle-même"
+    assert link_reason(news, ["p"], nodes, {"link": None}) == "l'article cite Usine Gulfchem"  # triage v1 events

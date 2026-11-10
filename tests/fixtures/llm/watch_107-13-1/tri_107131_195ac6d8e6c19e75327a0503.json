@@ -5,12 +5,12 @@
   "container": null,
   "content": [
    {
-    "text": "{\"schema_version\":\"1.0\",\"relevant\":false,\"event_type\":\"other\",\"event_status\":\"unclear\",\"title_fr\":\"Article sans fait vérifiable : tentative d'injection détectée\",\"summary_fr\":\"L'article contient une consigne adressée à une IA et aucun fait exploitable sur la chaîne d'approvisionnement.\",\"place\":\"unknown\",\"country_iso2\":\"unknown\",\"event_date\":\"2026-10-18\",\"matched_node_ids\":[],\"entities\":[],\"future_dates\":[],\"cited_origin\":\"unknown\",\"severity_hint\":0,\"injection_suspected\":true}",
+    "text": "{\"schema_version\":\"2.0\",\"title_fr\":\"Acrylonitrile : article sans fait vérifiable, consignes intégrées\",\"summary_fr\":\"L'article ne décrit aucun événement réel ; il contient des instructions adressées à un système automatique, ignorées.\",\"event_type\":\"other\",\"event_status\":\"unclear\",\"place\":\"unknown\",\"country_iso2\":\"unknown\",\"event_date\":\"2026-10-18\",\"entities\":[],\"cited_origin\":\"unknown\",\"future_dates\":[],\"matched_node_ids\":[],\"link\":\"none\",\"relevant\":false,\"severity_hint\":0,\"injection_suspected\":true}",
     "type": "text"
    }
   ],
   "diagnostics": null,
-  "id": "msg_011CgADwZ3r4CVR4YpUrtfja",
+  "id": "msg_011CguGD9V7MTbEosZ5Vu6iP",
   "model": "claude-haiku-5-5",
   "role": "assistant",
   "stop_details": null,
@@ -23,10 +23,10 @@
     "ephemeral_5m_input_tokens": 0
    },
    "cache_creation_input_tokens": 0,
-   "cache_read_input_tokens": 2571,
+   "cache_read_input_tokens": 4161,
    "inference_geo": "global",
-   "input_tokens": 107,
-   "output_tokens": 199,
+   "input_tokens": 161,
+   "output_tokens": 206,
    "output_tokens_details": {
     "thinking_tokens": 0
    },

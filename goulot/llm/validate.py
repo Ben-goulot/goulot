@@ -20,7 +20,7 @@ ISO2 = re.compile(r"^[A-Z]{2}$")
 DATE = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")  # a year alone is a valid, if coarse, due date
 NODE_ID = re.compile(r"^[a-z0-9_]+$")
 ENUM_FIELDS = {
-    "node_type", "confidence", "relation", "transport_mode", "risk_type",
+    "node_type", "confidence", "relation", "transport_mode", "risk_type", "link",
 }
 
 

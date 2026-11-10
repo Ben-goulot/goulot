@@ -104,11 +104,13 @@ def test_yichun_2025_replay(ctx: AppContext) -> None:
     assert event["confirmation"] == "confirmed" and event["lineages"] == 2  # Reuters and Mining.com
     analyses = ReplayBatchBackend()
     assess.run_analyses(ctx.db, ctx.budget, None, analyses, DAY, Allowance())
-    with ctx.db.connect() as conn:
-        analyses.responses = {r["custom_id"]: message(analysis.split(impact(r["event_id"]))[r["part"]])
-                              for r in conn.execute("SELECT p.custom_id, p.part, a.event_id FROM analysis_parts p "
-                                                    "JOIN analyses a ON a.id = p.analysis_id")}
-    assess.collect(ctx.db, ctx.budget, analyses)
+    for _ in range(2):  # the impacts, then the comprehension they call for
+        with ctx.db.connect() as conn:
+            analyses.responses = {r["custom_id"]: message(analysis.split(impact(r["event_id"]))[r["part"]])
+                                  for r in conn.execute("SELECT p.custom_id, p.part, a.event_id FROM analysis_parts p "
+                                                        "JOIN analyses a ON a.id = p.analysis_id")}
+        assess.collect(ctx.db, ctx.budget, analyses)
+        assess.run_analyses(ctx.db, ctx.budget, None, analyses, DAY, Allowance(analyze=False))
     changed = dict(assess.refresh_verdicts(ctx.db, ctx.vault, DAY, verified=True, last_ok_cycle=DAY.isoformat()))
     v = changed[material_id]
     assert v.verdict in ("pot", "ant"), v.explanation  # at least « Problème potentiel » on 24 July

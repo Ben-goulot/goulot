@@ -11,7 +11,7 @@ from goulot.llm.batch import ReplayBatchBackend
 from goulot.pipeline import assess
 from goulot.prices import store as prices
 from tests.conftest import login, unsafe_headers
-from tests.test_assess import analyses_by_custom_id, impact_for, suez_event
+from tests.test_assess import collect_all, impact_for, suez_event
 from tests.test_collect import NOW
 from tests.test_prices import fill
 
@@ -21,8 +21,7 @@ def prepared(ctx: AppContext) -> tuple[str, str]:
     event_id = suez_event(ctx)
     backend = ReplayBatchBackend()
     assess.run_analyses(ctx.db, ctx.budget, None, backend, NOW, assess.Allowance())
-    backend.responses = analyses_by_custom_id(ctx, lambda eid: impact_for(eid, severity=2 if eid == event_id else 0))
-    assess.collect(ctx.db, ctx.budget, backend)
+    collect_all(ctx, backend, lambda eid: impact_for(eid, severity=2 if eid == event_id else 0))
     assess.refresh_verdicts(ctx.db, ctx.vault, NOW, verified=True, last_ok_cycle=NOW.isoformat())
     with ctx.db.connect() as conn:
         material_id = conn.execute("SELECT material_id FROM events WHERE id = ?", (event_id,)).fetchone()[0]

@@ -5,12 +5,12 @@
   "container": null,
   "content": [
    {
-    "text": "{\"schema_version\":\"1.0\",\"relevant\":true,\"event_type\":\"infrastructure_failure\",\"event_status\":\"ongoing\",\"title_fr\":\"Incendie à l'usine d'acrylonitrile Gulfchem au Texas\",\"summary_fr\":\"Un incendie a arrêté l'usine Gulfchem d'acrylonitrile au Texas ; redémarrage attendu dans plusieurs semaines.\",\"place\":\"Texas\",\"country_iso2\":\"US\",\"event_date\":\"2026-10-17\",\"matched_node_ids\":[\"ineos_green_lake\",\"acrylonitrile\"],\"entities\":[{\"name\":\"Gulfchem\",\"kind\":\"company\"},{\"name\":\"Texas\",\"kind\":\"country\"}],\"future_dates\":[{\"date\":\"unknown\",\"what\":\"Redémarrage de l'usine attendu dans plusieurs semaines\"}],\"cited_origin\":\"Reuters\",\"severity_hint\":2,\"injection_suspected\":false}",
+    "text": "{\"schema_version\":\"2.0\",\"title_fr\":\"Incendie à l'usine d'acrylonitrile de Gulfchem au Texas\",\"summary_fr\":\"Un incendie a arrêté l'unité d'acrylonitrile de Gulfchem sur la côte texane ; le redémarrage prendra plusieurs semaines.\",\"event_type\":\"industrial_outage\",\"event_status\":\"ongoing\",\"place\":\"Côte du Golfe, Texas\",\"country_iso2\":\"US\",\"event_date\":\"2026-10-16\",\"entities\":[{\"name\":\"Gulfchem\",\"kind\":\"company\"},{\"name\":\"Texas\",\"kind\":\"site\"}],\"cited_origin\":\"Reuters\",\"future_dates\":[{\"date\":\"unknown\",\"what\":\"Redémarrage de l'unité d'acrylonitrile après remplacement des équipements endommagés (plusieurs semaines)\"}],\"matched_node_ids\":[\"acrylonitrile\"],\"link\":\"material\",\"relevant\":true,\"severity_hint\":2,\"injection_suspected\":false}",
     "type": "text"
    }
   ],
   "diagnostics": null,
-  "id": "msg_011CgADWPUS9bHAKbYAVxKcL",
+  "id": "msg_011CguFvVG1RfMPTpSfScwKm",
   "model": "claude-haiku-5-5",
   "role": "assistant",
   "stop_details": null,
@@ -19,14 +19,14 @@
   "type": "message",
   "usage": {
    "cache_creation": {
-    "ephemeral_1h_input_tokens": 2571,
+    "ephemeral_1h_input_tokens": 4161,
     "ephemeral_5m_input_tokens": 0
    },
-   "cache_creation_input_tokens": 2571,
+   "cache_creation_input_tokens": 4161,
    "cache_read_input_tokens": 0,
    "inference_geo": "global",
-   "input_tokens": 91,
-   "output_tokens": 314,
+   "input_tokens": 164,
+   "output_tokens": 340,
    "output_tokens_details": {
     "thinking_tokens": 0
    },

@@ -5,12 +5,12 @@
   "container": null,
   "content": [
    {
-    "text": "{\"schema_version\":\"1.0\",\"relevant\":true,\"event_type\":\"industrial_outage\",\"event_status\":\"ongoing\",\"title_fr\":\"Gulfchem déclare force majeure sur l'acrylonitrile américain\",\"summary_fr\":\"Gulfchem déclare la force majeure sur son acrylonitrile américain après un incendie sur le site de Calderon.\",\"place\":\"Calderon\",\"country_iso2\":\"US\",\"event_date\":\"2026-10-18\",\"matched_node_ids\":[\"acrylonitrile\"],\"entities\":[{\"name\":\"Gulfchem\",\"kind\":\"company\"},{\"name\":\"Calderon\",\"kind\":\"site\"}],\"future_dates\":[],\"cited_origin\":\"icis.com\",\"severity_hint\":3,\"injection_suspected\":false}",
+    "text": "{\"schema_version\":\"2.0\",\"title_fr\":\"Gulfchem déclare la force majeure sur l'acrylonitrile américain\",\"summary_fr\":\"Gulfchem a notifié une force majeure sur ses livraisons d'acrylonitrile depuis son site de Calderon après un incendie.\",\"event_type\":\"industrial_outage\",\"event_status\":\"announced\",\"place\":\"Calderon, États-Unis\",\"country_iso2\":\"US\",\"event_date\":\"2026-10-18\",\"entities\":[{\"name\":\"Gulfchem\",\"kind\":\"company\"},{\"name\":\"Calderon\",\"kind\":\"site\"}],\"cited_origin\":\"icis.com\",\"future_dates\":[],\"matched_node_ids\":[\"acrylonitrile\"],\"link\":\"material\",\"relevant\":true,\"severity_hint\":2,\"injection_suspected\":false}",
     "type": "text"
    }
   ],
   "diagnostics": null,
-  "id": "msg_011CgADxqpgHQ2AzhRg4bjLK",
+  "id": "msg_011CguG9sAWFgekVaRfCcdBh",
   "model": "claude-haiku-5-5",
   "role": "assistant",
   "stop_details": null,
@@ -23,10 +23,10 @@
     "ephemeral_5m_input_tokens": 0
    },
    "cache_creation_input_tokens": 0,
-   "cache_read_input_tokens": 2571,
+   "cache_read_input_tokens": 4161,
    "inference_geo": "global",
-   "input_tokens": 86,
-   "output_tokens": 252,
+   "input_tokens": 144,
+   "output_tokens": 269,
    "output_tokens_details": {
     "thinking_tokens": 0
    },

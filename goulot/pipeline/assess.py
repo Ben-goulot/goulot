@@ -1,8 +1,9 @@
 """Analyses and verdicts at each watch cycle (docs/SPEC.md, sections 4 and 5).
 
 - Events that meet the trigger, never analyzed or changed since (confirmation, lineages, severity hint,
-  status), are analyzed: right away on the standard API when the severity hint is 3 or more, otherwise in a
-  Batch collected at a later cycle.
+  status), are analyzed: right away on the standard API when the severity hint is 3 or more on a confirmed or
+  official fact, otherwise in a Batch collected at a later cycle. In two steps: the impacts, then, only when an
+  impact is found, the comprehension and the price hypotheses (sent at the cycle that collects the impacts).
 - Then the market verdict of every validated material is recomputed; a new verdict row is written only when the
   verdict, the price pressure or X changes. Its inputs are stored encrypted with an HMAC digest.
 """
@@ -103,10 +104,20 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
     counts = {"collected": 0, "standard": 0, "batch": 0}
     if batched is not None:
         counts["collected"] = collect(db, budget, batched, budget_name)
-    if not allowance.analyze or allowance.rules_only:
-        return counts
     requests: list[tuple[str, dict[str, Any]]] = []
     queued: list[str] = []
+    if batched is not None and not allowance.rules_only:
+        # Second step of the analyses whose impacts just came back: started and half paid, they are finished even
+        # in economy mode. They count as analyses when first sent, not here.
+        with db.transaction() as conn:
+            for analysis_id, cid, part in analysis.unsent(conn):
+                requests.append((cid, analysis.part_params(analysis.dossier_text(conn, analysis_id), part)))
+                if analysis_id not in queued:
+                    queued.append(analysis_id)
+    resumed = len(queued)
+    if not allowance.analyze or allowance.rules_only:
+        _submit(db, budget, batched, budget_name, requests, queued)
+        return counts
     with db.transaction() as conn:
         events = due_events(conn, allowance, weighs, now)
         prepared = []
@@ -116,23 +127,28 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
             entries = similarity.dossier_entries(found, [c["instrument_id"] for c in contexts])
             prepared.append((e, analysis.build_dossier(conn, e, now, instruments=contexts, analogues=entries)))
     for event, dossier in prepared:
-        urgent = event["severity_hint"] >= analysis.URGENT_SEVERITY
+        urgent = analysis.urgent(event)
         if urgent and std is not None:
             with db.transaction() as conn:
                 analysis_id = analysis.create(conn, event, dossier, "standard", now)
                 parts = analysis.part_ids(conn, analysis_id)
-            for part, cid in parts.items():
-                spec = CallSpec(key=cid, purpose="impact", budget=budget_name,
-                                max_cost_usd=cost_usd(analysis.MODEL, WORST_CASE), material_id=event["material_id"])
-                try:
-                    result = call(std, budget, spec, analysis.part_params(dossier, part))
-                    message: dict[str, Any] | None = {"stop_reason": result.stop_reason, "content": result.content}
-                    cost = result.cost_usd
-                except LLMError as exc:
-                    log.warning("impact analysis failed: %s", type(exc).__name__)
-                    message, cost = None, 0.0
+            while parts:  # the impacts, then the parts they call for
+                for part, cid in parts.items():
+                    spec = CallSpec(key=cid, purpose="impact", budget=budget_name,
+                                    max_cost_usd=cost_usd(analysis.MODEL, WORST_CASE),
+                                    material_id=event["material_id"])
+                    try:
+                        result = call(std, budget, spec, analysis.part_params(dossier, part))
+                        message: dict[str, Any] | None = {"stop_reason": result.stop_reason,
+                                                          "content": result.content}
+                        cost = result.cost_usd
+                    except LLMError as exc:
+                        log.warning("impact analysis failed: %s", type(exc).__name__)
+                        message, cost = None, 0.0
+                    with db.transaction() as conn:
+                        analysis.store_part(conn, cid, message, cost)
                 with db.transaction() as conn:
-                    analysis.store_part(conn, cid, message, cost)
+                    parts = analysis.part_ids(conn, analysis_id)
             counts["standard"] += 1
         elif batched is not None:
             with db.transaction() as conn:
@@ -140,13 +156,20 @@ def run_analyses(db: Database, budget: Budget, std: MessageBackend | None, batch
                 parts = analysis.part_ids(conn, analysis_id)
             requests += [(cid, analysis.part_params(dossier, part)) for part, cid in parts.items()]
             queued.append(analysis_id)
-    if requests and batched is not None:
-        worst = len(requests) * cost_usd(analysis.MODEL, WORST_CASE, batch=True)
-        batch_id = batch.submit(db, budget, batched, "impact", budget_name, requests, worst)
-        with db.transaction() as conn:
-            conn.executemany("UPDATE analyses SET batch_id = ? WHERE id = ?", [(batch_id, a) for a in queued])
-        counts["batch"] = len(queued)
+    if _submit(db, budget, batched, budget_name, requests, queued):
+        counts["batch"] = len(queued) - resumed
     return counts
+
+
+def _submit(db: Database, budget: Budget, batched: BatchBackend | None, budget_name: str,
+            requests: list[tuple[str, dict[str, Any]]], queued: list[str]) -> bool:
+    if not requests or batched is None:
+        return False
+    worst = len(requests) * cost_usd(analysis.MODEL, WORST_CASE, batch=True)
+    batch_id = batch.submit(db, budget, batched, "impact", budget_name, requests, worst)
+    with db.transaction() as conn:
+        conn.executemany("UPDATE analyses SET batch_id = ? WHERE id = ?", [(batch_id, a) for a in queued])
+    return True
 
 
 def collect(db: Database, budget: Budget, backend: BatchBackend, budget_name: str = "watch") -> int:

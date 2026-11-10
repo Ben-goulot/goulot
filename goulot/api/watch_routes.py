@@ -156,7 +156,24 @@ def link_reason(e: dict[str, Any], links: list[str], nodes: dict[str, dict[str, 
         return f"zone de {names}" if names else "zone de la chaîne"
     if e["origin"] == "policy":
         return f"mesure qui vise {names}" if names else "mesure qui vise la matière"
+    link = details.get("link")  # how the triage (v2) says the fact touches the chain; absent on older events
+    if link == "site" and names:
+        return f"fait qui touche {names}"
+    if link == "route" and names:
+        return f"passage de la chaîne : {names}"
+    if link == "country" and names:
+        return f"fait à l'échelle du pays producteur : {names}"
+    if link == "material":
+        return "fait qui vise la matière elle-même"
     return f"l'article cite {names}" if names else "l'article cite la matière"
+
+
+def _press_link(conn: Any, event_id: str) -> dict[str, Any]:
+    """The most precise link given by the triage of the event's articles."""
+    found = {json.loads(r[0]).get("link") for r in conn.execute(
+        "SELECT t.result FROM event_articles ea JOIN triage t ON t.article_id = ea.article_id AND t.state = 'done' "
+        "JOIN events e ON e.id = ea.event_id AND e.material_id = t.material_id WHERE ea.event_id = ?", (event_id,))}
+    return {"link": next((k for k in ("site", "route", "country", "material") if k in found), None)}
 
 
 def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today: datetime) -> list[dict[str, Any]]:
@@ -175,7 +192,8 @@ def _events(conn: Any, material_id: str, nodes: dict[str, dict[str, Any]], today
         publishers = [r[0] for r in conn.execute(
             "SELECT DISTINCT COALESCE(NULLIF(a.provider_domain, ''), a.domain) FROM event_articles ea "
             "JOIN articles a ON a.id = ea.article_id WHERE ea.event_id = ? LIMIT 5", (e["id"],))]
-        details = _hazard_details(conn, e["id"]) if e["origin"] in ("hazard", "logistics") else {}
+        details = (_hazard_details(conn, e["id"]) if e["origin"] in ("hazard", "logistics")
+                   else _press_link(conn, e["id"]))
         lat, lon = e["lat"], e["lon"]
         if lat is None:
             located = [nodes[k] for k in links if k in nodes and nodes[k]["lat"] is not None]

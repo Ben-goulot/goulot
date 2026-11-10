@@ -76,7 +76,7 @@ def test_material_without_series_gets_a_pressure_without_percentage(client: Test
     from goulot.llm.batch import ReplayBatchBackend
     from goulot.pipeline import assess
     from goulot.pipeline.assess import Allowance
-    from tests.test_assess import analyses_by_custom_id, impact_for, suez_event
+    from tests.test_assess import collect_all, impact_for, suez_event
     from tests.test_collect import NOW
 
     event_id = suez_event(ctx)
@@ -85,8 +85,7 @@ def test_material_without_series_gets_a_pressure_without_percentage(client: Test
         assert prices.best_series(conn, material_id) is None
     backend = ReplayBatchBackend()
     assess.run_analyses(ctx.db, ctx.budget, None, backend, NOW, Allowance())
-    backend.responses = analyses_by_custom_id(ctx, lambda eid: impact_for(eid, severity=3 if eid == event_id else 0))
-    assess.collect(ctx.db, ctx.budget, backend)
+    collect_all(ctx, backend, lambda eid: impact_for(eid, severity=3 if eid == event_id else 0))
     assess.refresh_verdicts(ctx.db, ctx.vault, NOW, verified=True, last_ok_cycle=NOW.isoformat())
     login(client, ctx)
     sheet = client.get(f"/api/materials/{material_id}/sheet").json()

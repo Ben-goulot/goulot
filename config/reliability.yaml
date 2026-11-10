@@ -27,7 +27,8 @@ general_press:
   domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,
             scmp.com, dw.com, aljazeera.com, economictimes.indiatimes.com,
             euractiv.com, politico.eu, euronews.com, handelsblatt.com, elpais.com, ilsole24ore.com,  # flux RSS européens (29 octobre 2026)
-            focustaiwan.tw, businesstimes.com.sg, gulf-times.com, bnamericas.com]  # médias en anglais (5 novembre 2026)
+            focustaiwan.tw, businesstimes.com.sg, gulf-times.com, bnamericas.com,  # médias en anglais (5 novembre 2026)
+            splash247.com, gcaptain.com, maritime-executive.com]  # presse maritime (10 novembre 2026)
 
 # Sites qui republient le contenu d'autres médias : l'article prend la fiabilité du fournisseur indiqué par
 # la donnée structurée de la plateforme (champ fournisseur de Yahoo, attribut <source url> de Google News, champ source de l'API ReliefWeb),
@@ -53,4 +54,6 @@ lineage:
 
 confirmation:
   c_fait_min: 0.75
-  min_lineage_reliability: 0.7   # au moins une lignée de cette fiabilité, sinon « signal précoce »
+  min_lineage_reliability: 0.7   # au moins une lignée de cette fiabilité, sinon « signal précoce »…
+  known_press_lineages: 2        # … ou deux lignées indépendantes de journaux connus (décision du 10 novembre 2026)
+  known_press_reliability: 0.5   # fiabilité minimale d'un « journal connu » : un domaine inconnu (0,3) ne compte pas

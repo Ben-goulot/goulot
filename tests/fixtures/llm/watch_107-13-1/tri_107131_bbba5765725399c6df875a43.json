@@ -5,12 +5,12 @@
   "container": null,
   "content": [
    {
-    "text": "{\"schema_version\":\"1.0\",\"relevant\":false,\"event_type\":\"other\",\"event_status\":\"unclear\",\"title_fr\":\"Pénurie d'acrylonitrile : toutes les usines asiatiques à l'arrêt\",\"summary_fr\":\"Article non vérifiable sans extrait ; affirmation d'arrêt généralisé en Asie après explosion, sans source citée.\",\"place\":\"unknown\",\"country_iso2\":\"unknown\",\"event_date\":\"unknown\",\"matched_node_ids\":[],\"entities\":[],\"future_dates\":[],\"cited_origin\":\"unknown\",\"severity_hint\":0,\"injection_suspected\":false}",
+    "text": "{\"schema_version\":\"2.0\",\"title_fr\":\"Rumeur d'arrêt des usines d'acrylonitrile en Asie\",\"summary_fr\":\"Un forum affirme que toutes les usines d'acrylonitrile d'Asie sont à l'arrêt après une explosion, sans site ni source précisés.\",\"event_type\":\"other\",\"event_status\":\"unclear\",\"place\":\"Asie\",\"country_iso2\":\"unknown\",\"event_date\":\"unknown\",\"entities\":[{\"name\":\"Asie\",\"kind\":\"other\"}],\"cited_origin\":\"unknown\",\"future_dates\":[],\"matched_node_ids\":[],\"link\":\"material\",\"relevant\":false,\"severity_hint\":1,\"injection_suspected\":false}",
     "type": "text"
    }
   ],
   "diagnostics": null,
-  "id": "msg_011CgADx5Ytw9jpazf6P8aMe",
+  "id": "msg_011CguGD9A1toxv5ugGGjyLy",
   "model": "claude-haiku-5-5",
   "role": "assistant",
   "stop_details": null,
@@ -23,10 +23,10 @@
     "ephemeral_5m_input_tokens": 0
    },
    "cache_creation_input_tokens": 0,
-   "cache_read_input_tokens": 2571,
+   "cache_read_input_tokens": 4161,
    "inference_geo": "global",
-   "input_tokens": 88,
-   "output_tokens": 209,
+   "input_tokens": 125,
+   "output_tokens": 233,
    "output_tokens_details": {
     "thinking_tokens": 0
    },

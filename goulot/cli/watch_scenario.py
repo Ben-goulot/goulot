@@ -109,8 +109,9 @@ def run(db: Database, budget: Budget, vault: Vault, backend: BatchBackend, *, bu
     triage.collect_pending(db, budget, backend, budget_name)
     with db.transaction() as conn:
         grouping.group_triaged(conn)
-    assess.run_analyses(db, budget, None, backend, now, Allowance(), budget_name)
-    wait_until_ended(backend, db, "impact", poll)
+    for _ in range(2):  # the impacts, then the comprehension and hypotheses of the events that have one
+        assess.run_analyses(db, budget, None, backend, now, Allowance(), budget_name)
+        wait_until_ended(backend, db, "impact", poll)
     assess.collect(db, budget, backend, budget_name)
     assess.refresh_verdicts(db, vault, now, verified=True, last_ok_cycle=now.isoformat())
     return summary(db, scenario)

@@ -50,6 +50,14 @@ class Dossier:
 MIN_HAZARD_SEVERITY = 2
 
 
+def urgent(event: sqlite3.Row) -> bool:
+    """Standard API, at full price, right away: a severity hint of 3 or more on a fact that is confirmed or comes
+    from an official source. An unconfirmed alarming article is analysed too, in the Batch, at half price (decision
+    of 10 November 2026: 7 of 8 urgent analyses of the previous fortnight found nothing serious)."""
+    return bool(event["severity_hint"] >= URGENT_SEVERITY
+                and (event["confirmation"] == "confirmed" or event["official_source"]))
+
+
 def signature(event: sqlite3.Row) -> str:
     return f"{event['confirmation']}|{event['lineages']}|{event['severity_hint']}|{event['event_status']}"
 
@@ -185,6 +193,42 @@ PARTS: dict[str, tuple[str, ...]] = {
     "hypotheses": ("hypotheses",),
 }
 PARTS_PROMPT = "impact_parts_v1"
+# Two steps (decision of 10 November 2026): the impacts first, which are what the verdict uses; the comprehension and
+# the price hypotheses only when an impact is found, the hypotheses only when a price instrument exists. Half of the
+# analyses of the previous fortnight found no impact: their two other calls bought nothing.
+FIRST_PART = "impacts"
+NO_IMPACT_HEADLINE = "Pas d'impact notable sur l'offre."
+SHORT_ANALYSIS = "Analyse courte : aucun impact trouvé, la compréhension détaillée n'a pas été demandée."
+
+
+def second_parts(impacts: dict[str, Any], sent: dict[str, list[str]]) -> list[str]:
+    """The parts still worth asking once the impacts are known."""
+    if not any(ci["severity"] for ci in impacts["commodity_impacts"]):
+        return []
+    return ["comprehension", *(["hypotheses"] if sent.get("instruments") else [])]
+
+
+def complete(parts: dict[str, dict[str, Any]], event: sqlite3.Row) -> dict[str, dict[str, Any]]:
+    """The parts that were not asked, written by the code: no hypothesis without an instrument; for an event
+    without impact, a comprehension that says so and repeats the model's own rationale."""
+    impacts = parts[FIRST_PART]
+    base = {"event_id": impacts["event_id"], "injection_suspected": False}
+    out = dict(parts)
+    if "hypotheses" not in out:
+        out["hypotheses"] = {"schema_version": "hypotheses-1.0", **base, "hypotheses": []}
+    if "comprehension" not in out:
+        rationale = next((ci["severity_rationale"] for ci in impacts["commodity_impacts"]
+                          if ci.get("severity_rationale")), NO_IMPACT_HEADLINE)
+        out["comprehension"] = {
+            "schema_version": "comprehension-1.0", **base,
+            "event_understanding": {"event_type": event["event_type"], "event_status": event["event_status"],
+                                    "facts": [], "contradictions": [], "affected_entities": []},
+            "confidence": {"evidence_quality": "moderate", "mapping_quality": "moderate", "analysis_confidence": 0.5,
+                           "main_uncertainties": [SHORT_ANALYSIS]},
+            "data_gaps": [], "assessment_status": "no_material_impact", "headline": NO_IMPACT_HEADLINE,
+            "summary": rationale,
+        }
+    return out
 
 
 def part_instruction(part: str) -> str:
@@ -193,7 +237,8 @@ def part_instruction(part: str) -> str:
     return section.split("\n## ", 1)[0].strip()
 
 
-def part_params(dossier: Dossier, part: str) -> dict[str, Any]:
+def part_params(dossier: Dossier | str, part: str) -> dict[str, Any]:
+    text = dossier if isinstance(dossier, str) else dossier.text
     return {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
@@ -202,7 +247,7 @@ def part_params(dossier: Dossier, part: str) -> dict[str, Any]:
         "thinking": {"type": "adaptive"},
         "output_config": {"effort": "high",
                           "format": {"type": "json_schema", "schema": schema(f"impact_part_{part}_v1")}},
-        "messages": [{"role": "user", "content": dossier.text}],
+        "messages": [{"role": "user", "content": text}],
     }
 
 
@@ -301,27 +346,45 @@ def create(conn: sqlite3.Connection, event: sqlite3.Row, dossier: Dossier, mode:
             "commodities": dossier.commodities}
     conn.execute(
         "INSERT INTO analyses (id, event_id, material_id, model, prompt_version, schema_version, mode, state, "
-        "custom_id, signature, dossier_sources, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
+        "custom_id, signature, dossier_sources, dossier_text, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)",
         (analysis_id, event["id"], event["material_id"], MODEL, PROMPT, SCHEMA, mode,
-         custom_id(event["id"], dossier.signature), dossier.signature, json.dumps(sent),
+         custom_id(event["id"], dossier.signature), dossier.signature, json.dumps(sent), dossier.text,
          now.isoformat(timespec="seconds") if now else utcnow()),
     )
-    base = custom_id(event["id"], dossier.signature)
-    for part in PARTS:
-        conn.execute("INSERT INTO analysis_parts (analysis_id, part, custom_id, state) VALUES (?, ?, ?, 'pending')",
-                     (analysis_id, part, f"{base}_{part[:4]}"))
+    _add_part(conn, analysis_id, custom_id(event["id"], dossier.signature), FIRST_PART)
     conn.execute("UPDATE events SET analysis_state = 'queued' WHERE id = ?", (event["id"],))
     return analysis_id
 
 
+def _add_part(conn: sqlite3.Connection, analysis_id: str, base: str, part: str) -> None:
+    conn.execute("INSERT INTO analysis_parts (analysis_id, part, custom_id, state) VALUES (?, ?, ?, 'pending')",
+                 (analysis_id, part, f"{base}_{part[:4]}"))
+
+
 def part_ids(conn: sqlite3.Connection, analysis_id: str) -> dict[str, str]:
+    """The parts still to ask: the impacts at first, then those of `second_parts`."""
     return {r["part"]: r["custom_id"] for r in conn.execute(
-        "SELECT part, custom_id FROM analysis_parts WHERE analysis_id = ?", (analysis_id,))}
+        "SELECT part, custom_id FROM analysis_parts WHERE analysis_id = ? AND state = 'pending'", (analysis_id,))}
+
+
+def unsent(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
+    """(analysis id, custom id, part) of the Batch parts not sent yet: the second step of an analysis whose impacts
+    just came back, or a first step whose submission failed. With the dossier kept at creation."""
+    return [(r["id"], r["custom_id"], r["part"]) for r in conn.execute(
+        "SELECT a.id, p.custom_id, p.part FROM analyses a JOIN analysis_parts p ON p.analysis_id = a.id "
+        "WHERE a.state = 'pending' AND a.mode = 'batch' AND a.batch_id IS NULL AND a.dossier_text IS NOT NULL "
+        "AND p.state = 'pending' ORDER BY a.created_at, p.part")]
+
+
+def dossier_text(conn: sqlite3.Connection, analysis_id: str) -> str:
+    return str(conn.execute("SELECT dossier_text FROM analyses WHERE id = ?", (analysis_id,)).fetchone()[0])
 
 
 def store_part(conn: sqlite3.Connection, custom: str, message: dict[str, Any] | None, cost: float) -> str | None:
-    """Keep one part's answer; when every part has answered, merge and store the assessment. Returns the final
-    state of the analysis once complete, else None."""
+    """Keep one part's answer. Once the impacts are known, ask the parts still worth it (`second_parts`); when every
+    asked part has answered, merge and store the assessment. Returns the final state of the analysis once
+    complete, else None."""
     row = conn.execute("SELECT * FROM analysis_parts WHERE custom_id = ?", (custom,)).fetchone()
     if row is None:
         return None
@@ -335,8 +398,17 @@ def store_part(conn: sqlite3.Connection, custom: str, message: dict[str, Any] | 
     total = sum(r["cost_usd"] for r in rows)
     if any(r["state"] == "error" for r in rows):
         return store_assessment(conn, row["analysis_id"], None, total, failed=True)
-    merged = merge({r["part"]: json.loads(r["result"]) for r in rows})
-    return store_assessment(conn, row["analysis_id"], merged, total)
+    parts = {r["part"]: json.loads(r["result"]) for r in rows}
+    owner = conn.execute("SELECT * FROM analyses WHERE id = ?", (row["analysis_id"],)).fetchone()
+    if set(parts) == {FIRST_PART}:
+        more = second_parts(parts[FIRST_PART], json.loads(owner["dossier_sources"]))
+        if more and owner["dossier_text"]:
+            for part in more:
+                _add_part(conn, row["analysis_id"], owner["custom_id"], part)
+            conn.execute("UPDATE analyses SET batch_id = NULL WHERE id = ?", (row["analysis_id"],))
+            return None
+    event = conn.execute("SELECT * FROM events WHERE id = ?", (owner["event_id"],)).fetchone()
+    return store_assessment(conn, row["analysis_id"], merge(complete(parts, event)), total)
 
 
 def store_result(conn: sqlite3.Connection, analysis_id: str, message: dict[str, Any] | None, cost: float) -> str:
@@ -365,9 +437,10 @@ def store_assessment(conn: sqlite3.Connection, analysis_id: str, result: dict[st
             state = "rejected" if problems else ("quarantined" if reason else "done")
         except SchemaError:
             state = "rejected"
-    conn.execute("UPDATE analyses SET state = ?, result = ?, quarantine_reason = ?, cost_usd = ?, done_at = ? "
-                 "WHERE id = ?", (state, json.dumps(result, ensure_ascii=False) if result else None, reason[:300],
-                                  cost, now, analysis_id))
+    conn.execute("UPDATE analyses SET state = ?, result = ?, quarantine_reason = ?, cost_usd = ?, done_at = ?, "
+                 "dossier_text = NULL WHERE id = ?",
+                 (state, json.dumps(result, ensure_ascii=False) if result else None, reason[:300], cost, now,
+                  analysis_id))
     conn.execute("UPDATE events SET analysis_state = ? WHERE id = ?", (state, row["event_id"]))
     if state == "done" and result is not None:
         outcomes.record_hypotheses(conn, analysis_id, row["material_id"], result,

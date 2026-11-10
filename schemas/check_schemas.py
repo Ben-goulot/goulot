@@ -87,6 +87,8 @@ def check_triage(ex: dict, chain_ids: set[str]) -> None:
     unknown = set(ex["matched_node_ids"]) - chain_ids
     if unknown:
         fail(w, f"matched_node_ids not in the chain: {sorted(unknown)}")
+    if ex.get("link") in ("other_site", "none") and (ex["relevant"] or ex["matched_node_ids"]):
+        fail(w, "relevant or matched nodes without a link to the chain")
 
 
 def check_chain(ex: dict, allowed_sources: set[str], expected_cas: str) -> set[str]:
@@ -323,6 +325,7 @@ def main() -> int:
     chain_ids = check_chain(examples["supply_chain_v1"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
     check_chain(examples["supply_chain_v2"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
     check_triage(examples["triage_v1"], chain_ids)
+    check_triage(examples["triage_v2"], chain_ids)
     check_impact(examples["impact_assessment_v1"], {
         "events": {"EVT-2026-10-03-0142"},
         "sources": {"S1", "S2", "S3"},

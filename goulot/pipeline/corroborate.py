@@ -4,7 +4,8 @@ Reliability by domain: official 0.9, agency or specialized press 0.7, general pr
 syndication site takes the reliability of the publisher given by the platform's structured data (Google News
 `<source url>`), never from a byline or `cited_origin`; a paid press release counts 0.3 wherever it appears.
 A lineage groups an original source and its copies; it takes the reliability of its best source.
-`c_fait = 1 − Π(1 − r)` over lineages. Confirmed if `c_fait ≥ 0.75` and one lineage reaches 0.7.
+`c_fait = 1 − Π(1 − r)` over lineages. Confirmed if `c_fait ≥ 0.75` and either one lineage reaches 0.7 or two
+independent lineages come from known newspapers (0.5 or more).
 """
 
 from __future__ import annotations
@@ -154,5 +155,9 @@ def corroborate(articles: Sequence[ArticleRef]) -> tuple[Corroboration, dict[int
     c_fait = round(1 - product, 4)
     best = max(best_by_lineage.values(), default=0.0)
     cfg = config()["confirmation"]
-    confirmed = c_fait >= float(cfg["c_fait_min"]) and best >= float(cfg["min_lineage_reliability"])
+    # Two independent newspapers of the known lists confirm a fact too (decision of 10 November 2026): since the
+    # headline-only sources left, most feeds are general press, and unknown sites (0.3) still confirm nothing.
+    known = sum(1 for r in best_by_lineage.values() if r >= float(cfg.get("known_press_reliability", 1.0)))
+    confirmed = c_fait >= float(cfg["c_fait_min"]) and (
+        best >= float(cfg["min_lineage_reliability"]) or known >= int(cfg.get("known_press_lineages", 99)))
     return Corroboration(c_fait, len(best_by_lineage), best, confirmed), keys

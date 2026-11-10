@@ -1,0 +1,163 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "title_fr",
+    "summary_fr",
+    "event_type",
+    "event_status",
+    "place",
+    "country_iso2",
+    "event_date",
+    "entities",
+    "cited_origin",
+    "future_dates",
+    "matched_node_ids",
+    "link",
+    "relevant",
+    "severity_hint",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "title_fr": {
+      "type": "string"
+    },
+    "summary_fr": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "labor_action",
+        "armed_conflict",
+        "civil_unrest",
+        "extreme_weather",
+        "natural_disaster",
+        "industrial_outage",
+        "maritime_disruption",
+        "infrastructure_failure",
+        "sanctions_trade_policy",
+        "export_restriction",
+        "regulatory_change",
+        "cyber_incident",
+        "health_biosecurity",
+        "other"
+      ]
+    },
+    "event_status": {
+      "type": "string",
+      "enum": [
+        "threatened",
+        "announced",
+        "ongoing",
+        "escalating",
+        "de_escalating",
+        "resolved",
+        "unclear"
+      ]
+    },
+    "place": {
+      "type": "string"
+    },
+    "country_iso2": {
+      "type": "string",
+      "description": "Code ISO 3166-1 alpha-2, ou unknown."
+    },
+    "event_date": {
+      "type": "string",
+      "description": "AAAA-MM-JJ, AAAA-MM, ou unknown."
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "site",
+              "port",
+              "chokepoint",
+              "country",
+              "government_body",
+              "union",
+              "other"
+            ]
+          }
+        }
+      }
+    },
+    "cited_origin": {
+      "type": "string",
+      "description": "Média ou organisme cité comme source d'origine de l'information, ou unknown."
+    },
+    "future_dates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "date",
+          "what"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "AAAA-MM-JJ ou AAAA-MM."
+          },
+          "what": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "matched_node_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "link": {
+      "type": "string",
+      "enum": [
+        "site",
+        "other_site",
+        "route",
+        "country",
+        "material",
+        "none"
+      ],
+      "description": "Comment le fait touche la chaîne : site (site, entreprise entière ou port listé), other_site (entreprise listée, mais autre site ou autre activité), route (détroit ou voie d'eau listé), country (pays producteur listé, pour la matière ou son secteur), material (la matière achetée ou un intrant direct, chez un acteur ou en un lieu non listé), none."
+    },
+    "relevant": {
+      "type": "boolean"
+    },
+    "severity_hint": {
+      "type": "integer",
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  }
+}

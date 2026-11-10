@@ -33,15 +33,16 @@ from goulot.pipeline.corroborate import same_story, shingles
 
 log = logging.getLogger("goulot.pipeline.triage")
 
-PROMPT = "triage_v1"
-SCHEMA = "triage_v1"
+PROMPT = "triage_v2"  # v2 (10 November 2026): how the fact touches the chain (`link`), anchored severity scale
+SCHEMA = "triage_v2"
 MODEL = "claude-haiku-5-5"
 MAX_TOKENS = 1_500
 MAX_PER_BATCH = 200
 MAX_ATTEMPTS = 3
 COPY_WINDOW = timedelta(days=7)
 WORST_CASE = Usage(input_tokens=4_000, output_tokens=MAX_TOKENS)
-TRIAGE_ENUMS = {"event_type": "other", "event_status": "unclear"}
+TRIAGE_ENUMS = {"event_type": "other", "event_status": "unclear", "link": "none"}
+NO_LINK = ("other_site", "none")  # the listed company elsewhere, or nothing of the chain: never an event
 
 
 def custom_id(material: dict[str, Any], url_hash: str) -> str:
@@ -49,9 +50,14 @@ def custom_id(material: dict[str, Any], url_hash: str) -> str:
 
 
 def chain_context(nodes: list[dict[str, Any]]) -> str:
+    def share(n: dict[str, Any]) -> str:
+        return "?" if n.get("global_share_pct") is None else f"{n['global_share_pct']:g} %"
+
     lines = [f"{escape(n['node_key'])} | {escape(n['node_type'])} | {escape(n['name'])} | {escape(n['place'])} | "
-             f"{escape(n['country_iso2'])}" for n in nodes]
-    return tag("chain_context", "\n".join(lines))
+             f"{escape(n['country_iso2'])} | {share(n)}" for n in nodes]
+    bought = next((n["name"] for n in nodes if n.get("tier") == 0), None)
+    head = [f"matière achetée : {escape(bought)}"] if bought else []
+    return tag("chain_context", "\n".join([*head, *lines]))
 
 
 def article_block(article: sqlite3.Row) -> str:
@@ -182,6 +188,11 @@ def check_triage(result: dict[str, Any], node_keys: set[str]) -> list[str]:
     for k, default in TRIAGE_ENUMS.items():
         if not isinstance(result.get(k), str):
             result[k] = default
+    result["link"] = result["link"].lower()
+    if result["link"] in NO_LINK:  # the code decides: without a real link, no event, whatever `relevant` says
+        if result["relevant"]:
+            issues.append("relevant without a link")
+        result["relevant"], result["matched_node_ids"] = False, []
     unknown = [n for n in result["matched_node_ids"] if n not in node_keys]
     if unknown:
         issues.append("unknown node ids")

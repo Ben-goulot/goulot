@@ -5,12 +5,12 @@
   "container": null,
   "content": [
    {
-    "text": "{\"schema_version\":\"1.0\",\"relevant\":true,\"event_type\":\"sanctions_trade_policy\",\"event_status\":\"announced\",\"title_fr\":\"Antidumping préliminaire sur l'acrylonitrile coréen aux États-Unis\",\"summary_fr\":\"Le Département du Commerce américain détermine préliminairement que l'acrylonitrile coréen est vendu en dessous de la juste valeur.\",\"place\":\"Corée du Sud / États-Unis\",\"country_iso2\":\"KR\",\"event_date\":\"2026-10-16\",\"matched_node_ids\":[\"acrylonitrile\"],\"entities\":[{\"name\":\"Department of Commerce\",\"kind\":\"government_body\"},{\"name\":\"Republic of Korea\",\"kind\":\"country\"}],\"future_dates\":[],\"cited_origin\":\"Federal Register\",\"severity_hint\":2,\"injection_suspected\":false}",
+    "text": "{\"schema_version\":\"2.0\",\"title_fr\":\"Acrylonitrile coréen : décision antidumping préliminaire américaine\",\"summary_fr\":\"Le Département du Commerce américain détermine préliminairement que l'acrylonitrile sud-coréen est vendu en dessous de sa juste valeur.\",\"event_type\":\"sanctions_trade_policy\",\"event_status\":\"announced\",\"place\":\"unknown\",\"country_iso2\":\"US\",\"event_date\":\"2026-10-16\",\"entities\":[{\"name\":\"Department of Commerce\",\"kind\":\"government_body\"},{\"name\":\"Corée du Sud\",\"kind\":\"country\"}],\"cited_origin\":\"federalregister.gov\",\"future_dates\":[],\"matched_node_ids\":[\"acrylonitrile\"],\"link\":\"material\",\"relevant\":true,\"severity_hint\":1,\"injection_suspected\":false}",
     "type": "text"
    }
   ],
   "diagnostics": null,
-  "id": "msg_011CgADxA7VQR7VEZFFJ3Fe4",
+  "id": "msg_011CguG9rzpzEQPXjo7uf3Ae",
   "model": "claude-haiku-5-5",
   "role": "assistant",
   "stop_details": null,
@@ -23,10 +23,10 @@
     "ephemeral_5m_input_tokens": 0
    },
    "cache_creation_input_tokens": 0,
-   "cache_read_input_tokens": 2571,
+   "cache_read_input_tokens": 4161,
    "inference_geo": "global",
    "input_tokens": 142,
-   "output_tokens": 283,
+   "output_tokens": 278,
    "output_tokens_details": {
     "thinking_tokens": 0
    },

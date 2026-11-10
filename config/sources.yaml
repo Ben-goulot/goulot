@@ -231,6 +231,53 @@ sources:
     frequency: 3h
     use: BNamericas ; lithium du Chili, de l'Argentine et du Brésil, mines d'Amérique latine
     notes: "le 6 novembre 2026 : HTTP 403 (accès refusé) ; laissé désactivé"
+  # Presse spécialisée (décision du 10 novembre 2026) : les flux généralistes ne gardent presque rien pour les matières
+  # suivies (8 articles en 14 jours pour 14 flux) et Google News ne donne que des titres.
+  - id: media_mining_com
+    enabled: false
+    family: media
+    url: https://www.mining.com/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: MINING.COM ; mines et métaux (lithium, gallium, terres rares), permis, grèves, contrôles à l'export
+    notes: "ajouté le 10 novembre 2026, adresse proposée de mémoire : désactivé jusqu'à sa vérification depuis le Mac (goulot dev check-sources : articles datés avec résumé)"
+  - id: media_cen
+    enabled: false
+    family: media
+    url: https://cen.acs.org/feeds/rss/latestnews.xml
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Chemical & Engineering News ; industrie chimique, arrêts et accidents d'usines, mesures commerciales
+    notes: "ajouté le 10 novembre 2026, adresse proposée de mémoire : désactivé jusqu'à sa vérification depuis le Mac (goulot dev check-sources : articles datés avec résumé)"
+  - id: media_splash247
+    enabled: false
+    family: media
+    url: https://splash247.com/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Splash247 ; transport maritime, détroits, ports, grèves de dockers
+    notes: "ajouté le 10 novembre 2026, adresse proposée de mémoire : désactivé jusqu'à sa vérification depuis le Mac (goulot dev check-sources : articles datés avec résumé)"
+  - id: media_gcaptain
+    enabled: false
+    family: media
+    url: https://gcaptain.com/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: gCaptain ; transport maritime, accidents, canaux et détroits
+    notes: "ajouté le 10 novembre 2026, adresse proposée de mémoire : désactivé jusqu'à sa vérification depuis le Mac (goulot dev check-sources : articles datés avec résumé)"
+  - id: media_maritime_executive
+    enabled: false
+    family: media
+    url: https://maritime-executive.com/articles.rss
+    lang: en
+    auth: none
+    frequency: 3h
+    use: The Maritime Executive ; transport maritime, ports, sanctions
+    notes: "ajouté le 10 novembre 2026, adresse proposée de mémoire : désactivé jusqu'à sa vérification depuis le Mac (goulot dev check-sources : articles datés avec résumé)"
 
   # --- Aléas naturels ---
   - id: gdacs

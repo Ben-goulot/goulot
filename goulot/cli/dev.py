@@ -254,7 +254,7 @@ def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
                                                      "max_tokens": 64}),
         ("contexte", "chaîne : voies, risques, échéances",
          {**context_params(material, PROBE_REPORT, PROBE_SOURCES, nodes), "max_tokens": 64}),
-        ("tri", "tri des articles (Haiku)", req("claude-haiku-5-5", "triage_v1", schema("triage_v1"),
+        ("tri", "tri des articles (Haiku)", req("claude-haiku-5-5", "triage_v2", schema("triage_v2"),
                                                 thinking={"type": "disabled"})),
         ("cas", "cas comparables : structuration",
          req("claude-sonnet-5-5", "case_structure_v1", schema("historical_case_v1"),
@@ -349,7 +349,7 @@ def record_watch(settings: Settings, args: argparse.Namespace) -> None:
     setup_logging(settings.log_dir)
     budget, _ = _dev_budget(settings)
     print("Enregistrement du scénario de veille (articles fictifs sur l'acrylonitrile) : tri par Haiku 5.5 et analyse")
-    print("par Sonnet 5.5 en 3 appels partiels, en traitement différé (moitié prix).")
+    print("par Sonnet 5.5 en deux temps (impacts, puis le reste s'il y a un impact), en traitement différé.")
     print(f"Devis : environ 0,10 à 0,30 $, {WATCH_MAX_USD:.2f} $ au plus.")
     print(f"Budget de test : {budget.spent('dev'):.2f} $ dépensés sur {budget.cap('dev'):.2f} $.")
     budget.check("dev", WATCH_MAX_USD)
@@ -360,8 +360,9 @@ def record_watch(settings: Settings, args: argparse.Namespace) -> None:
         import shutil
 
         shutil.rmtree(run_home)
-    if args.force:  # triage requests do not change: their answers are reused (and not paid again)
-        for old in [*watch_scenario.RECORDINGS.glob("ana_*.json"), watch_scenario.RECORDINGS / "summary.json"]:
+    if args.force:  # triage answers too: their prompt and schema may have changed (a few cents)
+        for old in [*watch_scenario.RECORDINGS.glob("ana_*.json"), *watch_scenario.RECORDINGS.glob("tri_*.json"),
+                    watch_scenario.RECORDINGS / "summary.json"]:
             old.unlink(missing_ok=True)
     ensure_private_dir(run_home)
     db = Database(run_home / "scenario.sqlite")

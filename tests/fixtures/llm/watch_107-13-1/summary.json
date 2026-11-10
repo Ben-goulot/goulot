@@ -40,7 +40,7 @@
  "events": [
   {
    "id": "EVT-2026-10-18-0001",
-   "type": "infrastructure_failure",
+   "type": "industrial_outage",
    "confirmation": "confirmed",
    "lineages": 2,
    "origin": "news",
@@ -61,5 +61,5 @@
   "x_weeks": 0.0,
   "event_ids": "[\"EVT-2026-10-18-0001\"]"
  },
- "ai_cost_usd": 0.062
+ "ai_cost_usd": 0.0734
 }
