@@ -176,7 +176,7 @@ def build_router(ctx: AppContext) -> APIRouter:
             http = ctx.http_client()
             try:
                 service.reconstruct(service.Deps(ctx.db, ctx.budget, backend, http, comtrade,
-                                                 usgs_url=service.usgs_url()), material["id"], job_id)
+                                                 usgs_url=service.usgs_url(ctx.db)), material["id"], job_id)
             except Exception:
                 log.exception("reconstruction job crashed")
             finally:

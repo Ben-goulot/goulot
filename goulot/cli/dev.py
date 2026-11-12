@@ -103,7 +103,7 @@ def record(settings: Settings, args: argparse.Namespace) -> None:
         job_id = service.start_job(db, material_id)
         print("Reconstruction en cours (quelques minutes)…")
         cost = service.reconstruct(service.Deps(db, budget, backend, http, get_secret("comtrade"),
-                                                usgs_url=service.usgs_url()), material_id,
+                                                usgs_url=service.usgs_url(db)), material_id,
                                    job_id, budget_name="dev")
     finally:
         http.close()

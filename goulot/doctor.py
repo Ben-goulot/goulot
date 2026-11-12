@@ -105,6 +105,17 @@ def check_ledger(db: Database) -> Check:
     return Check(FAIL, "Registre des conseils", f"altéré à l'entrée n° {result.at_seq} : {result.problem}")
 
 
+def check_usgs_table(db: Database) -> Check:
+    """Table of the chain cross-check, updated by the app each year (goulot/chain/usgs_table.py)."""
+    from datetime import UTC, datetime
+
+    from goulot.chain import usgs_table
+
+    with db.connect() as conn:
+        fine, text = usgs_table.doctor_line(conn, datetime.now(UTC))
+    return Check(OK if fine else WARN, "Table USGS", text)
+
+
 def run_checks(settings: Settings) -> list[Check]:
     checks: list[Check] = []
     ok_py = sys.version_info >= (3, 14)
@@ -142,6 +153,7 @@ def run_checks(settings: Settings) -> list[Check]:
     checks.append(check_permissions(settings))
     if not pending:
         checks.append(check_ledger(db))
+        checks.append(check_usgs_table(db))
 
     checks.append(
         Check(OK, "Clé Anthropic", "configurée")

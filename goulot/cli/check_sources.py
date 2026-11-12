@@ -58,6 +58,9 @@ def targets(today: date) -> list[tuple[str, str]]:
         # and the table itself (CSV, 3.1 MB), read to write the reader of the cross-check.
         ("usgs_mcs_2026_xml", USGS_FILE + "59%2F9f%2F78%2F599f78dcdae6cfc820ec8410e8a0e684c28be9d2"),
         ("usgs_mcs_2026_csv", USGS_FILE + "d3%2Fac%2F84%2Fd3ac8466552946c5e8caa2c2c6338d9e1aff655d"),
+        # The search the app runs each week for the next edition (goulot/chain/usgs_table.py), on this year's.
+        ("usgs_mcs_search", "https://www.sciencebase.gov/catalog/items?q=Mineral+Commodity+Summaries+2026+Data+Release"
+                            "&format=json&max=20&fields=title,files"),
     ]
 
 

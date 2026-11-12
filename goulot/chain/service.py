@@ -41,12 +41,15 @@ class Deps:
     usgs_url: str = ""  # or its address (`data_url` of `usgs_mcs`), fetched through the app's client
 
 
-def usgs_url() -> str:
-    """`data_url` of the enabled `usgs_mcs` source; empty when not set."""
-    from goulot.collect.base import load_sources
+def usgs_url(db: Database | None = None) -> str:
+    """Address of the USGS table in use: adopted by the app (goulot/chain/usgs_table.py), else `data_url` of the
+    enabled `usgs_mcs` source; empty when none."""
+    from goulot.chain import usgs_table
 
-    source = load_sources().get("usgs_mcs", {})
-    return str(source.get("data_url") or "") if source.get("enabled") else ""
+    if db is None:
+        return usgs_table.url_in_use(None)
+    with db.connect() as conn:
+        return usgs_table.url_in_use(conn)
 
 
 def start_job(db: Database, material_id: str) -> str:

@@ -1,4 +1,4 @@
-"""Server start-up: loopback sockets only, port check, scheduled jobs (watch cycle, daily backup)."""
+"""Server start-up: loopback sockets only, port check, scheduled jobs (watch cycle, daily backup, USGS table)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from apscheduler.schedulers.base import BaseScheduler
 
 from goulot.api.app import create_app
 from goulot.api.context import AppContext, build_context
+from goulot.chain import usgs_table
 from goulot.db.backup import backup, last_backup_age
 from goulot.pipeline import cycle
 from goulot.settings import LOOPBACK_V6, Settings, validate_bind_hosts
@@ -72,6 +73,8 @@ def schedule(scheduler: BaseScheduler, ctx: AppContext, watch: bool) -> None:
     if watch:
         scheduler.add_job(cycle.tick, id="watch_cycle", next_run_time=datetime.now(UTC) + timedelta(seconds=30),
                           **tick)
+        # Weekly, while the USGS table in use is from an earlier year: the new edition is adopted once it reads.
+        scheduler.add_job(usgs_table.tick, id="usgs_table", **tick)
     else:
         log.warning("watch cycle disabled (GOULOT_WATCH=off)")
 

@@ -51,7 +51,7 @@ def test_jobs_tick_every_10_minutes_and_run_missed_ticks_on_waking(ctx: AppConte
     scheduler = BackgroundScheduler(timezone="UTC")
     schedule(scheduler, ctx, watch=True)
     jobs = {j.id: j for j in scheduler.get_jobs()}
-    assert set(jobs) == {"watch_cycle", "daily_backup"}
+    assert set(jobs) == {"watch_cycle", "daily_backup", "usgs_table"}
     for job in jobs.values():
         assert job.trigger.interval == timedelta(minutes=TICK_MINUTES) <= timedelta(minutes=10)
         assert job.misfire_grace_time is None and job.coalesce is True and job.max_instances == 1

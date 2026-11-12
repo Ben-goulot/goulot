@@ -37,8 +37,10 @@ sources:
     use: production et réserves par pays (minerais et métaux), publication annuelle
     # Table de la publication de données MCS 2026 (MCS2026_Commodities_Data.csv, 3,1 Mo, Windows-1252, un chiffre par
     # ligne), lue par le recoupement des chaînes ; doi 10.5066/P1WKQ63T, adresse relevée sur sa fiche ScienceBase le
-    # 12 novembre 2026 (goulot dev check-sources). À changer à chaque édition annuelle (février) : vide, le
+    # 12 novembre 2026 (goulot dev check-sources). L'app cherche seule l'édition suivante chaque semaine, à partir de
+    # janvier, et l'adopte si elle se lit (goulot/chain/usgs_table.py ; état dans « goulot doctor »). Vide, le
     # recoupement USGS est sauté et l'écran « Chaîne » le dit. Son hôte entre dans la liste blanche.
+    data_year: 2026
     data_url: "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7?f=__disk__d3%2Fac%2F84%2Fd3ac8466552946c5e8caa2c2c6338d9e1aff655d"
   - id: un_comtrade
     enabled: true

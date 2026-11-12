@@ -401,3 +401,94 @@ def test_usgs_address_is_configured() -> None:
     url = service.usgs_url()
     assert url.startswith("https://www.sciencebase.gov/catalog/file/get/") and load_sources()["usgs_mcs"]["enabled"]
     assert "www.sciencebase.gov" in source_hosts(CONFIG_DIR / "sources.yaml")
+
+
+# --- the yearly USGS table, adopted by the app ---------------------------------------------------------------------
+def scienceband(year: int, csv_body: bytes, *, title: str | None = None, name: str | None = None,
+                status: int = 200) -> tuple[Any, list[str]]:
+    """A fictitious ScienceBase: the search and the file it lists."""
+    import httpx2
+
+    from goulot.net.allowlist import Allowlist
+    from goulot.net.client import build_client
+
+    seen: list[str] = []
+    file_url = "https://www.sciencebase.gov/catalog/file/get/abc?f=__disk__x"
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(str(request.url))
+        if request.url.path == "/catalog/items":
+            if status != 200:
+                return httpx2.Response(status, json={})
+            return httpx2.Response(200, json={"items": [
+                {"title": f"Mineral Commodity Summaries {year - 1} Data Release - Commodity Salient",
+                 "files": [{"name": f"MCS{year - 1}_Commodities_Data.csv", "url": file_url + "old"}]},
+                {"title": title or f"Mineral Commodity Summaries {year} Data Release - Commodity Salient U.S. and World",
+                 "files": [{"name": f"MCS{year}_Commodities_Data.xml", "url": file_url + "xml"},
+                           {"name": name or f"MCS{year}_Commodities_Data.csv", "url": file_url}]}]})
+        return httpx2.Response(200, content=csv_body)
+
+    return build_client(Allowlist(set()), transport=httpx2.MockTransport(handler)), seen
+
+
+def test_next_usgs_edition_is_adopted_once_it_reads(ctx: AppContext) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from goulot.chain import usgs_table
+
+    feb = datetime(2027, 2, 10, tzinfo=UTC)
+    with ctx.db.connect() as conn:
+        shipped = usgs_table.state(conn)
+        assert shipped["source"] == "config" and shipped["year"] == 2026
+        assert not usgs_table.due(conn, datetime(2026, 11, 12, tzinfo=UTC))  # this year's table: nothing to do
+        assert usgs_table.due(conn, feb)
+    client, seen = scienceband(2027, LONG_CSV.encode("cp1252"))
+    with ctx.db.transaction() as conn:
+        assert usgs_table.check(conn, client, feb) == "adopted"
+        now_used = usgs_table.state(conn)
+        assert now_used["year"] == 2027 and now_used["source"] == "app" and now_used["url"].endswith("__disk__x")
+        assert not usgs_table.due(conn, feb + timedelta(days=30))
+        fine, text = usgs_table.doctor_line(conn, feb)
+    assert service.usgs_url(ctx.db) == now_used["url"]  # the reconstruction reads the adopted table
+    assert fine and "édition 2027 (adoptée automatiquement)" in text
+    assert "q=Mineral+Commodity+Summaries+2027+Data+Release" in seen[0]
+
+
+def test_usgs_edition_kept_when_missing_or_unreadable(ctx: AppContext) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from goulot.chain import usgs_table
+
+    jan = datetime(2027, 1, 20, tzinfo=UTC)
+    cases = [
+        (scienceband(2027, b"", title="Mineral Commodity Summaries 2026 Data Release")[0], "not_published"),
+        (scienceband(2027, b"", name="MCS2027_World_Data.csv")[0], "not_published"),
+        (scienceband(2027, b"COMMODITY,COUNTRY\nLithium,Chile\n")[0], "unreadable"),
+        (scienceband(2027, b"", status=503)[0], "failed"),
+    ]
+    for client, expected in cases:
+        with ctx.db.transaction() as conn:
+            assert usgs_table.check(conn, client, jan) == expected
+            kept = usgs_table.state(conn)
+            assert kept["year"] == 2026 and kept["source"] == "config" and kept["error"]
+            assert not usgs_table.due(conn, jan + timedelta(days=3))  # once a week
+            assert usgs_table.due(conn, jan + timedelta(days=7))
+    with ctx.db.connect() as conn:
+        assert usgs_table.doctor_line(conn, datetime(2027, 3, 1, tzinfo=UTC))[0]  # not late yet
+        fine, text = usgs_table.doctor_line(conn, datetime(2027, 5, 2, tzinfo=UTC))
+    assert not fine and "édition 2026" in text
+
+
+def test_usgs_tick_runs_when_due_then_waits(ctx: AppContext) -> None:
+    """The test clock starts in January 2027: the 2026 table in use is from an earlier year."""
+    from goulot.chain import usgs_table
+
+    opened: list[int] = []
+
+    def http() -> Any:
+        opened.append(1)
+        return scienceband(2027, LONG_CSV.encode("cp1252"))[0]
+
+    ctx.http_client = http  # type: ignore[method-assign]
+    assert usgs_table.tick(ctx) == "adopted" and opened == [1]
+    assert usgs_table.tick(ctx) is None and opened == [1]  # 2027 table in use now: nothing fetched
