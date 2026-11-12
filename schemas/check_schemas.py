@@ -173,7 +173,35 @@ def check_chain(ex: dict, allowed_sources: set[str], expected_cas: str) -> set[s
     for r in ex["routes"]:
         if r["global_share_pct"] is not None and not 0 <= r["global_share_pct"] <= 100:
             fail(w, "route global_share_pct out of 0-100")
+    for n in ex["nodes"]:  # since supply_chain_v3: a share has a basis, and only a share has one
+        if "share_basis" not in n:
+            continue
+        if n["status"] not in ("operating", "idled", "closed", "project", "unknown"):
+            fail(w, f"{n['node_id']}: bad status")
+        if (n["global_share_pct"] is None) != (n["share_basis"] == "unknown"):
+            fail(w, f"{n['node_id']}: share_basis must be set exactly when global_share_pct is")
+        if n["global_share_pct"] is None and n["share_year"] is not None:
+            fail(w, f"{n['node_id']}: share_year without share")
     return set(nodes)
+
+
+def check_update(ex: dict, chain_ids: set[str], allowed_sources: set[str], today: str) -> None:
+    w = "chain_update example"
+    for c in ex["changes"]:
+        kind = c["change_type"]
+        if kind not in ("status", "share", "capacity", "new_producer", "date", "note"):
+            fail(w, f"bad change_type {kind}")
+        if not c["source_ids"] or set(c["source_ids"]) - allowed_sources:
+            fail(w, f"{kind}: missing or unknown source")
+        if kind in ("status", "share", "capacity") and c["node_id"] not in chain_ids:
+            fail(w, f"{kind}: unknown node {c['node_id']}")
+        if kind == "new_producer" and (c["node_id"] in chain_ids or c["feeds_node_id"] not in chain_ids):
+            fail(w, "new_producer: id already used or unknown product")
+        if kind == "share" and (c["share_pct"] is None or not 0 <= c["share_pct"] <= 100
+                                or c["share_basis"] not in ("production", "capacity", "exports")):
+            fail(w, "share: bad share or basis")
+        if kind == "date" and (not DATE.match(c["date"]) or c["date"][:7] < today[:7]):
+            fail(w, f"date: bad or past date {c['date']}")
 
 
 def check_impact(ex: dict, dossier: dict[str, set[str]]) -> None:
@@ -324,6 +352,8 @@ def main() -> int:
         return 1
     chain_ids = check_chain(examples["supply_chain_v1"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
     check_chain(examples["supply_chain_v2"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
+    v3_ids = check_chain(examples["supply_chain_v3"], {f"src{i}" for i in range(1, 5)}, "107-13-1")
+    check_update(examples["chain_update_v1"], v3_ids, {f"src{i}" for i in range(1, 7)}, "2026-11-11")
     check_triage(examples["triage_v1"], chain_ids)
     check_triage(examples["triage_v2"], chain_ids)
     check_impact(examples["impact_assessment_v1"], {

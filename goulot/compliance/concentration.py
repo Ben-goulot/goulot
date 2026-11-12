@@ -109,8 +109,8 @@ def national_shares(nodes: list[dict[str, Any]]) -> dict[str, float]:
     from_country_node: set[str] = set()
     for n in nodes:
         share, country = n.get("global_share_pct"), n.get("country_iso2") or "unknown"
-        if share is None or country == "unknown":
-            continue
+        if share is None or country == "unknown" or n.get("share_basis") == "exports":
+            continue  # a share of world exports is not a share of world output (since 2026-11-11)
         if n["node_type"] == "country":
             if country not in from_country_node:
                 by_country[country] = 0.0

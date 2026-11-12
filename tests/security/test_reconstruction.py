@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from fastapi.testclient import TestClient
 
@@ -82,10 +83,11 @@ def test_no_user_data_in_prompts(client: TestClient, ctx: AppContext, opened: tu
         sent = json.dumps(params, ensure_ascii=False)
         for canary in CANARIES:
             assert canary not in sent, canary
-    # The material block holds exactly the whitelisted fields.
-    material_block = backend.requests[0][1]["messages"][0]["content"]
+    # The material block holds exactly the whitelisted fields; the only other block is today's date (since v2).
+    material_block, today_block = backend.requests[0][1]["messages"][0]["content"].split("\n\n")
     fields = [line.split(":", 1)[0] for line in material_block.splitlines()[1:-1]]
     assert fields == ["name", "cas", "formula", "purchased_form"]
+    assert re.fullmatch(r"<today>\n\d{4}-\d{2}-\d{2}\n</today>", today_block)
     # The builder ignores any extra field it is given.
     extra = service.material_for_prompt({"name": "x", "cas": fx.CAS, "formula": "", "stock_weeks": 37.2917,
                                          "quote": "CANARY-QUOTE-4217.93"})

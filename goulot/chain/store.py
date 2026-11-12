@@ -15,12 +15,15 @@ from goulot.db.connection import utcnow
 
 NODE_FIELDS = (
     "node_type", "name", "product", "tier", "country_iso2", "place", "lat", "lon", "global_share_pct",
-    "buffer_days", "capacity_text", "confidence", "notes",
+    "buffer_days", "capacity_text", "confidence", "notes", "status", "share_basis", "share_year",
 )
+STATUSES = ("operating", "idled", "closed", "project", "unknown")
+NOT_PRODUCING = ("closed", "project")  # no watch rule: nothing can stop there
+SHARE_BASES = ("production", "capacity", "exports", "unknown")
 EDGE_FIELDS = ("relation", "transport_mode", "lead_time_days", "share_pct", "confidence")
 EDITABLE_NODE_FIELDS = (
     "name", "product", "country_iso2", "place", "lat", "lon", "global_share_pct", "buffer_days", "capacity_text",
-    "confidence", "notes",
+    "confidence", "notes", "status", "share_basis", "share_year",
 )
 EDITABLE_EDGE_FIELDS = ("transport_mode", "lead_time_days", "share_pct", "confidence")
 
@@ -89,6 +92,8 @@ def set_status(conn: sqlite3.Connection, material_id: str, status: str) -> None:
 
 def clear_chain(conn: sqlite3.Connection, material_id: str) -> None:
     for sql in (
+        "DELETE FROM chain_update_items WHERE material_id = ?",
+        "DELETE FROM chain_updates WHERE material_id = ?",
         "DELETE FROM node_sources WHERE node_id IN (SELECT id FROM chain_nodes WHERE material_id = ?)",
         "DELETE FROM edge_sources WHERE edge_id IN (SELECT id FROM chain_edges WHERE material_id = ?)",
         "DELETE FROM chain_nodes WHERE material_id = ?",
@@ -139,12 +144,13 @@ def save_chain(
         cur = conn.execute(
             "INSERT INTO chain_nodes (material_id, node_key, node_type, name, product, tier, country_iso2, place, lat, "
             "lon, global_share_pct, buffer_days, buffer_is_default, capacity_text, confidence, notes, anomalies, "
-            "valid_from, recorded_at, coord_source) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "valid_from, recorded_at, coord_source, status, share_basis, share_year) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (material_id, n["node_id"], n["node_type"], n["name"], n["product"], n["tier"], n["country_iso2"],
              n["place"], lat, lon, n["global_share_pct"], n["buffer_days"],
              int(bool(n.get("buffer_is_default"))), n["capacity_text"], confidence, n["notes"], _j(anomalies),
-             now, now, coord_source),
+             now, now, coord_source, n.get("status", "unknown"), n.get("share_basis", "unknown"),
+             n.get("share_year")),
         )
         for ref in n["source_ids"]:
             if ref in source_ids:
@@ -212,7 +218,8 @@ SOURCES_OF = {
 NODE_COLUMNS = (
     "material_id", "node_key", "node_type", "name", "product", "tier", "country_iso2", "place", "lat", "lon",
     "global_share_pct", "buffer_days", "buffer_is_default", "capacity_text", "confidence", "notes", "anomalies",
-    "user_modified", "valid_from", "valid_to", "recorded_at", "coord_source", "added_by",
+    "user_modified", "valid_from", "valid_to", "recorded_at", "coord_source", "added_by", "status", "share_basis",
+    "share_year",
 )
 EDGE_COLUMNS = (
     "material_id", "from_key", "to_key", "relation", "transport_mode", "lead_time_days", "lead_time_basis",
@@ -221,8 +228,8 @@ EDGE_COLUMNS = (
 INSERT_NODE = (
     "INSERT INTO chain_nodes (material_id, node_key, node_type, name, product, tier, country_iso2, place, lat, lon, "
     "global_share_pct, buffer_days, buffer_is_default, capacity_text, confidence, notes, anomalies, user_modified, "
-    "valid_from, valid_to, recorded_at, coord_source, added_by) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "valid_from, valid_to, recorded_at, coord_source, added_by, status, share_basis, share_year) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 INSERT_EDGE = (
     "INSERT INTO chain_edges (material_id, from_key, to_key, relation, transport_mode, lead_time_days, "
@@ -314,6 +321,8 @@ def correct_node(conn: sqlite3.Connection, material_id: str, node_key: str, chan
     changes = dict(changes)
     if "buffer_days" in changes:
         changes["buffer_is_default"] = 0
+    if "global_share_pct" in changes and changes["global_share_pct"] is None:
+        changes.update({"share_basis": "unknown", "share_year": None})  # no share: nothing to qualify
     new = {**dict(row), **changes}
     if changes.get("lat") is not None and changes.get("lon") is not None:
         if not (-90 <= new["lat"] <= 90 and -180 <= new["lon"] <= 180):

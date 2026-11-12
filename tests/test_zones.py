@@ -97,7 +97,8 @@ def frozen_hormuz(ctx: AppContext) -> tuple[str, str]:
             "product": "ammoniac", "tier": 2, "country_iso2": "SA", "place": "Jubail", "lat": 27.0, "lon": 49.66,
             "global_share_pct": None, "buffer_days": None, "buffer_is_default": 0, "capacity_text": "unknown",
             "confidence": "medium", "notes": "", "anomalies": "[]", "user_modified": 0, "valid_from": now,
-            "valid_to": None, "recorded_at": now, "coord_source": "ai", "added_by": ""}[c] for c in store.NODE_COLUMNS])
+            "valid_to": None, "recorded_at": now, "coord_source": "ai", "added_by": "", "status": "unknown", "share_basis": "unknown",
+            "share_year": None}[c] for c in store.NODE_COLUMNS])
         conn.execute(store.INSERT_EDGE, [{
             "material_id": material_id, "from_key": "port_jubail", "to_key": "port_rotterdam", "relation": "ships_via",
             "transport_mode": "sea", "lead_time_days": 25.0, "lead_time_basis": "source", "share_pct": None,

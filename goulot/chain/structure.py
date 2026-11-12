@@ -1,8 +1,9 @@
 """Step 2, calls 2 and 3: structured graph from the research report, without tools (docs/SPEC.md, section 3).
 
 The API refuses one schema holding the whole chain (« compiled grammar is too large », 2026-10-16), so:
-- call 2 (`chain_structure_v2`, `supply_chain_core_v1`): material, nodes, edges. Required; a schema failure is
-  retried once.
+- call 2 (`chain_structure_v3`, `supply_chain_core_v2`): material, nodes, edges. Required; a schema failure is
+  retried once. Since v3 (2026-11-11) every producer named by the report is a node, each node has a status and each
+  share its basis (production, capacity or exports) and its year.
 - call 3 (`chain_context_v1`, `supply_chain_context_v1`): routes, substitutes, risks, dates, given the node list.
   Optional: if it fails, the chain is kept and the gap is shown as an open question.
 Both outputs are merged into the supply_chain shape and checked by code; anomalies drop a node or edge to low
@@ -23,8 +24,9 @@ from goulot.llm.validate import ChainCheck, SchemaError, check_chain, parse_json
 
 log = logging.getLogger("goulot.chain.structure")
 
-PROMPT = "chain_structure_v2"
-SCHEMA = "supply_chain_core_v1"
+PROMPT = "chain_structure_v3"
+SCHEMA = "supply_chain_core_v2"
+LEGACY_SCHEMA = "supply_chain_core_v1"  # answers recorded before 2026-11-11
 CONTEXT_PROMPT = "chain_context_v1"
 CONTEXT_SCHEMA = "supply_chain_context_v1"
 MODEL = "claude-sonnet-5-5"
@@ -73,6 +75,20 @@ def context_params(material: dict[str, Any], report: str, sources: list[dict[str
     return _params(CONTEXT_PROMPT, CONTEXT_SCHEMA, CONTEXT_MAX_TOKENS, user)
 
 
+def parse_core(content: list[dict[str, Any]]) -> dict[str, Any]:
+    """Core output, validated. The API can only answer in the current schema; an answer recorded with the previous
+    one (`core-1.0`: no status, no share basis, no share year) is read with its own schema and completed with
+    « unknown », so that old recordings stay replayable. Such a chain is marked `legacy_shares`."""
+    data = parse_json_output(content)
+    if isinstance(data, dict) and data.get("schema_version") == "core-1.0":
+        core = validate_schema(LEGACY_SCHEMA, data)
+        for n in core["nodes"]:
+            n.update({"status": "unknown", "share_basis": "unknown", "share_year": None})
+        core["legacy_shares"] = True
+        return core
+    return validate_schema(SCHEMA, data)
+
+
 def detach_purchased_coproducts(chain: dict[str, Any]) -> set[str]:
     """Coproducts of the purchased material are not supply links: the graph must end at the purchased material.
     Edges leaving it with `yields_coproduct` are removed, with the coproduct nodes left without any link; their
@@ -113,7 +129,7 @@ def run_structure(
         result = call(backend, budget, spec, structure_params(material, report, sources))
         cost += result.cost_usd
         try:
-            core = validate_schema(SCHEMA, parse_json_output(result.content))
+            core = parse_core(result.content)
             break
         except SchemaError:
             continue

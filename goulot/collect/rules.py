@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from goulot.chain.leadtimes import great_circle_km
+from goulot.chain.store import NOT_PRODUCING
 from goulot.collect.base import Item, fold
 from goulot.db.connection import utcnow
 
@@ -83,6 +84,8 @@ def generate(conn: sqlite3.Connection, material: dict[str, Any], nodes: list[dic
     for name in [*material_names(material), *foreign_names(material)]:
         add("keyword", name)
     for n in nodes:
+        if n.get("status") in NOT_PRODUCING:
+            continue  # a closed site or a project supplies nothing: no rule, so no alert for it
         if n["node_type"] in SITE_TYPES:
             # « Yichun, Jiangxi » is written « Yichun » by the press: the city alone is a rule too.
             for name in (n["name"], n["place"], n["place"].split(",")[0]):

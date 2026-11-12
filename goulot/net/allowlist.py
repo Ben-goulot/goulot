@@ -1,6 +1,6 @@
 """Outbound host allowlist (docs/SECURITY.md, outbound network).
 
-Hosts of the enabled sources of `config/sources.yaml` (url and extra_hosts), plus the fixed hosts below.
+Hosts of the enabled sources of `config/sources.yaml` (url, data_url and extra_hosts), plus the fixed hosts below.
 Exact host match: a listed domain does not open its subdomains. A new domain enters only with the user's
 consent (Settings > Sources, phase 3).
 """
@@ -56,6 +56,12 @@ def source_hosts(sources_file: Path) -> set[str]:
             raise ValueError(f"source {source.get('id')}: HTTPS required")
         hosts.add(url.hostname)
         hosts.update(str(h) for h in source.get("extra_hosts", []) or [])
+        data_url = str(source.get("data_url") or "")
+        if data_url:  # a data file published apart from the source's page (USGS MCS world production table)
+            data = urlsplit(data_url)
+            if data.scheme != "https" or not data.hostname:
+                raise ValueError(f"source {source.get('id')}: HTTPS required for data_url")
+            hosts.add(data.hostname)
     return hosts
 
 

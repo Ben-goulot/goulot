@@ -8,19 +8,28 @@ import { Locked, usePrivacy } from "../private/privacy";
 import { ChainEdge, HoverLabels } from "./ChainEdge";
 import { emphasize, hoverStep, loadHoverEffect, saveHoverEffect, type Hover } from "./hover";
 import { HEADER_Y, layout } from "./layout";
-import { approximate, BASIS, clip, CONFIDENCE, COORD_SOURCE, MODE, NODE_TYPE, safeHref, weeks, type Chain, type ChainNode, type Source } from "./types";
+import { SourceLinks } from "./SourceLinks";
+import { approximate, BASIS, clip, CONFIDENCE, COORD_SOURCE, MODE, NODE_TYPE, shareText, STATUS, weeks, type Chain, type ChainNode, type ShareBasis, type SiteStatus } from "./types";
+import { UpdatePanel } from "./UpdatePanel";
 
 type Draft = {
   name: string;
   country_iso2: string;
   place: string;
   global_share_pct: string;
+  share_basis: ShareBasis;
+  share_year: string;
+  status: SiteStatus;
   buffer_days: string;
   confidence: "high" | "medium" | "low";
   notes: string;
   city: string;
   position: { lat: number; lon: number; label: string } | null | "reset";
 };
+
+// Short basis next to a share in the graph; the full wording is in the node panel.
+const SHORT_BASIS: Record<ShareBasis, string> = { production: " prod.", capacity: " capa.", exports: " export.", unknown: "" };
+const PRODUCING = new Set(["mine", "plant", "recycler", "company"]);
 
 // Every plain edge, Ma chaîne included, uses the chain edge: when lit, its label is drawn by HoverLabels.
 const EDGE_TYPES = { default: ChainEdge };
@@ -77,39 +86,15 @@ function toDraft(n: ChainNode): Draft {
     country_iso2: n.country_iso2,
     place: n.place,
     global_share_pct: n.global_share_pct === null ? "" : String(n.global_share_pct),
+    share_basis: n.share_basis,
+    share_year: n.share_year === null ? "" : String(n.share_year),
+    status: n.status,
     buffer_days: n.buffer_days === null ? "" : String(n.buffer_days),
     confidence: n.confidence,
     notes: n.notes,
     city: "",
     position: null,
   };
-}
-
-function SourceLinks(props: { refs: string[]; sources: Map<string, Source> }) {
-  const items = props.refs.map((r) => props.sources.get(r)).filter((s): s is Source => Boolean(s));
-  if (items.length === 0) return <span className="muted">aucune</span>;
-  return (
-    <ul className="plain">
-      {items.map((s) => {
-        const href = safeHref(s.url);
-        return (
-          <li key={s.ref}>
-            {href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="source">
-                {clip(s.title || s.publisher, 120)}
-              </a>
-            ) : (
-              clip(s.title, 120)
-            )}{" "}
-            <span className="muted">
-              · {s.publisher}
-              {s.page_age ? ` · ${s.page_age}` : ""}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
 }
 
 export function ChainView(props: { materialId: string; onBack: () => void }) {
@@ -166,13 +151,14 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             <div className="node-sub">
               {NODE_TYPE[n.node_type] ?? n.node_type}
               {n.country_iso2 !== "unknown" ? ` · ${n.country_iso2}` : ""}
-              {n.global_share_pct !== null ? ` · ${n.global_share_pct} %` : ""}
+              {n.global_share_pct !== null ? ` · ${n.global_share_pct} %${SHORT_BASIS[n.share_basis]}` : ""}
             </div>
+            {(n.status === "closed" || n.status === "idled" || n.status === "project") && <div className="node-flag">{STATUS[n.status]}</div>}
             {n.confidence === "low" && <div className="node-flag">confiance faible</div>}
           </div>
         ),
       },
-      className: `chain-node conf-${n.confidence}${n.tier === 0 ? " purchased" : ""}${selected === n.node_key ? " selected" : ""}`,
+      className: `chain-node conf-${n.confidence}${n.tier === 0 ? " purchased" : ""}${n.status === "closed" || n.status === "project" ? " inactive" : ""}${selected === n.node_key ? " selected" : ""}`,
       sourcePosition: "right" as Node["sourcePosition"],
       targetPosition: "left" as Node["targetPosition"],
       draggable: false,
@@ -211,6 +197,10 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
         country_iso2: draft.country_iso2.trim().toUpperCase() || "unknown",
         place: draft.place,
         global_share_pct: num(draft.global_share_pct),
+        ...(num(draft.global_share_pct) === null
+          ? {}
+          : { share_basis: draft.share_basis, share_year: draft.share_year.trim() === "" ? null : Math.round(Number(draft.share_year)) }),
+        ...(PRODUCING.has(node.node_type) ? { status: draft.status } : {}),
         buffer_days: num(draft.buffer_days),
         confidence: draft.confidence,
         notes: draft.notes,
@@ -249,7 +239,14 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
         <span className="muted">
           · {chain.nodes.length} maillons · {lowCount} en confiance faible ·{" "}
           {chain.material.status === "validated" ? "validée" : "à relire"}
+          {chain.update.freshness.age_days !== null ? ` · chaîne de ${chain.update.freshness.age_days} j` : ""}
         </span>
+        {chain.update.freshness.pending > 0 && (
+          <button className="badge pot" onClick={() => setSelected(null)}>
+            {chain.update.freshness.pending} proposition{chain.update.freshness.pending > 1 ? "s" : ""} à relire
+          </button>
+        )}
+        {chain.update.freshness.pending === 0 && chain.update.freshness.advised && <span className="badge pot">mise à jour conseillée</span>}
       </header>
       <div className="row">
         <div className="segmented" role="group" aria-label="Vue de la chaîne">
@@ -374,6 +371,12 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                   {node.place !== "unknown" ? clip(node.place, 120) : "non précisé"}
                   {node.country_iso2 !== "unknown" ? ` (${node.country_iso2})` : ""}
                 </dd>
+                {PRODUCING.has(node.node_type) && (
+                  <>
+                    <dt>État</dt>
+                    <dd className={node.status === "closed" || node.status === "idled" ? "warn" : undefined}>{STATUS[node.status]}</dd>
+                  </>
+                )}
                 <dt>Position</dt>
                 <dd className={approximate(node) ? "muted" : undefined}>
                   {COORD_SOURCE[node.coord_source]}
@@ -382,7 +385,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                 {node.global_share_pct !== null && (
                   <>
                     <dt>Part mondiale</dt>
-                    <dd className="mono">{node.global_share_pct} %</dd>
+                    <dd className={node.share_basis === "unknown" ? "muted" : undefined}>{shareText(node)}</dd>
                   </>
                 )}
                 {node.capacity_text !== "unknown" && (
@@ -471,6 +474,35 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                     Part mondiale, en %
                     <input value={draft.global_share_pct} inputMode="decimal" onChange={(e) => setDraft({ ...draft, global_share_pct: e.target.value })} />
                   </label>
+                  {draft.global_share_pct.trim() !== "" && (
+                    <>
+                      <label>
+                        Cette part est une part…
+                        <select value={draft.share_basis} onChange={(e) => setDraft({ ...draft, share_basis: e.target.value as ShareBasis })}>
+                          <option value="production">de la production mondiale</option>
+                          <option value="capacity">de la capacité mondiale</option>
+                          <option value="exports">des exportations mondiales</option>
+                          <option value="unknown">je ne sais pas</option>
+                        </select>
+                      </label>
+                      <label>
+                        Année du chiffre
+                        <input value={draft.share_year} inputMode="numeric" maxLength={4} onChange={(e) => setDraft({ ...draft, share_year: e.target.value })} />
+                      </label>
+                    </>
+                  )}
+                  {PRODUCING.has(node.node_type) && (
+                    <label>
+                      État du site
+                      <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as SiteStatus })}>
+                        <option value="operating">en service</option>
+                        <option value="idled">à l'arrêt</option>
+                        <option value="closed">fermé (plus surveillé)</option>
+                        <option value="project">en projet (pas encore surveillé)</option>
+                        <option value="unknown">non précisé</option>
+                      </select>
+                    </label>
+                  )}
                   <label>
                     Stock tampon, en jours
                     <input value={draft.buffer_days} inputMode="decimal" onChange={(e) => setDraft({ ...draft, buffer_days: e.target.value })} />
@@ -500,6 +532,7 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
             <>
               <p className="eyebrow">Relecture</p>
               <p>Clique sur un maillon pour voir son rôle, ses sources et son délai jusqu'à toi.</p>
+              <UpdatePanel materialId={props.materialId} chain={chain} sources={sources} editable={editable} onChanged={load} />
               {chain.routes.length > 0 && (
                 <>
                   <p className="eyebrow">Voies de production</p>
@@ -528,8 +561,9 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                   <p className="eyebrow">Échéances connues</p>
                   <ul className="plain">
                     {chain.dates.map((d, i) => (
-                      <li key={i}>
+                      <li key={i} className={d.date.slice(0, 7) < new Date().toISOString().slice(0, 7) ? "muted" : undefined}>
                         <span className="mono">{d.date}</span> {clip(d.what, 200)}
+                        {d.date.slice(0, 7) < new Date().toISOString().slice(0, 7) ? " (échue)" : ""}
                       </li>
                     ))}
                   </ul>

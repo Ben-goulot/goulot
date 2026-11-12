@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
 from goulot.llm.backend import MessageBackend
 from goulot.llm.budget import Budget
 from goulot.llm.calls import CallSpec, LLMError, call
-from goulot.llm.prompts import load_prompt, material_block
+from goulot.llm.prompts import load_prompt, material_block, tag
 
-PROMPT = "chain_research_v1"
+PROMPT = "chain_research_v2"  # v1 until 2026-11-11: no date, no site status, no share basis
 MODEL = "claude-sonnet-5-5"
 WEB_SEARCH_TOOL = "web_search_20260318"
 MAX_SEARCHES = 20
@@ -33,7 +34,12 @@ class ResearchResult:
     web_searches: int = 0
 
 
-def research_params(material: dict[str, Any]) -> dict[str, Any]:
+def today_iso() -> str:
+    return datetime.now(UTC).date().isoformat()
+
+
+def research_params(material: dict[str, Any], today: str | None = None) -> dict[str, Any]:
+    user = material_block(material) + "\n\n" + tag("today", today or today_iso())
     return {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
@@ -42,7 +48,7 @@ def research_params(material: dict[str, Any]) -> dict[str, Any]:
         # report comes back without any citation, so without sources (verified on 2026-10-16).
         "tools": [{"type": WEB_SEARCH_TOOL, "name": "web_search", "max_uses": MAX_SEARCHES,
                    "allowed_callers": ["direct"]}],
-        "messages": [{"role": "user", "content": material_block(material)}],
+        "messages": [{"role": "user", "content": user}],
     }
 
 

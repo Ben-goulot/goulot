@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
@@ -19,8 +20,10 @@ from goulot.llm.prompts import load_schema_text
 ISO2 = re.compile(r"^[A-Z]{2}$")
 DATE = re.compile(r"^\d{4}(-\d{2}(-\d{2})?)?$")  # a year alone is a valid, if coarse, due date
 NODE_ID = re.compile(r"^[a-z0-9_]+$")
+MIN_SHARE_YEAR = 1990
 ENUM_FIELDS = {
-    "node_type", "confidence", "relation", "transport_mode", "risk_type", "link",
+    "node_type", "confidence", "relation", "transport_mode", "risk_type", "link", "status", "share_basis",
+    "change_type", "new_node_type",
 }
 
 
@@ -36,6 +39,8 @@ CHAIN_VALUES: dict[str, tuple[tuple[str, ...], str | None]] = {
     "confidence": (("high", "medium", "low"), "low"),
     "relation": (("feedstock_of", "produces", "ships_via", "yields_coproduct", "supplies"), None),
     "transport_mode": (("sea", "river", "rail", "road", "pipeline", "air", "none", "unknown"), "unknown"),
+    "status": (("operating", "idled", "closed", "project", "unknown"), "unknown"),
+    "share_basis": (("production", "capacity", "exports", "unknown"), "unknown"),
     "risk_type": (("geographic_concentration", "single_supplier", "export_control", "logistics_chokepoint",
                    "seasonality", "recurring_maintenance", "regulatory", "coproduct_dependency", "other"), "other"),
 }
@@ -102,7 +107,10 @@ def normalize_chain_values(chain: dict[str, Any], out: ChainCheck) -> None:
         return f"valeur inattendue pour {key} : « {value[:40]} »"
 
     for n in chain["nodes"]:
-        for key in ("node_type", "confidence"):
+        n.setdefault("status", "unknown")
+        n.setdefault("share_basis", "unknown")
+        n.setdefault("share_year", None)
+        for key in ("node_type", "confidence", "status", "share_basis"):
             msg = fix(n, key)
             if msg:
                 out.node(n["node_id"], msg)
@@ -172,6 +180,7 @@ def check_chain(chain: dict[str, Any], allowed_sources: set[str], expected_cas: 
             out.node(nid, "coordonnées pour un pays entier ou un fleuve")
         if n["global_share_pct"] is not None and not 0 <= n["global_share_pct"] <= 100:
             out.node(nid, "part mondiale hors de 0 à 100 %")
+        _check_share_basis(n, out, legacy=bool(chain.get("legacy_shares")))
         if n["country_iso2"] != "unknown" and not ISO2.match(n["country_iso2"]):
             out.node(nid, "code pays mal formé")
         if n["confidence"] in ("high", "medium") and not n["source_ids"]:
@@ -193,6 +202,23 @@ def check_chain(chain: dict[str, Any], allowed_sources: set[str], expected_cas: 
         if r["global_share_pct"] is not None and not 0 <= r["global_share_pct"] <= 100:
             out.general.append("part d'une voie hors de 0 à 100 %")
     return out
+
+
+def _check_share_basis(n: dict[str, Any], out: ChainCheck, *, legacy: bool) -> None:
+    """A share is a percentage of something, in a given year: without its basis it cannot be compared with another
+    one nor with a public statistic. A basis or a year without a share is dropped silently."""
+    nid = n["node_id"]
+    if n["global_share_pct"] is None:
+        n["share_basis"], n["share_year"] = "unknown", None
+        return
+    if n["share_basis"] == "unknown" and not legacy:
+        out.node(nid, "part sans nature : production, capacité ou exportations ?")
+    year = n["share_year"]
+    if year is not None and not (isinstance(year, int) and MIN_SHARE_YEAR <= year <= datetime.now(UTC).year + 1):
+        n["share_year"] = None
+        out.node(nid, "année de la part invraisemblable, retirée")
+    if n["status"] in ("closed", "project"):
+        out.node(nid, "part mondiale pour un site fermé ou en projet")
 
 
 def _reaches(start: str, target: str, out_edges: dict[str, list[str]]) -> bool:

@@ -1,0 +1,139 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "changes",
+    "open_questions",
+    "injection_suspected"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "update-1.0"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/change"
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "injection_suspected": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change_type",
+        "node_id",
+        "summary",
+        "status",
+        "share_pct",
+        "share_basis",
+        "share_year",
+        "capacity_text",
+        "new_node_type",
+        "new_name",
+        "new_product",
+        "new_country_iso2",
+        "new_place",
+        "feeds_node_id",
+        "date",
+        "date_what",
+        "confidence",
+        "source_ids"
+      ],
+      "properties": {
+        "change_type": {
+          "type": "string",
+          "description": "Une valeur parmi : status, share, capacity, new_producer, date, note."
+        },
+        "node_id": {
+          "type": "string",
+          "description": "Identifiant d'un maillon de <chain_nodes> ; pour new_producer, identifiant proposé du nouveau maillon (minuscules, chiffres, tirets bas) ; chaîne vide pour date et note."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Une phrase en français : ce qui a changé, et depuis quand."
+        },
+        "status": {
+          "type": "string",
+          "description": "Pour status et new_producer : operating, idled, closed, project ; unknown sinon."
+        },
+        "share_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Pour share : nouvelle part mondiale, de 0 à 100 ; null sinon."
+        },
+        "share_basis": {
+          "type": "string",
+          "description": "Pour share : production, capacity ou exports ; unknown sinon."
+        },
+        "share_year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Pour share : année du chiffre ; null sinon."
+        },
+        "capacity_text": {
+          "type": "string",
+          "description": "Pour capacity et new_producer : capacité avec son unité et son année ; unknown sinon."
+        },
+        "new_node_type": {
+          "type": "string",
+          "description": "Pour new_producer : mine, plant, recycler, company ou country ; chaîne vide sinon."
+        },
+        "new_name": {
+          "type": "string",
+          "description": "Pour new_producer : nom du producteur ou du site ; chaîne vide sinon."
+        },
+        "new_product": {
+          "type": "string",
+          "description": "Pour new_producer : ce qu'il produit ; chaîne vide sinon."
+        },
+        "new_country_iso2": {
+          "type": "string",
+          "description": "Pour new_producer : code ISO 3166-1 alpha-2, ou unknown."
+        },
+        "new_place": {
+          "type": "string",
+          "description": "Pour new_producer : ville ou site, ou unknown."
+        },
+        "feeds_node_id": {
+          "type": "string",
+          "description": "Pour new_producer : identifiant, dans <chain_nodes>, du produit (maillon material) qu'il fabrique ; chaîne vide sinon."
+        },
+        "date": {
+          "type": "string",
+          "description": "Pour date : AAAA-MM-JJ ou AAAA-MM, dans le futur ; chaîne vide sinon."
+        },
+        "date_what": {
+          "type": "string",
+          "description": "Pour date : ce qui arrive à cette date ; chaîne vide sinon."
+        },
+        "confidence": {
+          "type": "string",
+          "description": "Une valeur parmi : high, medium, low."
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

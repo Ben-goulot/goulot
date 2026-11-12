@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { column, layout } from "./layout";
-import { approximate, clip, COORD_SOURCE, safeHref, weeks, type ChainNode } from "./types";
+import { approximate, clip, COORD_SOURCE, safeHref, shareText, weeks, type ChainNode } from "./types";
 
 const node = (key: string, type: string, tier: number): ChainNode => ({
   node_key: key, node_type: type, name: key, product: "", tier, country_iso2: "unknown", place: "unknown",
   lat: null, lon: null, global_share_pct: null, buffer_days: null, buffer_is_default: 0, capacity_text: "unknown",
   confidence: "high", notes: "", anomalies: [], user_modified: 0, source_refs: [], delay: null,
-  coord_source: "none", added_by: "",
+  coord_source: "none", added_by: "", status: "unknown", share_basis: "unknown", share_year: null,
 });
 
 describe("chain layout", () => {
@@ -48,5 +48,14 @@ describe("node positions", () => {
     expect(approximate({ coord_source: "country" })).toBe(true);
     expect(approximate({ coord_source: "city" })).toBe(false);
     expect(approximate({ coord_source: "user" })).toBe(false);
+  });
+});
+
+describe("share wording", () => {
+  it("never shows a share without what it is a share of", () => {
+    expect(shareText({ global_share_pct: 74.5, share_basis: "exports", share_year: 2024 })).toBe("74,5 % des exportations mondiales, 2024");
+    expect(shareText({ global_share_pct: 32, share_basis: "production", share_year: null })).toBe("32 % de la production mondiale");
+    expect(shareText({ global_share_pct: 40, share_basis: "unknown", share_year: null })).toBe("40 % nature non précisée");
+    expect(shareText({ global_share_pct: null, share_basis: "unknown", share_year: null })).toBe("");
   });
 });

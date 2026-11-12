@@ -22,7 +22,10 @@ from goulot.settings import REPO_ROOT, Settings
 
 SAMPLES = REPO_ROOT / ".samples"
 MAX_BYTES = 2 * 1024 * 1024
-EXTRA_HOSTS = ("www.gfex.com.cn",)  # disabled in sources.yaml since 15 October: checked again here
+# The USGS world table is about 3 MB: it gets the same cap as the reader of the cross-check (USGS_MAX_BYTES).
+LARGE_TARGETS = {"usgs_mcs_2026_csv": 16 * 1024 * 1024}
+USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7?f=__disk__"
+EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov")  # gfex: disabled since 15 October; sciencebase: USGS MCS
 
 
 def _last_weekday(today: date) -> date:
@@ -48,6 +51,13 @@ def targets(today: date) -> list[tuple[str, str]]:
                                 "?Lang=en&offset=0&Cas=107-13-1&sortOrder=1"),
         # The Economic Times lists its feeds there: the metals and mining one answered empty on 6 November 2026.
         ("et_liste_flux", "https://economictimes.indiatimes.com/rss.cms"),
+        # USGS Mineral Commodity Summaries 2026 data release (doi 10.5066/P1WKQ63T): its file list gives the address
+        # of the world production table, to write in `data_url` of `usgs_mcs` (11 November 2026).
+        ("usgs_mcs_2026", "https://www.sciencebase.gov/catalog/item/69837e43b66b01367d7ec7c7?format=json"),
+        # Its two files, listed by that record on 12 November 2026: the column descriptions (FGDC XML, 13 kB),
+        # and the table itself (CSV, 3.1 MB), read to write the reader of the cross-check.
+        ("usgs_mcs_2026_xml", USGS_FILE + "59%2F9f%2F78%2F599f78dcdae6cfc820ec8410e8a0e684c28be9d2"),
+        ("usgs_mcs_2026_csv", USGS_FILE + "d3%2Fac%2F84%2Fd3ac8466552946c5e8caa2c2c6338d9e1aff655d"),
     ]
 
 
@@ -79,7 +89,7 @@ def run(settings: Settings, today: date | None = None) -> list[dict[str, object]
         started = time.monotonic()
         entry: dict[str, object] = {"name": name, "url": url}
         try:
-            result = fetch(client, url, max_bytes=MAX_BYTES)
+            result = fetch(client, url, max_bytes=LARGE_TARGETS.get(name, MAX_BYTES))
             body = result.content
             path = SAMPLES / f"{name}_{hashlib.sha256(url.encode()).hexdigest()[:8]}.bin"
             path.write_bytes(body)

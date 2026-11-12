@@ -53,6 +53,81 @@ export type ChainNode = {
   delay: { days: number; low: number; high: number } | null;
   coord_source: CoordSource;
   added_by: "" | "goulot";
+  status: SiteStatus;
+  share_basis: ShareBasis;
+  share_year: number | null;
+};
+
+export type SiteStatus = "operating" | "idled" | "closed" | "project" | "unknown";
+export type ShareBasis = "production" | "capacity" | "exports" | "unknown";
+
+export const STATUS: Record<SiteStatus, string> = {
+  operating: "en service",
+  idled: "à l'arrêt",
+  closed: "fermé",
+  project: "en projet",
+  unknown: "non précisé",
+};
+
+export const SHARE_BASIS: Record<ShareBasis, string> = {
+  production: "de la production mondiale",
+  capacity: "de la capacité mondiale",
+  exports: "des exportations mondiales",
+  unknown: "nature non précisée",
+};
+
+/** « 40 % de la capacité mondiale, 2025 »: a share is never shown without what it is a share of. */
+export function shareText(n: { global_share_pct: number | null; share_basis: ShareBasis; share_year: number | null }): string {
+  if (n.global_share_pct === null) return "";
+  const pct = String(n.global_share_pct).replace(".", ",");
+  return `${pct} % ${SHARE_BASIS[n.share_basis] ?? SHARE_BASIS.unknown}${n.share_year ? `, ${n.share_year}` : ""}`;
+}
+
+export type UpdateItem = {
+  id: number;
+  change_type: "status" | "share" | "capacity" | "new_producer" | "date" | "note";
+  node_key: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  confidence: "high" | "medium" | "low";
+  source_refs: string[];
+  anomalies: string[];
+  decision: "pending" | "accepted" | "rejected";
+};
+
+export type ChainUpdate = {
+  freshness: {
+    researched_at: string | null;
+    checked_at: string | null;
+    reread_at: string | null;
+    age_days: number | null;
+    advised: boolean;
+    advised_after_days: number;
+    pending: number;
+    past_dates: { date: string; what: string }[];
+    shares_without_basis: number;
+  };
+  last_update: { kind: "search" | "reread"; created_at: string | null; since: string; notes: string[]; injection_suspected: boolean } | null;
+  items: UpdateItem[];
+};
+
+export type UpdateQuote = {
+  quote_id: string;
+  kind: "search" | "reread";
+  estimate_usd: number;
+  max_usd: number;
+  searches_max: number;
+  remaining_usd: number;
+  cap_usd: number;
+};
+
+export const CHANGE_TYPE: Record<UpdateItem["change_type"], string> = {
+  status: "État d'un site",
+  share: "Part mondiale",
+  capacity: "Capacité",
+  new_producer: "Producteur à ajouter",
+  date: "Échéance",
+  note: "À savoir",
 };
 
 export type CoordSource = "user" | "ai" | "reference" | "city" | "country" | "none" | "";
@@ -99,6 +174,7 @@ export type Chain = {
   dates: { date: string; what: string; source_refs: string[] }[];
   open_questions: string[];
   injection_suspected: boolean;
+  update: ChainUpdate;
 };
 
 export const CONFIDENCE: Record<string, string> = { high: "Élevée", medium: "Moyenne", low: "Faible" };

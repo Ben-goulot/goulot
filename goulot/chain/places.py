@@ -307,7 +307,8 @@ def apply_routes(conn: sqlite3.Connection, material_id: str, zone: str | None = 
                 "buffer_days": None, "buffer_is_default": 0, "capacity_text": "unknown", "confidence": "low",
                 "notes": ROUTE_NOTE.format(origin=REGION_NAMES[origin], dest=REGION_NAMES[dest]),
                 "anomalies": "[]", "user_modified": 0, "valid_from": now, "valid_to": None, "recorded_at": now,
-                "coord_source": "reference", "added_by": "goulot",
+                "coord_source": "reference", "added_by": "goulot", "status": "unknown", "share_basis": "unknown",
+                "share_year": None,
             }
             conn.execute(INSERT_NODE, [row[c] for c in NODE_COLUMNS])
             by_key[key] = row

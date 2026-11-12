@@ -102,7 +102,8 @@ def record(settings: Settings, args: argparse.Namespace) -> None:
         backend = ResumingBackend(RecordingBackend(AnthropicBackend(build_anthropic_client(key, allowlist)), out), out)
         job_id = service.start_job(db, material_id)
         print("Reconstruction en cours (quelques minutes)…")
-        cost = service.reconstruct(service.Deps(db, budget, backend, http, get_secret("comtrade")), material_id,
+        cost = service.reconstruct(service.Deps(db, budget, backend, http, get_secret("comtrade"),
+                                                usgs_url=service.usgs_url()), material_id,
                                    job_id, budget_name="dev")
     finally:
         http.close()
@@ -234,6 +235,7 @@ PROBE_MAX_USD = 0.15
 
 def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
     """(name, meaning, request) for every output schema the app sends, plus fallbacks for the analysis."""
+    from goulot.chain import update
     from goulot.chain.structure import context_params, structure_params
     from goulot.cli.schema_probe import enums_to_descriptions, only
     from goulot.llm.prompts import load_prompt
@@ -254,6 +256,10 @@ def _probe_ladder() -> list[tuple[str, str, dict[str, Any]]]:
                                                      "max_tokens": 64}),
         ("contexte", "chaîne : voies, risques, échéances",
          {**context_params(material, PROBE_REPORT, PROBE_SOURCES, nodes), "max_tokens": 64}),
+        ("mise_a_jour", "chaîne : propositions de mise à jour",
+         {**update.structure_params(material, [{"node_key": "acrylonitrile", "node_type": "material",
+                                                "name": "Acrylonitrile", "country_iso2": "unknown"}],
+                                    PROBE_REPORT, PROBE_SOURCES, "2026-11-11"), "max_tokens": 64}),
         ("tri", "tri des articles (Haiku)", req("claude-haiku-5-5", "triage_v2", schema("triage_v2"),
                                                 thinking={"type": "disabled"})),
         ("cas", "cas comparables : structuration",

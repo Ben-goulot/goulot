@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from goulot.api.context import AppContext, MissingAPIKey
-from goulot.chain import lifecycle, places, service, store
+from goulot.chain import lifecycle, places, service, store, update
 from goulot.chain.delays import delays_to_material
 from goulot.chain.identify import IdentificationError, identify
 from goulot.chain.quote import confirm_quote, reconstruction_quote, save_quote
@@ -56,6 +56,9 @@ class NodeChanges(_Strict):
     capacity_text: str | None = Field(default=None, max_length=200)
     confidence: str | None = Field(default=None, pattern=r"^(high|medium|low)$")
     notes: str | None = Field(default=None, max_length=1000)
+    status: str | None = Field(default=None, pattern=r"^(operating|idled|closed|project|unknown)$")
+    share_basis: str | None = Field(default=None, pattern=r"^(production|capacity|exports|unknown)$")
+    share_year: int | None = Field(default=None, ge=1990, le=2100)
 
 
 class EdgeChanges(_Strict):
@@ -71,6 +74,19 @@ class ZoneBody(_Strict):
 
 class ValidateBody(_Strict):
     acknowledge_injection: bool = False
+
+
+class UpdateQuoteBody(_Strict):
+    kind: str = Field(pattern=r"^(search|reread)$")
+
+
+class UpdateBody(_Strict):
+    kind: str = Field(pattern=r"^(search|reread)$")
+    quote_id: str = Field(min_length=36, max_length=36)
+
+
+class DecisionBody(_Strict):
+    accept: bool
 
 
 def _uuid(value: str) -> str:
@@ -159,7 +175,8 @@ def build_router(ctx: AppContext) -> APIRouter:
         def run() -> None:
             http = ctx.http_client()
             try:
-                service.reconstruct(service.Deps(ctx.db, ctx.budget, backend, http, comtrade), material["id"], job_id)
+                service.reconstruct(service.Deps(ctx.db, ctx.budget, backend, http, comtrade,
+                                                 usgs_url=service.usgs_url()), material["id"], job_id)
             except Exception:
                 log.exception("reconstruction job crashed")
             finally:
@@ -183,7 +200,64 @@ def build_router(ctx: AppContext) -> APIRouter:
         delays = delays_to_material(chain["nodes"], chain["edges"])
         for n in chain["nodes"]:
             n["delay"] = delays.get(n["node_key"])
-        return {"material": material, **chain}
+        with ctx.db.connect() as conn:
+            updates = update.overview(conn, material["id"])
+        return {"material": material, **chain, "update": updates}
+
+    def _updatable(material: dict[str, Any]) -> None:
+        if material["status"] not in ("validated", "review"):
+            raise HTTPException(409, "Seule une chaîne reconstruite peut être mise à jour.")
+
+    @router.post("/materials/{material_id}/update/quote")
+    def chain_update_quote(material_id: str, body: UpdateQuoteBody) -> dict[str, Any]:
+        """Quote of a light update (search) or of a new reading of the stored report (reread)."""
+        material = _material(material_id)
+        _updatable(material)
+        quote = update.update_quote(body.kind)
+        with ctx.db.transaction() as conn:
+            quote_id = save_quote(conn, material["id"], quote, _now(), kind=update.quote_kind(body.kind))
+        return {"quote_id": quote_id, "kind": body.kind, "estimate_usd": quote.estimate_usd,
+                "max_usd": quote.max_usd, "searches_max": quote.searches_max,
+                "remaining_usd": ctx.budget.remaining("reconstruction"), "cap_usd": ctx.budget.cap("reconstruction")}
+
+    @router.post("/materials/{material_id}/update")
+    def chain_update_run(material_id: str, body: UpdateBody) -> dict[str, str]:
+        material = _material(material_id)
+        _updatable(material)
+        with ctx.db.transaction() as conn:
+            max_usd = confirm_quote(conn, body.quote_id, material["id"], _now(), kind=update.quote_kind(body.kind))
+        if max_usd is None:
+            raise HTTPException(409, "Devis expiré ou déjà utilisé : demandez un nouveau devis.")
+        if ctx.budget.remaining("reconstruction") < max_usd:
+            raise HTTPException(402, "Plafond mensuel des reconstructions insuffisant pour ce devis.")
+        try:
+            backend = ctx.llm_backend()
+        except MissingAPIKey as exc:
+            raise HTTPException(409, str(exc)) from None
+        try:
+            job_id = update.start_job(ctx.db, material["id"])
+        except update.UpdateError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+        def run() -> None:
+            try:
+                update.run_update(ctx.db, ctx.budget, backend, material["id"], job_id, body.kind)
+            except Exception:
+                log.exception("chain update job crashed")
+
+        ctx.jobs.submit(run)
+        return {"job_id": job_id}
+
+    @router.post("/materials/{material_id}/updates/{item_id}")
+    def chain_update_decide(material_id: str, item_id: int, body: DecisionBody) -> dict[str, bool]:
+        """The user accepts or rejects one proposal; an accepted one is a bitemporal revision of the chain."""
+        material = _material(material_id)
+        try:
+            with ctx.db.transaction() as conn:
+                update.decide(conn, material["id"], item_id, body.accept)
+        except (update.UpdateError, ChainStateError) as exc:
+            raise HTTPException(409, str(exc)) from None
+        return {"ok": True}
 
     @router.patch("/materials/{material_id}/nodes/{node_key}")
     def node_patch(material_id: str, node_key: str, body: NodeChanges) -> dict[str, bool]:

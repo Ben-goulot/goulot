@@ -387,7 +387,14 @@ def test_comtrade_crosscheck_flags_gap() -> None:
     client = mock_http({"/public/v1/preview/C/A/HS": {"data": rows}}, seen)
     ref = crosscheck.comtrade_export_shares(client, "292610", 2024)
     assert ref is not None and ref.shares == {"CN": 20.0, "US": 60.0, "DE": 20.0}
+    chain = fx.example_chain()  # its country shares are capacity shares: not comparable with exports
+    assert crosscheck.apply_reference(chain, ref, tier=1) == 0
+    cn = next(n for n in chain["nodes"] if n["node_id"] == "cn_acrylonitrile")
+    assert cn["confidence"] == "medium" and cn["crosscheck"][0]["share_pct"] == 20.0  # noted, not flagged
     chain = fx.example_chain()
+    for n in chain["nodes"]:
+        if n["node_type"] == "country" and n["global_share_pct"] is not None:
+            n["share_basis"] = "exports"
     assert crosscheck.apply_reference(chain, ref, tier=1) == 2  # CN 40 vs 20, US 15 vs 60
     cn = next(n for n in chain["nodes"] if n["node_id"] == "cn_acrylonitrile")
     assert cn["confidence"] == "low" and "30 %" in cn["anomalies"][0]

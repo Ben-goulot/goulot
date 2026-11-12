@@ -28,7 +28,7 @@ SOURCES = [
 
 def example_chain() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(
-        (REPO_ROOT / "schemas" / "examples" / "supply_chain_v2.example.json").read_text(encoding="utf-8")
+        (REPO_ROOT / "schemas" / "examples" / "supply_chain_v3.example.json").read_text(encoding="utf-8")
     )
     return data
 
@@ -72,7 +72,7 @@ CONTEXT_KEYS = ("routes", "substitutes", "structural_risks", "upcoming_dates")
 
 
 def core_part(chain: dict[str, Any]) -> dict[str, Any]:
-    return {"schema_version": "core-1.0", **{k: chain[k] for k in CORE_KEYS}}
+    return {"schema_version": "core-2.0", **{k: chain[k] for k in CORE_KEYS}}
 
 
 def context_part(chain: dict[str, Any]) -> dict[str, Any]:

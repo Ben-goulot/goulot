@@ -101,7 +101,8 @@ def add_sea_flow(ctx: AppContext, material_id: str, iso: str = "CN") -> None:
             "product": "acrylonitrile", "tier": 1, "country_iso2": iso, "place": "Ningbo", "lat": None, "lon": None,
             "global_share_pct": 5.0, "buffer_days": None, "buffer_is_default": 0, "capacity_text": "unknown",
             "confidence": "medium", "notes": "", "anomalies": "[]", "user_modified": 0, "valid_from": now,
-            "valid_to": None, "recorded_at": now, "coord_source": "", "added_by": ""}[c] for c in store.NODE_COLUMNS])
+            "valid_to": None, "recorded_at": now, "coord_source": "", "added_by": "", "status": "unknown", "share_basis": "unknown",
+            "share_year": None}[c] for c in store.NODE_COLUMNS])
         conn.execute(store.INSERT_EDGE, [{
             "material_id": material_id, "from_key": "plant_far", "to_key": "acrylonitrile", "relation": "supplies",
             "transport_mode": "sea", "lead_time_days": 35.0, "lead_time_basis": "source", "share_pct": None,

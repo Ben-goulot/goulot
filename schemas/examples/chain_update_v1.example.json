@@ -1,0 +1,97 @@
+{
+  "schema_version": "update-1.0",
+  "changes": [
+    {
+      "status": "idled",
+      "share_pct": null,
+      "share_basis": "unknown",
+      "share_year": null,
+      "capacity_text": "unknown",
+      "new_node_type": "",
+      "new_name": "",
+      "new_product": "",
+      "new_country_iso2": "unknown",
+      "new_place": "unknown",
+      "feeds_node_id": "",
+      "date": "",
+      "date_what": "",
+      "change_type": "status",
+      "node_id": "plant_gulf_cracker",
+      "summary": "Usine fictive mise à l'arrêt en mars 2026 pour une durée indéterminée.",
+      "confidence": "medium",
+      "source_ids": [
+        "src5"
+      ]
+    },
+    {
+      "status": "unknown",
+      "share_pct": 45,
+      "share_basis": "capacity",
+      "share_year": 2026,
+      "capacity_text": "unknown",
+      "new_node_type": "",
+      "new_name": "",
+      "new_product": "",
+      "new_country_iso2": "unknown",
+      "new_place": "unknown",
+      "feeds_node_id": "",
+      "date": "",
+      "date_what": "",
+      "change_type": "share",
+      "node_id": "cn_acrylonitrile",
+      "summary": "Part fictive de la capacité mondiale relevée pour 2026.",
+      "confidence": "medium",
+      "source_ids": [
+        "src5"
+      ]
+    },
+    {
+      "status": "operating",
+      "share_pct": null,
+      "share_basis": "unknown",
+      "share_year": null,
+      "capacity_text": "200 kt/an, 2026",
+      "new_node_type": "plant",
+      "new_name": "Usine d'Exempleville",
+      "new_product": "Acrylonitrile",
+      "new_country_iso2": "KR",
+      "new_place": "unknown",
+      "feeds_node_id": "acrylonitrile",
+      "date": "",
+      "date_what": "",
+      "change_type": "new_producer",
+      "node_id": "plant_exempleville",
+      "summary": "Usine fictive mise en service en juin 2026.",
+      "confidence": "low",
+      "source_ids": [
+        "src6"
+      ]
+    },
+    {
+      "status": "unknown",
+      "share_pct": null,
+      "share_basis": "unknown",
+      "share_year": null,
+      "capacity_text": "unknown",
+      "new_node_type": "",
+      "new_name": "",
+      "new_product": "",
+      "new_country_iso2": "unknown",
+      "new_place": "unknown",
+      "feeds_node_id": "",
+      "date": "2027-01",
+      "date_what": "Entrée en vigueur fictive d'un droit de douane.",
+      "change_type": "date",
+      "node_id": "",
+      "summary": "Échéance fictive d'une mesure commerciale.",
+      "confidence": "medium",
+      "source_ids": [
+        "src6"
+      ]
+    }
+  ],
+  "open_questions": [
+    "Capacité de l'usine d'Exempleville non confirmée par une seconde source."
+  ],
+  "injection_suspected": false
+}

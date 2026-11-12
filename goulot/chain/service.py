@@ -26,7 +26,7 @@ from goulot.llm.calls import LLMError
 
 log = logging.getLogger("goulot.chain")
 
-USGS_PAGE = "https://www.usgs.gov/centers/national-minerals-information-center"
+USGS_PAGE = "https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries"
 STEPS = {1: "Identification", 2: "Recherche sourcée", 3: "Structuration", 4: "Recoupement", 5: "Délais"}
 
 
@@ -37,7 +37,16 @@ class Deps:
     backend: MessageBackend
     http: httpx2.Client | None  # None: no cross-check (tests, offline)
     comtrade_key: str | None = None
-    usgs_csv: str | None = None  # MCS world production table, when configured
+    usgs_csv: str | None = None  # MCS world production table, already read (tests)
+    usgs_url: str = ""  # or its address (`data_url` of `usgs_mcs`), fetched through the app's client
+
+
+def usgs_url() -> str:
+    """`data_url` of the enabled `usgs_mcs` source; empty when not set."""
+    from goulot.collect.base import load_sources
+
+    source = load_sources().get("usgs_mcs", {})
+    return str(source.get("data_url") or "") if source.get("enabled") else ""
 
 
 def start_job(db: Database, material_id: str) -> str:
@@ -97,11 +106,27 @@ def cross_check(deps: Deps, chain: dict[str, Any], material: dict[str, Any]) -> 
                 crosscheck.apply_reference(chain, ref, tier=1)
             else:
                 notes.append(f"Recoupement UN Comtrade indisponible pour le code SH {hs}.")
-    if deps.usgs_csv:
-        for word in {material["name"].split()[0], *(n["product"].split()[0] for n in chain["nodes"] if n["product"])}:
-            ref = crosscheck.usgs_production_shares(deps.usgs_csv, word, USGS_PAGE)
+    usgs_csv = deps.usgs_csv
+    if usgs_csv is None and deps.http is not None and deps.usgs_url:
+        try:
+            usgs_csv = crosscheck.fetch_usgs_csv(deps.http, deps.usgs_url)
+        except httpx2.HTTPError:
+            usgs_csv = None
+    groups: set[tuple[str, str | None]] = set()
+    for n in chain["nodes"]:
+        text = f"{n['product']} {n['name']}"
+        commodity = crosscheck.usgs_commodity(text)
+        if n["node_type"] == "country" and commodity:
+            groups.add((commodity, crosscheck.usgs_hint(text)))
+    commodities = {c for c, _ in groups}
+    if usgs_csv:
+        for commodity, hint in sorted(groups, key=lambda g: (g[0], g[1] or "")):
+            ref = crosscheck.usgs_production_shares(usgs_csv, commodity, USGS_PAGE, hint)
             if ref:
-                crosscheck.apply_reference(chain, ref, product_word=word)
+                crosscheck.apply_reference(chain, ref, commodity=commodity, hint=hint)
+    elif commodities:
+        notes.append("Recoupement USGS non fait : adresse de la table de production mondiale à renseigner "
+                     "(config/sources.yaml, usgs_mcs).")
     if not geo.borders_available():
         notes.append("Frontières Natural Earth absentes : la position des sites n'a pas été contrôlée.")
     else:
@@ -155,5 +180,7 @@ def job_status(db: Database, job_id: str) -> dict[str, Any] | None:
     if row is None:
         return None
     job = dict(row)
-    job["step_label"] = STEPS.get(job["step"], "")
+    from goulot.chain.update import STEPS as UPDATE_STEPS
+
+    job["step_label"] = (UPDATE_STEPS if job["kind"] == "chain_update" else STEPS).get(job["step"], "")
     return job
