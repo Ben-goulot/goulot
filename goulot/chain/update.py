@@ -265,6 +265,10 @@ def check_changes(output: dict[str, Any], nodes: list[dict[str, Any]], allowed: 
                 node_key, i = f"{base}_{i}", i + 1
             taken.add(node_key)
             status = c["status"] if c["status"] in ("operating", "idled", "closed", "project") else "unknown"
+            if status == "closed":  # a closed site supplies nothing: not worth a node (seen on 2026-11-13)
+                notes.append(f"Site déjà fermé, non ajouté : {name[:80]}")
+                taken.discard(node_key)
+                continue
             capacity = " ".join(str(c["capacity_text"]).split())[:200] or "unknown"
             place = " ".join(str(c["new_place"]).split())[:200] or "unknown"
             payload = {"node_type": c["new_node_type"], "name": name,

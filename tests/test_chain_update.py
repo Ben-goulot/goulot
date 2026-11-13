@@ -243,6 +243,8 @@ def test_unfounded_proposals_are_dropped(ctx: AppContext) -> None:
         {**share, "share_basis": "unknown", "source_ids": ["src1"]},
         {**producer, "new_name": "Usine fictive du golfe", "source_ids": ["src1"]},  # hypothetical duplicate below
         {**producer, "feeds_node_id": "port_rotterdam", "source_ids": ["src1"]},
+        {**producer, "new_name": "Usine fermée d'Exempleville", "node_id": "plant_closed", "status": "closed",
+         "source_ids": ["src1"]},
         {**date, "date": "2026-03", "source_ids": ["src1"]},
         {**date, "date": "bientôt", "source_ids": ["src1"]},
     ]
