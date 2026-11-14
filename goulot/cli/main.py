@@ -433,7 +433,14 @@ def build_parser() -> argparse.ArgumentParser:
     rc = dsub.add_parser("record-cases", help="prépare les cas comparables d'un CAS de test, réponses enregistrées")
     rc.add_argument("--cas", required=True, help="107-13-1, 554-13-2 ou 7440-55-3")
     rc.add_argument("--force", action="store_true", help="repart de zéro (sinon : reprise après un échec)")
-    dsub.add_parser("check-sources", help="interroge depuis le Mac les sources injoignables du bac à sable (sans IA)")
+    cs = dsub.add_parser("check-sources",
+                         help="interroge depuis le Mac les sources injoignables du bac à sable (sans IA)")
+    cs.add_argument("--only", help="seulement les sources dont le nom contient ce texte (par exemple tceq)")
+    rh = dsub.add_parser("records-history", help="ce que le régulateur du Texas a enregistré pour les sites des "
+                                                 "chaînes types (sans IA)")
+    rh.add_argument("--months", type=int, default=12, help="période relue, en mois (12 par défaut)")
+    rh.add_argument("--begin", help="début d'une période passée à rejouer, AAAA-MM-JJ (avec --end)")
+    rh.add_argument("--end", help="fin de cette période, AAAA-MM-JJ")
     dsub.add_parser("fetch-cities", help="télécharge la liste des villes GeoNames et l'embarque, réduite (sans IA)")
     wr = dsub.add_parser("watch-report", help="diagnostic de la veille : lus, rejetés, déjà vus, gardés (sans IA)")
     wr.add_argument("--days", type=int, default=14, help="période relue, en jours (14 par défaut)")

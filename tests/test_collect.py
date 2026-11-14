@@ -110,6 +110,7 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
     ("api.gdeltproject.org", "/api/v2/doc/doc"): (200, json.dumps(GDELT_JSON).encode()),
     ("news.google.com", "/rss/search"): (200, GOOGLE_RSS),
     ("www.gdacs.org", "/xml/rss.xml"): (200, GDACS_RSS),
+    ("www2.tceq.texas.gov", "/oce/eer/RSSDataFeed.xml"): (200, EMPTY_FEED),  # official records: a calm week
     ("earthquake.usgs.gov", "/earthquakes/feed/v1.0/summary/2.5_day.geojson"): (200, json.dumps(USGS_JSON).encode()),
     ("www.nhc.noaa.gov", "/index-at.xml"): (200, NHC_RSS),
     ("www.nhc.noaa.gov", "/index-ep.xml"): (200, b"<rss><channel></channel></rss>"),

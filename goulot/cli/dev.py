@@ -551,7 +551,13 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         from goulot.cli import check_sources
 
         print("Interrogation des sources depuis votre Mac (sans IA, sans clé) ; réponses gardées dans .samples/.")
-        check_sources.run(settings)
+        only = getattr(args, "only", None)
+        check_sources.run(settings, only=only)
+        if only:  # a quick look at a few sources: the other probes are skipped
+            for line in check_sources.registry_probe(settings):
+                print(line)
+            print("Terminé. Copiez ce résultat à Claude.")
+            return
         try:
             unknown, missing, latest = check_sources.portwatch_names(settings)
             print(f"  PortWatch : dernier jour publié {latest or '?'} ; {len(unknown)} détroit(s) absent(s) de la "
@@ -570,6 +576,15 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
                 print(f"  Lien d'article Google News : HTTP {link['status']}, {where}")
         except (httpx2.HTTPError, ValueError) as exc:
             print(f"  ❌ Google News : {type(exc).__name__}")
+        for line in check_sources.registry_probe(settings):
+            print(line)
+        print("Terminé. Copiez ce résultat à Claude.")
+    elif args.dev_action == "records-history":
+        from goulot.cli import check_sources
+
+        for line in check_sources.records_history(settings, max(1, min(int(args.months), 60)),
+                                                   begin_day=args.begin, end_day=args.end):
+            print(line)
         print("Terminé. Copiez ce résultat à Claude.")
     elif args.dev_action == "fetch-cities":
         fetch_cities(settings)

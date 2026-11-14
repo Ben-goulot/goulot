@@ -42,6 +42,9 @@ def domain_reliability(domain: str, path: str = "", extra: dict[str, float] | No
         for d, r in extra.items():
             if _under(domain, d):
                 return r
+    for parent, prefixes in (cfg["official"].get("paths") or {}).items():
+        if _under(domain, parent) and any(path.lower().startswith(p) for p in prefixes):
+            return float(scores["official"])  # the authorities' own section of a press-release site
     if any(_under(domain, d) for d in cfg["press_release_wires"]) or any(
         path.lower().startswith(p) for p in cfg["press_release_paths"]
     ):

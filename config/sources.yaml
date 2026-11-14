@@ -367,6 +367,41 @@ sources:
     extra_hosts: [sanctionslist.ofac.treas.gov]
     notes: listes SDN servies par le Sanctions List Service (sanctionslist.ofac.treas.gov) ; adresse exacte du fichier à relever en phase 3
 
+  # --- Registres officiels (pilote du 13 novembre 2026) ---
+  # Déclarations aux autorités, communiqués des secours, annonces boursières : la matière première de la presse
+  # spécialisée. Lus en entier, réduits sur le Mac aux entrées qui nomment un site des chaînes types
+  # (goulot/collect/sitematch.py) ; rien des chaînes ne part dans une requête, sauf le nom d'une ville allemande
+  # dans l'adresse du flux Presseportal. Texas et Allemagne vérifiés depuis le Mac et activés le 14 novembre 2026 ;
+  # la Corée reste désactivée tant qu'aucune clé n'est enregistrée.
+  - id: tceq_emissions
+    enabled: true
+    family: registry
+    url: https://www2.tceq.texas.gov/oce/eer/RSSDataFeed.xml
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Texas, TCEQ ; événements d'émissions, arrêts, démarrages et maintenances déclarés par les usines (déclaration sous 24 h), flux mis à jour chaque heure
+    notes: "flux et fiches lus depuis le Mac le 14 novembre 2026 (goulot dev check-sources) ; rejeu du 10 février au 10 mars 2021 par goulot dev records-history : 8 déclarations pour les sites des chaînes types ; couvre le Texas seulement"
+  - id: presseportal_blaulicht
+    enabled: true
+    family: registry
+    url: https://www.presseportal.de/blaulicht
+    lang: de
+    auth: none
+    frequency: 3h
+    use: Allemagne, Presseportal ; communiqués de la police et des pompiers, un flux par ville où les chaînes types ont un site (/rss/polizei/r/<ville>.rss2)
+    notes: "flux de Cologne (« Köln ») lu depuis le Mac le 14 novembre 2026 ; aucune entrée ne nommait un site suivi ces semaines-là : utilité pas encore prouvée"
+  - id: opendart
+    enabled: false
+    family: registry
+    url: https://opendart.fss.or.kr/api/list.json
+    lang: ko
+    auth: key:opendart
+    frequency: 3h
+    extra_hosts: [dart.fss.or.kr]
+    use: Corée, OpenDART (autorité des marchés, FSS) ; annonces boursières d'arrêt ou de reprise de production, de sinistre, de suspension d'activité
+    notes: "clé gratuite sur opendart.fss.or.kr (compte à créer par l'utilisateur), dans le trousseau par goulot setup ; guide officiel lu le 13 novembre 2026 (list.json, company.json)"
+
   # --- Énergie ---
   - id: eia
     enabled: true

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from goulot.chain import store
-from goulot.collect import hotspots, sources
+from goulot.collect import hotspots, sitematch, sources
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names, title_only, too_old
 from goulot.db.connection import Database
@@ -149,6 +149,25 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         return [it for q, _ in qs for lang, cc in (("en", "US"), ("fr", "FR"))
                 for it in sources.google_news(c, f"{q} when:7d", lang, cc)]
 
+    watched = sitematch.watch_sites(conn)
+    places = {row["node_key"]: row["place"] for row in conn.execute(
+        "SELECT node_key, place FROM chain_nodes WHERE valid_to IS NULL")}
+    tceq_url = str(load_sources().get("tceq_emissions", {}).get("url") or "")
+
+    def tceq(c: httpx2.Client, since: datetime) -> list[Item]:
+        texas = [s for s in watched if s.country_iso2 == "US"]
+        return sources.tceq(c, "tceq_emissions", tceq_url, now, texas) if texas else []
+
+    def blaulicht(c: httpx2.Client, since: datetime) -> list[Item]:
+        return sources.presseportal(c, "presseportal_blaulicht", since, watched,
+                                    sources.german_cities(watched, places))
+
+    def dart(c: httpx2.Client, since: datetime) -> list[Item]:
+        key = secret("opendart")
+        if not key:
+            raise sources.SourceError(MISSING_KEY)
+        return sources.opendart(c, key, since, now, watched)
+
     def fires(c: httpx2.Client, since: datetime) -> list[Item]:
         key = secret("nasa_firms")
         if not key:
@@ -167,6 +186,10 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "federal_register": lambda c, s: sources.federal_register(c, terms, s) if terms else [],
         "copernicus_ems": lambda c, s: sources.copernicus(c, now),
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
+        # Official records that name a site of the chains (pilot of 13 November 2026).
+        "tceq_emissions": tceq,
+        "presseportal_blaulicht": blaulicht,
+        "opendart": dart,
     }
     # The media feeds right after the other news sources, before measurements and policy acts.
     media = {sid: _media(sid, str(src["url"]), str(src.get("lang") or ""))

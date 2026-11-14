@@ -68,7 +68,7 @@ def search(query: str, country_iso2: str | None = None, cities: list[list[Any]] 
     return [_entry(r) for _, _, r in found[:MAX_RESULTS]]
 
 
-def exact(place: str, country_iso2: str, cities: list[list[Any]] | None = None) -> dict[str, Any] | None:
+def _exact_row(place: str, country_iso2: str, cities: list[list[Any]] | None = None) -> list[Any] | None:
     """The city of that country named exactly `place`: by its main name first, then by an alternate name; the most
     populated when several match. None otherwise."""
     rows = cities if cities is not None else _cities()
@@ -85,8 +85,19 @@ def exact(place: str, country_iso2: str, cities: list[list[Any]] | None = None) 
                 main = row
         elif (alternate is None or row[6] > alternate[6]) and q in {fold(a) for a in row[2]}:
             alternate = row
-    best = main or alternate
-    return _entry(best) if best else None
+    return main or alternate
+
+
+def exact(place: str, country_iso2: str, cities: list[list[Any]] | None = None) -> dict[str, Any] | None:
+    row = _exact_row(place, country_iso2, cities)
+    return _entry(row) if row else None
+
+
+def names(place: str, country_iso2: str, cities: list[list[Any]] | None = None) -> tuple[str, ...]:
+    """Every name the list knows for that city: its usual name first (« Köln »), then the others (« Cologne »,
+    « Keulen », « 科隆 »). Empty when the city is unknown."""
+    row = _exact_row(place, country_iso2, cities)
+    return tuple(dict.fromkeys([row[0], row[1], *row[2]])) if row else ()
 
 
 def reduce_dump(zipped: bytes) -> list[list[Any]]:

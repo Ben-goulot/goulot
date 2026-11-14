@@ -23,6 +23,7 @@ import httpx2
 
 from goulot.chain.countries import iso2_from_name
 from goulot.collect.base import Item, clean_text, domain_of, iso, parse_datetime
+from goulot.collect.sitematch import Site, match_sites
 from goulot.net.client import fetch
 from goulot.net.xml import parse_xml
 
@@ -512,12 +513,22 @@ def media_feed(client: httpx2.Client, source_id: str, url: str, lang: str, since
     """A media feed as published (RSS 2.0, RSS 1.0 / RDF or Atom): title and summary only, the article page is never
     fetched. Unlike the search sources, nothing was selected by a query: the rule filter is stricter for these
     items (`Item.queried`, goulot/collect/rules.py)."""
+    return [Item(source=source_id, kind="news", url=link, title=title, published_at=published, lang=lang[:20],
+                 excerpt=summary, domain=domain_of(link), queried=False)
+            for title, summary, link, published in _feed_entries(client, url, since)]
+
+
+def _feed_entries(client: httpx2.Client, url: str, since: datetime, missing_ok: bool = False
+                  ) -> list[tuple[str, str, str, datetime | None]]:
+    """(title, summary, link, date) of a feed's entries, HTML reduced to text. `missing_ok`: a 404 is an empty feed."""
     result = fetch(client, url, max_bytes=MEDIA_MAX_BYTES)
+    if result.status == 404 and missing_ok:
+        return []
     if result.status != 200:
         raise SourceError(f"HTTP {result.status}")
     root = parse_xml(result.content, max_bytes=MEDIA_MAX_BYTES)
     entries = [*root.iter("item"), *root.iter(RSS1 + "item"), *root.iter(ATOM + "entry")]
-    items = []
+    out = []
     for e in entries[:MEDIA_MAX_ITEMS]:
         link = _first(e, "link", RSS1 + "link") or _atom_link(e)
         if not link.startswith(("https://", "http://")):
@@ -527,10 +538,212 @@ def media_feed(client: httpx2.Client, source_id: str, url: str, lang: str, since
             continue
         title = clean_text(_first(e, "title", RSS1 + "title", ATOM + "title"), 300)
         summary = clean_text(_first(e, "description", RSS1 + "description", ATOM + "summary"))
-        items.append(Item(
-            source=source_id, kind="news", url=link, title=title, published_at=published, lang=lang[:20],
-            excerpt=summary, domain=domain_of(link), queried=False,
-        ))
+        out.append((title, summary, link, published))
+    return out
+
+
+# --- official records: regulators, emergency services, stock exchanges (pilot of 13 November 2026) ----------------
+PRESSEPORTAL_CITY = "https://www.presseportal.de/rss/polizei/r/{city}.rss2"
+PRESSEPORTAL_MAX_CITIES = 15
+OPENDART_LIST = "https://opendart.fss.or.kr/api/list.json"
+OPENDART_COMPANY = "https://opendart.fss.or.kr/api/company.json"
+OPENDART_VIEWER = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}"
+OPENDART_MAX_PAGES = 5
+OPENDART_MAX_LOOKUPS = 30
+# Titles of the exchange disclosures that report a stop: Korean form name → what it says, in French.
+OPENDART_TITLES = {
+    "생산중단": "arrêt de production", "생산재개": "reprise de la production", "재해발생": "sinistre déclaré",
+    "영업정지": "suspension d'activité", "조업중단": "arrêt des opérations", "가동중단": "arrêt d'une installation",
+}
+
+
+def _record(source_id: str, label: str, title: str, summary: str, link: str, published: datetime | None,
+            lang: str, matched: list[Site]) -> Item:
+    """An official record that names a watched site. It is a declaration, not a headline: the excerpt always says
+    where it comes from; `details.sites` carries the chain's own names, which the rule filter recognizes."""
+    names = sorted({s.name for s in matched})
+    excerpt = f"{summary} " if summary else ""
+    excerpt += f"[{label} ; site suivi : {', '.join(names)}]"
+    return Item(source=source_id, kind="news", url=link, title=title, published_at=published, lang=lang[:20],
+                excerpt=excerpt[:1000], domain=domain_of(link), details={"record": label, "sites": names})
+
+
+def registry_feed(client: httpx2.Client, source_id: str, url: str, label: str, lang: str, since: datetime,
+                  sites: list[Site], place_implied: bool = False, missing_ok: bool = False) -> list[Item]:
+    """A regulator's or an emergency service's feed, reduced to the entries that name a site of the chains."""
+    items = []
+    for title, summary, link, published in _feed_entries(client, url, since, missing_ok):
+        matched = match_sites(f"{title} {summary}", sites, place_implied)
+        if matched:
+            items.append(_record(source_id, label, title, summary, link, published, lang, matched))
+    return items
+
+
+def presseportal(client: httpx2.Client, source_id: str, since: datetime, sites: list[Site],
+                 cities: dict[str, list[Site]]) -> list[Item]:
+    """Police and fire brigade press releases of the German cities where the chains have a site: one feed per city,
+    read against that city's sites only. A city Presseportal does not know (404) is skipped."""
+    items: dict[str, Item] = {}
+    for city in sorted(cities)[:PRESSEPORTAL_MAX_CITIES]:
+        # « Ludwigshafen am Rhein » may be filed under « Ludwigshafen »: both are tried.
+        for name in dict.fromkeys([city, city.split()[0]]):
+            url = PRESSEPORTAL_CITY.format(city=quote(name, safe=""))
+            for it in registry_feed(client, source_id, url, "communiqué de la police ou des pompiers, Allemagne",
+                                    "de", since, cities[city], place_implied=True, missing_ok=True):
+                items.setdefault(it.url, it)
+    return list(items.values())
+
+
+def german_cities(sites: list[Site], places: dict[str, str]) -> dict[str, list[Site]]:
+    """City → sites, for the German sites whose place is known. `places`: node_key → place of the chain. The chain
+    may name the city in French or in English (« Cologne »): the embedded city list gives its usual name (« Köln »),
+    offline."""
+    from goulot.geo import cities as geo_cities
+
+    out: dict[str, list[Site]] = {}
+    for s in sites:
+        city = re.split(r"[,(/]", places.get(s.node_key, ""), maxsplit=1)[0].strip()
+        if s.country_iso2 != "DE" or not city or city.lower() == "unknown" or len(city) > 40:
+            continue
+        known = geo_cities.exact(city, "DE") if geo_cities.available() else None
+        out.setdefault(str(known["name"]) if known else city, []).append(s)
+    return out
+
+
+TCEQ_DETAIL = re.compile(r"^https://www2\.tceq\.texas\.gov/oce/eer/index\.cfm\?fuseaction=main\.getDetails&target=(\d+)$")
+TCEQ_WINDOW = timedelta(days=8)  # the feed lists the events started in the last 7 days
+TCEQ_MAX_DETAILS = 60
+TCEQ_TYPES = {"EMISSIONS EVENT": "événement d'émissions", "AIR SHUTDOWN": "arrêt d'une unité",
+              "AIR STARTUP": "démarrage d'une unité", "MAINTENANCE": "maintenance",
+              "EXCESS OPACITY": "opacité excessive"}
+# Labels of a declaration's page, in page order: each field runs from its label to the next one.
+TCEQ_FIELDS = (
+    ("report", "Report Type:", "Report Date:"),
+    ("owner", "Name of Owner or Operator:", "CN:"),
+    ("entity", "Regulated Entity Name:", "RN:"),
+    ("location", "Physical Location:", "County:"),
+    ("county", "County:", "Event/Activity Type:"),
+    ("type", "Event/Activity Type:", "Date and Time"),
+    ("start", "Scheduled Activity Start:", "Date and Time"),
+    ("end", "Scheduled Activity Ended:", "Event Duration:"),
+    ("duration", "Event Duration:", "Process Unit"),
+    ("unit", "Process Unit or Area Common Names", "Facility Common Name"),
+    ("cause", "Reason for Scheduled Activity:", "Actions Taken"),
+    ("actions", "Correct the Situation:", "Basis Used"),
+)
+_tceq_seen: set[str] = set()  # declarations already read by this process: a page is asked once
+
+
+def tceq_fields(html_page: str) -> dict[str, str]:
+    """Fields of a TCEQ declaration page, as plain text. A missing label gives an empty field."""
+    text = clean_text(html_page, 20_000)
+    out = {}
+    for name, start, end in TCEQ_FIELDS:
+        m = re.search(re.escape(start) + r"\s*(.*?)\s*" + re.escape(end), text)
+        out[name] = m.group(1).strip()[:600] if m else ""
+    return out
+
+
+TCEQ_SEARCH = "https://www2.tceq.texas.gov/oce/eer/index.cfm"
+_TCEQ_ROW = re.compile(
+    r"<tr[^>]*>\s*<td>\s*<a href=\"index\.cfm\?fuseaction=main\.getDetails&amp;target=(\d+)\">.*?</tr>", re.S)
+
+
+def tceq_history(client: httpx2.Client, field: str, word: str, begin: datetime, end: datetime
+                 ) -> tuple[list[dict[str, str]], int]:
+    """Past declarations whose owner (`cust_name`) or installation (`re_name`) contains `word`, from the regulator's
+    search: (rows of the first page, total announced). Read-only; for the replay of past events."""
+    if field not in ("cust_name", "re_name"):
+        raise ValueError("unknown search field")
+    params = {"fuseaction": "main.searchresults", "newsearch": "yes", field: word, "usefullwildcard": "yes",
+              "event_start_beg_dt": f"{begin:%m/%d/%Y}", "event_start_end_dt": f"{end:%m/%d/%Y}"}
+    result = fetch(client, TCEQ_SEARCH, params=params, max_bytes=MEDIA_MAX_BYTES)
+    if result.status != 200:
+        raise SourceError(f"HTTP {result.status}")
+    page = result.content.decode("latin-1")
+    total = re.search(r"of (\d+) Records", page)
+    rows = []
+    for m in _TCEQ_ROW.finditer(page):
+        cells = [clean_text(c, 200) for c in re.findall(r"<td[^>]*>(.*?)</td>", m.group(0), re.S)]
+        if len(cells) >= 9:
+            rows.append({"incident": m.group(1), "rn": cells[1], "entity": cells[2], "began": cells[3],
+                         "ended": cells[4], "type": cells[5], "report": cells[6], "owner": cells[8]})
+    return rows, int(total.group(1)) if total else len(rows)
+
+
+def tceq(client: httpx2.Client, source_id: str, url: str, now: datetime, sites: list[Site]) -> list[Item]:
+    """Texas regulator (TCEQ): emission events, shutdowns, start-ups and maintenance declared by the plants. The feed
+    gives only the installation's name (« CHOCOLATE BAYOU PLANT »): each new declaration's page is read once for its
+    owner, county, unit, cause and duration, and kept when it names a site of the chains."""
+    items = []
+    asked = 0
+    for _title, _summary, link, published in _feed_entries(client, url, now - TCEQ_WINDOW):
+        m = TCEQ_DETAIL.match(link)
+        if not m or m.group(1) in _tceq_seen or asked >= TCEQ_MAX_DETAILS:
+            continue
+        asked += 1
+        page = fetch(client, link, max_bytes=MEDIA_MAX_BYTES)
+        if page.status != 200:
+            continue  # asked again at the next cycle
+        _tceq_seen.add(m.group(1))
+        f = tceq_fields(page.content.decode("latin-1"))
+        matched = match_sites(f"{f['entity']} {f['location']} {f['county']} texas", sites, owner=f["owner"])
+        if not matched or not f["entity"]:
+            continue
+        what = TCEQ_TYPES.get(f["type"].upper(), f["type"].lower() or "déclaration")
+        title = f"{f['entity']} ({f['owner']}, Texas) : {what}, incident {m.group(1)}"
+        parts = [f"Unité : {f['unit']}." if f["unit"] else "",
+                 f"Du {f['start']} au {f['end']} ({f['duration']})." if f["start"] else "",
+                 f"Cause déclarée : {f['cause']}" if f["cause"] else "",
+                 f"Mesures : {f['actions']}" if f["actions"] else "",
+                 f"Rapport {f['report'].lower()}." if f["report"] else ""]
+        items.append(_record(source_id, "déclaration au régulateur du Texas (TCEQ)", title[:300],
+                             " ".join(p for p in parts if p)[:800], link, published, "en", matched))
+    return items
+
+
+def opendart(client: httpx2.Client, key: str, since: datetime, now: datetime, sites: list[Site]) -> list[Item]:
+    """Korean exchange disclosures (FSS OpenDART) whose title reports a stop, a restart or a disaster, for the Korean
+    companies of the chains. The company's English name is asked only for those few disclosures."""
+    korean = [s for s in sites if s.country_iso2 == "KR"]
+    if not korean:
+        return []
+    params = {"crtfc_key": key, "pblntf_ty": "I", "bgn_de": f"{since:%Y%m%d}", "end_de": f"{now:%Y%m%d}",
+              "page_count": "100", "last_reprt_at": "Y"}
+    rows: list[dict[str, Any]] = []
+    for page in range(1, OPENDART_MAX_PAGES + 1):
+        data = _json(client, OPENDART_LIST, {**params, "page_no": str(page)})
+        status = str(data.get("status", "")) if isinstance(data, dict) else ""
+        if status == "013":  # no data
+            break
+        if status != "000":
+            raise SourceError(f"OpenDART {status or 'illisible'}")
+        rows += [r for r in data.get("list") or [] if isinstance(r, dict)]
+        if page >= int(data.get("total_page") or 1):
+            break
+    items, english, lookups = [], {}, 0
+    for r in rows:
+        report = str(r.get("report_nm") or "")
+        what = next((fr for ko, fr in OPENDART_TITLES.items() if ko in report), None)
+        code = str(r.get("corp_code") or "")
+        if what is None or not code.isdigit():
+            continue
+        if code not in english and lookups < OPENDART_MAX_LOOKUPS:
+            lookups += 1
+            company = _json(client, OPENDART_COMPANY, {"crtfc_key": key, "corp_code": code})
+            english[code] = clean_text(str(company.get("corp_name_eng") or ""), 120) if isinstance(
+                company, dict) else ""
+        name_en = english.get(code, "")
+        name_ko = clean_text(str(r.get("corp_name") or ""), 120)
+        matched = match_sites(f"{name_en} {name_ko}", korean, place_implied=True)
+        rcept = str(r.get("rcept_no") or "")
+        if not matched or not rcept.isdigit():
+            continue
+        day = parse_datetime(str(r.get("rcept_dt") or ""))
+        title = f"{name_en or name_ko} : {what} (annonce à la Bourse de Corée)"
+        summary = f"Annonce officielle « {clean_text(report, 120)} » déposée par {name_ko}."
+        items.append(_record("opendart", "annonce boursière, Corée (DART)", title, summary,
+                             OPENDART_VIEWER.format(rcept_no=rcept), day, "ko", matched))
     return items
 
 

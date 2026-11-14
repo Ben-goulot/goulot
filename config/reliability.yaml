@@ -13,7 +13,10 @@ official:
   suffixes: [".gov", ".gouv.fr", ".gov.cn", ".gov.uk", ".europa.eu", ".gob.cl", ".gob.mx", ".go.jp", ".go.kr", ".gc.ca",
              ".gov.au", ".gob.ar", ".gov.br"]
   domains: [imf.org, worldbank.org, iea.org, gdacs.org, copernicus.eu, lme.com, cmegroup.com, shfe.com.cn, gfex.com.cn, dce.com.cn, czce.com.cn,
-            onderzoeksraad.nl]  # Onderzoeksraad voor Veiligheid : bureau néerlandais d'enquête sur les accidents
+            onderzoeksraad.nl,  # Onderzoeksraad voor Veiligheid : bureau néerlandais d'enquête sur les accidents
+            fss.or.kr]  # autorité coréenne des marchés (annonces boursières DART, 13 novembre 2026)
+  # Rubrique des autorités sur un site de communiqués : police et pompiers allemands sur Presseportal.
+  paths: {presseportal.de: ["/blaulicht"]}
   # Les domaines des producteurs d'une chaîne validée s'ajoutent dans la base locale, après accord de l'utilisateur.
 
 agency_specialized:
