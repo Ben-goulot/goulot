@@ -110,7 +110,6 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
     ("api.gdeltproject.org", "/api/v2/doc/doc"): (200, json.dumps(GDELT_JSON).encode()),
     ("news.google.com", "/rss/search"): (200, GOOGLE_RSS),
     ("www.gdacs.org", "/xml/rss.xml"): (200, GDACS_RSS),
-    ("www2.tceq.texas.gov", "/oce/eer/RSSDataFeed.xml"): (200, EMPTY_FEED),  # official records: a calm week
     ("earthquake.usgs.gov", "/earthquakes/feed/v1.0/summary/2.5_day.geojson"): (200, json.dumps(USGS_JSON).encode()),
     ("www.nhc.noaa.gov", "/index-at.xml"): (200, NHC_RSS),
     ("www.nhc.noaa.gov", "/index-ep.xml"): (200, b"<rss><channel></channel></rss>"),
@@ -127,6 +126,26 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
 }
 
 
+def _registries(request: httpx2.Request) -> httpx2.Response:
+    """Official records on a calm week (tests/test_records.py has the eventful ones): the EPA knows no plant of the
+    chain, the Texas feed carries one declaration of an oil field, the search finds nothing."""
+    if request.url.host == "data.epa.gov":
+        return httpx2.Response(200, json=[])
+    if request.url.path.endswith("RSSDataFeed.xml"):
+        link = "https://www2.tceq.texas.gov/oce/eer/index.cfm?fuseaction=main.getDetails&amp;target=7001"
+        return httpx2.Response(200, text=(
+            '<rss version="2.0"><channel><item><title>7001 - RN199999999 WEST TANK BATTERY</title>'
+            f"<link>{link}</link><pubDate>{NOW - timedelta(hours=5):%a, %d %b %Y %H:%M}</pubDate></item>"
+            "</channel></rss>"))
+    if request.url.params.get("fuseaction") == "main.getDetails":
+        return httpx2.Response(200, text=(
+            "<table><tr><td>Name of Owner or Operator:</td><td>ANOTHER OPERATOR LP</td><td>CN:</td><td>CN1</td>"
+            "<td>Regulated Entity Name:</td><td>WEST TANK BATTERY</td><td>RN:</td><td>RN199999999</td><td>Physical "
+            "Location:</td><td>FM 1</td><td>County:</td><td>ANDREWS</td><td>Event/Activity Type:</td>"
+            "<td>EMISSIONS EVENT</td></tr></table>"))
+    return httpx2.Response(200, text="<table></table>")
+
+
 def http(routes: dict[tuple[str, str], tuple[int, bytes]] | None = None, seen: list[httpx2.Request] | None = None
          ) -> httpx2.Client:
     routes = ROUTES if routes is None else routes
@@ -137,6 +156,8 @@ def http(routes: dict[tuple[str, str], tuple[int, bytes]] | None = None, seen: l
         path = request.url.path
         if request.url.host == "firms.modaps.eosdis.nasa.gov":
             return httpx2.Response(200, content=FIRMS_CSV)
+        if request.url.host in ("www2.tceq.texas.gov", "data.epa.gov") and routes is ROUTES:
+            return _registries(request)
         status, body = routes.get((request.url.host, path), (404, b"{}"))
         return httpx2.Response(status, content=body)
 

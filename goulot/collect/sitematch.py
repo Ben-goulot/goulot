@@ -63,6 +63,15 @@ class Site:
     city: frozenset[str] = frozenset()  # those of `places` that come from the city, as the chain writes it
     # Other names of that city: words of a name in Latin letters, or a one-piece name in another script.
     city_names: frozenset[tuple[str, ...]] = frozenset()
+    place: str = ""  # the chain's own place, as written
+    # Legal names of the operator, from a public registry of plants (goulot/collect/identity.py): a regulator writes
+    # the subsidiary, the chain its parent.
+    aliases: tuple[tuple[str, ...], ...] = ()
+
+    @property
+    def subject(self) -> str:
+        """What an answer about this site was worked out for: asked again when the chain renames or moves it."""
+        return f"{self.name}|{self.place}"
 
 
 def _words(text: str) -> list[str]:
@@ -81,7 +90,13 @@ def build_site(material_id: str, node_key: str, name: str, place: str, country_i
     places = {w for w in distinctive[1:] if w not in GENERIC and len(w) >= MIN_PLACE_WORD} - {lead} | own
     others = frozenset(n for part in city.split("/") for n in _city_names(part.strip(), country_iso2)
                        if not set(n) <= places and lead not in n)
-    return Site(material_id, node_key, name, country_iso2, company, lead, frozenset(places), frozenset(own), others)
+    return Site(material_id, node_key, name, country_iso2, company, lead, frozenset(places), frozenset(own), others,
+                "" if place.strip().lower() == "unknown" else place.strip())
+
+
+def company_words(name: str) -> tuple[str, ...]:
+    """A legal name reduced to what tells it apart: « BLUE HARBOR OPERATIONS LLC » → blue harbor operations."""
+    return tuple(w for w in _words(name) if w not in LEGAL_FORMS)
 
 
 @lru_cache(maxsize=4096)
@@ -133,15 +148,18 @@ def names_site(text: str, site: Site, place_implied: bool = False, owner: str = 
     folded = fold(f"{owner} {text}")
     words = re.findall(r"[a-z0-9]+", folded)
     present = set(words)
-    phrase = _has(words, site.company)
-    declared = [w for w in _words(owner) if w not in LEGAL_FORMS]
-    owned = bool(declared) and tuple(declared[:len(site.company)]) == site.company
-    whole_name = owned or (phrase and (len(site.company) >= 2 or len(site.lead) >= MIN_SINGLE_NAME))
+    declared = company_words(owner)
+    names = (site.company, *site.aliases)
+    phrase = any(_has(words, n) for n in names)
+    owned = bool(declared) and any(tuple(declared[:len(n)]) == n for n in names)
+    full = _has(words, site.company) and (len(site.company) >= 2 or len(site.lead) >= MIN_SINGLE_NAME)
+    full = full or any(_has(words, a) and (len(a) >= 2 or len(a[0]) >= MIN_SINGLE_NAME) for a in site.aliases)
+    whole_name = owned or full
     if place_implied:
         return whole_name
     if not site.places:  # a company without any known place: its full name or nothing
         return whole_name
-    named = phrase or site.lead in present
+    named = phrase or owned or site.lead in present
     found = len(site.places & present)
     if not site.city & present and any(_has(words, n) if n[0].isascii() else n[0] in folded for n in site.city_names):
         found += 1  # the city under another of its names, where the chain's own spelling is absent

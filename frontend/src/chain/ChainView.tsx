@@ -377,6 +377,12 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                     <dd className={node.status === "closed" || node.status === "idled" ? "warn" : undefined}>{STATUS[node.status]}</dd>
                   </>
                 )}
+                {node.registry && (
+                  <>
+                    <dt>Registre officiel</dt>
+                    <dd className={node.registry.status === "bound" ? undefined : "muted"}>{clip(node.registry.text, 320)}</dd>
+                  </>
+                )}
                 <dt>Position</dt>
                 <dd className={approximate(node) ? "muted" : undefined}>
                   {COORD_SOURCE[node.coord_source]}

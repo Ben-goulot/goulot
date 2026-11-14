@@ -21,6 +21,7 @@ from goulot.chain.delays import delays_to_material
 from goulot.chain.identify import IdentificationError, identify
 from goulot.chain.quote import confirm_quote, reconstruction_quote, save_quote
 from goulot.chain.store import ChainStateError
+from goulot.collect import records
 from goulot.db.connection import set_setting
 from goulot.geo import cities
 from goulot.llm.budget import BUDGETS
@@ -202,6 +203,9 @@ def build_router(ctx: AppContext) -> APIRouter:
             n["delay"] = delays.get(n["node_key"])
         with ctx.db.connect() as conn:
             updates = update.overview(conn, material["id"])
+            registry = records.site_summaries(conn, material["id"], _now())
+        for n in chain["nodes"]:
+            n["registry"] = registry.get(n["node_key"])  # official records: followed, not found, or not covered
         return {"material": material, **chain, "update": updates}
 
     def _updatable(material: dict[str, Any]) -> None:

@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urlsplit
 
 import httpx2
@@ -28,7 +27,7 @@ LARGE_TARGETS = {"usgs_mcs_2026_csv": 16 * 1024 * 1024}
 USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7?f=__disk__"
 # gfex: disabled since 15 October; sciencebase: USGS MCS; the last three: official records, disabled until checked.
 EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov", "www2.tceq.texas.gov", "www.presseportal.de",
-               "opendart.fss.or.kr")
+               "opendart.fss.or.kr", "data.epa.gov")
 
 
 def _last_weekday(today: date) -> date:
@@ -127,20 +126,21 @@ def run(settings: Settings, today: date | None = None, only: str | None = None) 
     return report
 
 
-def registry_probe(settings: Settings, client: httpx2.Client | None = None) -> list[str]:
+def registry_probe(settings: Settings, client: httpx2.Client | None = None, today: datetime | None = None
+                   ) -> list[str]:
     """What the three record sources would bring today: entries read over 30 days, and those that name a site of the
     typical chains (titles of public records only; counts, never the chains themselves). Lines to print."""
     from collections.abc import Callable
     from datetime import UTC, datetime, timedelta
 
-    from goulot.collect import sitematch, sources
+    from goulot.collect import sitematch, sources, tceq
     from goulot.collect.base import Item, load_sources
     from goulot.db.connection import Database
     from goulot.security.secrets import get_secret
 
     if not settings.db_path.exists():
         return ["  Registres : base absente, rien à comparer."]
-    now = datetime.now(UTC)
+    now = today or datetime.now(UTC)
     since = now - timedelta(days=30)
     with Database(settings.db_path).connect() as conn:
         watched = sitematch.watch_sites(conn)
@@ -166,13 +166,12 @@ def registry_probe(settings: Settings, client: httpx2.Client | None = None) -> l
                      f"      · {it.title[:110]}" for it in items[:8])
 
     try:
-        tceq_url = str(load_sources()["tceq_emissions"]["url"])
         try:
-            entries = len(sources._feed_entries(client, tceq_url, since))
-        except (httpx2.HTTPError, ValueError, sources.SourceError):
-            entries = None
-        show("Texas (TCEQ)", lambda: sources.tceq(
-            client, "tceq_emissions", tceq_url, now, [s for s in watched if s.country_iso2 == "US"]), entries)
+            entries = tceq.feed(client, "tceq_emissions", str(load_sources()["tceq_emissions"]["url"]), now)
+            lines.append(f"  ✅ Texas (TCEQ) : {len(entries)} déclarations dans le flux des 7 derniers jours ; "
+                         "ce que le registre sait de chaque site : goulot dev records-history")
+        except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
+            lines.append(f"  ❌ Texas (TCEQ) : {type(exc).__name__}, {str(exc)[:120]}")
         cities = sources.german_cities(watched, places)
         show(f"Allemagne (Presseportal, {len(cities)} ville(s) : {', '.join(sorted(cities)[:8])})",
              lambda: sources.presseportal(client, "presseportal_blaulicht", since, watched, cities))
@@ -188,69 +187,128 @@ def registry_probe(settings: Settings, client: httpx2.Client | None = None) -> l
 
 
 def records_history(settings: Settings, months: int = 12, client: httpx2.Client | None = None,
-                    begin_day: str | None = None, end_day: str | None = None) -> list[str]:
-    """What the Texas regulator recorded over the past months for the American sites of the typical chains: one
-    search by owner and one by installation on the first distinctive word of each site, kept when the row names the
-    site. Read-only, without AI. Lines to print."""
+                    begin_day: str | None = None, end_day: str | None = None, today: datetime | None = None
+                    ) -> list[str]:
+    """What the Texas registry knows of each American site of the typical chains, worked out as the watch does it
+    (who operates the site, which installation it is, its past five years), then the declarations of a period
+    judged as the watch would have judged them, with the hour the regulator was told. A past crisis is replayed
+    with `begin_day` and `end_day`. Read-only for the app: everything is kept in a scratch base, deleted at the end.
+    Without AI. Lines to print."""
+    import tempfile
     from datetime import UTC, datetime, timedelta
+    from pathlib import Path
 
-    from goulot.collect import sitematch, sources
+    from goulot.collect import identity, records, sitematch, sources, tceq
     from goulot.db.connection import Database
 
     if not settings.db_path.exists():
         return ["Base absente : rien à relever."]
-    end = datetime.now(UTC)
+    source = "tceq_emissions"
+    now = today or datetime.now(UTC)
+    end = now
     begin = end - timedelta(days=30 * months)
     if begin_day and end_day:  # a past crisis replayed: « 2021-02-10 » to « 2021-03-10 »
         begin = datetime.fromisoformat(begin_day).replace(tzinfo=UTC)
-        end = datetime.fromisoformat(end_day).replace(tzinfo=UTC)
+        end = datetime.fromisoformat(end_day).replace(tzinfo=UTC) + timedelta(days=1)
     with Database(settings.db_path).connect() as conn:
         watched = [s for s in sitematch.watch_sites(conn) if s.country_iso2 == "US"]
     own = client is None
     client = client or build_client(load_allowlist(settings.config_dir, EXTRA_HOSTS))
-    lines = [f"Déclarations au régulateur du Texas (TCEQ) du {begin:%d/%m/%Y} au {end:%d/%m/%Y}, "
-             f"pour {len(watched)} sites américains des chaînes types :"]
-
-    def hours(row: dict[str, str]) -> float:
+    lines = [f"Registre du Texas (TCEQ) : {len(watched)} sites américains dans les chaînes types. "
+             f"Période relue : du {begin:%d/%m/%Y} au {end:%d/%m/%Y}."]
+    everything = tceq.Budget(pages=60, identities=99, sites=99, backfills=0)
+    pace = 0.0 if today else 0.7  # hundreds of questions at once: asked slowly, the regulator's site times out else
+    with tempfile.TemporaryDirectory() as folder:
+        db = Database(Path(folder) / "records.db")
+        db.migrate()
+        previous, tceq.PACE = tceq.PACE, pace
         try:
-            a = datetime.strptime(row["began"], "%m/%d/%Y %I:%M %p")
-            b = datetime.strptime(row["ended"], "%m/%d/%Y %I:%M %p")
-        except ValueError:
-            return 0.0
-        return max((b - a).total_seconds() / 3600, 0.0)
-
-    try:
-        for site in watched:
-            found: dict[str, dict[str, str]] = {}
-            others: set[str] = set()
-            truncated = False
-            try:
-                for field in ("cust_name", "re_name"):
-                    rows, total = sources.tceq_history(client, field, site.lead.upper(), begin, end)
-                    truncated = truncated or total > len(rows)
-                    for r in rows:
-                        owner = re.sub(r"^CN\d+\s*", "", r["owner"])  # « CN604255158 ASCEND … »
-                        if sitematch.names_site(f"{r['entity']} texas", site, owner=owner):
-                            found[r["incident"]] = r
-                        else:
-                            others.add(r["entity"])
-            except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
-                lines.append(f"  ❌ {site.name} : {type(exc).__name__}, {str(exc)[:100]}")
-                continue
-            kinds: dict[str, int] = {}
-            for r in found.values():
-                kinds[r["type"]] = kinds.get(r["type"], 0) + 1
-            long_ones = sorted(found.values(), key=hours, reverse=True)[:3]
-            detail = ", ".join(f"{n} {k.lower()}" for k, n in sorted(kinds.items())) or "aucune"
-            lines.append(f"  {'✅' if found else '⚪'} {site.name} : {len(found)} déclaration(s) ({detail})"
-                         + (" ; liste tronquée à la première page" if truncated else ""))
-            lines.extend(f"      · {r['began']} : {r['type'].lower()}, {hours(r):.0f} h, {r['entity'][:60]}"
-                         for r in long_ones)
-            if not found and others:
-                lines.append(f"      installations au nom proche, non retenues : {', '.join(sorted(others)[:6])}")
-    finally:
-        if own:
-            client.close()
+            idents = identity.ensure(db, client, watched, now, everything.identities)
+            sites = identity.apply(watched, idents)
+            lines.extend(f"  ❌ {failure}" for failure in tceq.catch_up(
+                db, client, source, sites, idents, now, everything))
+            lines.extend(f"  ❌ {s.name} : le registre fédéral des usines (EPA) n'a pas répondu"
+                         for s in sites if identity.askable(s) and (s.material_id, s.node_key) not in idents)
+            with db.connect() as conn:
+                covered = records.coverage(conn, source)
+                binding = records.bound(conn, source, sites)
+            past_from = begin - timedelta(days=365 * tceq.HISTORY_YEARS)
+            for ref in binding:
+                try:
+                    rows = tceq.history(client, source, ref, past_from, end)
+                except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
+                    lines.append(f"  ❌ passé de {ref} : {type(exc).__name__}, {str(exc)[:100]}")
+                    continue
+                with db.transaction() as conn:
+                    for d in rows:
+                        records.save(conn, d, now)
+                    conn.execute("UPDATE registry_installations SET history_from = ? WHERE source = ? AND ref = ?",
+                                 (past_from.isoformat(), source, ref))
+            pages = 0
+            for site in sites:
+                key = (site.material_id, site.node_key)
+                ident = idents.get(key)
+                row = covered.get(key)
+                status = row["status"] if row else "en attente"
+                refs = [r for r, bound_sites in binding.items() if site in bound_sites]
+                if status == "outside":
+                    where = f" ({ident.county}, {ident.state})" if ident and ident.state else ""
+                    lines.append(f"  ⚪ {site.name} : hors du Texas{where}, ce registre ne le couvre pas")
+                    continue
+                if not refs:
+                    epa = "" if not identity.askable(site) else (
+                        f" [EPA : {', '.join(ident.names) or 'sans nom'}, {ident.county}, {ident.state}]"
+                        if ident and ident.state else " [EPA : aucune usine de ce groupe à cet endroit]")
+                    lines.append(f"  ❓ {site.name}{epa} : " + (
+                        "aucune installation trouvée à ce nom au Texas (jamais « calme » : inconnu)"
+                        if status == "none" else "recherche pas encore faite ou échouée"))
+                    continue
+                operator = f" ; exploitant : {', '.join(ident.names[:2])}" if ident and ident.names else ""
+                lines.append(f"  ✅ {site.name} : suivi par {len(refs)} installation(s){operator}")
+                for ref in refs[:6]:
+                    with db.connect() as conn:
+                        inst = conn.execute("SELECT entity, owner FROM registry_installations WHERE source = ? AND "
+                                            "ref = ? LIMIT 1", (source, ref)).fetchone()
+                        window = [records.from_row(r) for r in conn.execute(
+                            "SELECT * FROM official_records WHERE source = ? AND ref = ? AND started_at >= ? AND "
+                            "started_at < ? ORDER BY started_at", (source, ref, begin.isoformat(), end.isoformat()))]
+                    lines.append(f"      {ref} {inst['entity'][:50]} ({inst['owner'][:40]}) : "
+                                 f"{len(window)} déclaration(s) sur la période")
+                    sent = 0
+                    for d in window:
+                        at = max(t for t in (d.ended_at, d.started_at) if t is not None)
+                        with db.connect() as conn:
+                            quick = records.judge(conn, d, at)
+                        if not quick.notable and (d.hours(at) or 0) < records.MIN_UNUSUAL_HOURS:
+                            continue  # a short one: its cause is read only when the period is short enough
+                        if pages < everything.pages:
+                            pages += 1
+                            full = tceq.page(client, source, d.ext_id)
+                            if full is not None:
+                                d = full
+                                with db.transaction() as conn:
+                                    records.save(conn, d, now)
+                        at = max(t for t in (d.ended_at, d.notified_at, d.started_at) if t is not None)
+                        with db.connect() as conn:
+                            prof = records.profile(conn, d, d.started_at or at)
+                            verdict = records.judge(conn, d, at, prof)
+                        if not verdict.notable:
+                            continue
+                        sent += 1
+                        told = (f"régulateur prévenu le {d.notified_at.astimezone(tceq.TEXAS_TIME):%d/%m/%Y %H:%M}"
+                                if d.notified_at else "heure de déclaration non lue")
+                        began = d.started_at.astimezone(tceq.TEXAS_TIME) if d.started_at else None
+                        lines.append(f"        🔔 {began:%d/%m/%Y %H:%M} {d.kind.lower()} : "
+                                     f"{' ; '.join(verdict.reasons)} ; {told}")
+                        if d.cause:
+                            lines.append(f"           cause déclarée : {d.cause[:160]}")
+                        lines.append(f"           {prof.sentence()}")
+                    lines.append(f"        → {sent} à signaler, {len(window) - sent} de routine "
+                                 "(gardées, non envoyées)")
+        finally:
+            tceq.PACE = previous
+            if own:
+                client.close()
     return lines
 
 

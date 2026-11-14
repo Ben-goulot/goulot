@@ -37,6 +37,10 @@ DELETE_STEPS = (
     "DELETE FROM case_reports WHERE material_id = :m",
     "DELETE FROM instrument_links WHERE material_id = :m",
     "DELETE FROM watch_rules WHERE material_id = :m",
+    # What official registries know of its sites; the declarations themselves are public records and stay.
+    "DELETE FROM registry_installations WHERE material_id = :m",
+    "DELETE FROM registry_coverage WHERE material_id = :m",
+    "DELETE FROM site_identities WHERE material_id = :m",
     "DELETE FROM quotes WHERE material_id = :m",
     "DELETE FROM jobs WHERE material_id = :m",
     "DELETE FROM user_coverage WHERE material_ref = :m",

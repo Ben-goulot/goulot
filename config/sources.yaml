@@ -371,8 +371,10 @@ sources:
   # Déclarations aux autorités, communiqués des secours, annonces boursières : la matière première de la presse
   # spécialisée. Lus en entier, réduits sur le Mac aux entrées qui nomment un site des chaînes types
   # (goulot/collect/sitematch.py) ; rien des chaînes ne part dans une requête, sauf le nom d'une ville allemande
-  # dans l'adresse du flux Presseportal. Texas et Allemagne vérifiés depuis le Mac et activés le 14 novembre 2026 ;
-  # la Corée reste désactivée tant qu'aucune clé n'est enregistrée.
+  # dans l'adresse du flux Presseportal et le premier mot du nom d'un producteur américain de la chaîne type
+  # (question à l'EPA sur l'exploitant du site, recherche de son installation au registre du Texas). Texas et
+  # Allemagne vérifiés depuis le Mac et activés le 14 novembre 2026 ; la Corée reste désactivée tant qu'aucune clé
+  # n'est enregistrée.
   - id: tceq_emissions
     enabled: true
     family: registry
@@ -380,7 +382,8 @@ sources:
     lang: en
     auth: none
     frequency: 3h
-    use: Texas, TCEQ ; événements d'émissions, arrêts, démarrages et maintenances déclarés par les usines (déclaration sous 24 h), flux mis à jour chaque heure
+    extra_hosts: [data.epa.gov]
+    use: Texas, TCEQ ; incidents avec émissions, arrêts, démarrages et maintenances déclarés par les usines (déclaration sous 24 h), flux mis à jour chaque heure ; fiche de chaque déclaration et recherche par exploitant, comté ou numéro d'installation (50 lignes au plus par réponse) ; data.epa.gov (EPA, Toxics Release Inventory, service Envirofacts, sans clé) donne l'exploitant légal, le comté et l'État d'un site américain
     notes: "flux et fiches lus depuis le Mac le 14 novembre 2026 (goulot dev check-sources) ; rejeu du 10 février au 10 mars 2021 par goulot dev records-history : 8 déclarations pour les sites des chaînes types ; couvre le Texas seulement"
   - id: presseportal_blaulicht
     enabled: true

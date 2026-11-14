@@ -101,60 +101,6 @@ def rss(*entries: tuple[str, str, str]) -> str:
     return f'<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>{items}</channel></rss>'
 
 
-DETAIL = "https://www2.tceq.texas.gov/oce/eer/index.cfm?fuseaction=main.getDetails&amp;target={n}"
-
-
-def declaration(owner: str, entity: str, kind: str, county: str = "CALHOUN") -> str:
-    """A fictitious TCEQ declaration page, with the labels of the real one (checked from the Mac, 14 November 2026)."""
-    return (f"<html><body><table><tr><td>Incident Status:</td><td>OPEN</td><td>Report Type:</td><td>INITIAL</td>"
-            f"<td>Report Date:</td><td>11/12/2026</td></tr><tr><td>Name of Owner or Operator:</td><td>{owner}</td>"
-            f"<td>CN:</td><td>CN600000001</td></tr><tr><td>Regulated Entity Name:</td><td>{entity}</td><td>RN:</td>"
-            f"<td>RN100000001</td></tr><tr><td>Physical Location:</td><td>1 MI S OF FM 1</td><td>County:</td>"
-            f"<td>{county}</td></tr><tr><td>Event/Activity Type:</td><td>{kind}</td></tr><tr><td>Date and Time Event "
-            "Discovered or Scheduled Activity Start:</td><td>11/11/2026 05:00 PM</td><td>Date and Time Event or "
-            "Scheduled Activity Ended:</td><td>11/12/2026 07:00 AM</td><td>Event Duration:</td><td>14 hours, 0 minutes"
-            "</td></tr><tr><th>Process Unit or Area Common Names</th></tr><tr><td>Acrylonitrile Unit 2</td></tr><tr>"
-            "<th>Facility Common Name</th></tr><tr><td>Cause of Emission Event or Excess Opacity Event, or Reason for "
-            "Scheduled Activity:</td><td>A reactor tripped after a power dip. <script>alert(1)</script>The unit was "
-            "shut down.</td></tr><tr><td>Actions Taken, or Being Taken, to Minimize Emissions And/or Correct the "
-            "Situation:</td><td>The unit is being restarted.</td></tr><tr><td>Basis Used to Determine Quantities"
-            "</td></tr></table></body></html>")
-
-
-def texas(pages: dict[str, str], seen: list[httpx2.Request] | None = None) -> httpx2.Client:
-    sources._tceq_seen.clear()
-    feed = rss(*[(f"{n} - RN100000001 X", "RN100000001 X", DETAIL.format(n=n)) for n in pages])
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        if seen is not None:
-            seen.append(request)
-        if request.url.path.endswith("RSSDataFeed.xml"):
-            return httpx2.Response(200, text=feed)
-        page = pages.get(request.url.params.get("target", ""))
-        return httpx2.Response(200, content=page.encode("latin-1")) if page else httpx2.Response(500, text="")
-
-    return build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))
-
-
-def test_texas_declarations_are_read_on_their_own_page() -> None:
-    """The feed names only the installation; its page gives the owner, the unit, the cause and the duration."""
-    seen: list[httpx2.Request] = []
-    client = texas({"900001": declaration("INEOS NITRILES USA LLC", "GREEN LAKE PLANT", "EMISSIONS EVENT"),
-                    "900002": declaration("INEOS USA LLC", "CHOCOLATE BAYOU PLANT", "EMISSIONS EVENT", "BRAZORIA"),
-                    "900003": declaration("NALK CORPORATION", "FREEPORT PLANT B", "MAINTENANCE", "BRAZORIA")}, seen)
-    url = "https://www2.tceq.texas.gov/oce/eer/RSSDataFeed.xml"
-    items = sources.tceq(client, "tceq_emissions", url, NOW, [INEOS, ASCEND, NALK])
-    assert [i.details["sites"] for i in items] == [[INEOS.name], [NALK.name]]  # the olefins plant is another site
-    first = items[0]
-    assert first.title == "GREEN LAKE PLANT (INEOS NITRILES USA LLC, Texas) : événement d'émissions, incident 900001"
-    assert "Unité : Acrylonitrile Unit 2." in first.excerpt and "14 hours, 0 minutes" in first.excerpt
-    assert "A reactor tripped after a power dip." in first.excerpt and "alert(1)" not in first.excerpt
-    assert "maintenance" in items[1].title and not title_only(first) and domain_reliability(first.domain) == 0.9
-    assert len(seen) == 4  # the feed and three pages
-    # A page is asked once: the next cycle reads the feed only.
-    assert sources.tceq(client, "tceq_emissions", url, NOW, [INEOS, ASCEND, NALK]) == [] and len(seen) == 5
-
-
 def test_registry_feed_keeps_only_the_sites_of_the_chains() -> None:
     feed = rss(
         ("Incident 400001", "INEOS NITRILES USA LLC GREEN LAKE PLANT - EMISSIONS EVENT - unit trip, flaring",
@@ -242,25 +188,3 @@ def test_pilot_sources_are_wired_and_korea_waits_for_its_key() -> None:
     for sid, enabled in (("tceq_emissions", True), ("presseportal_blaulicht", True), ("opendart", False)):
         assert cfg[sid]["family"] == "registry" and cfg[sid]["enabled"] is enabled, sid
     assert "opendart" in SECRET_NAMES
-
-
-def test_probe_counts_what_the_records_would_bring(ctx: Any) -> None:
-    """`goulot dev check-sources`: entries read and entries naming a site, without showing the chains themselves."""
-    from goulot.chain import store
-    from goulot.cli import check_sources
-    from goulot.llm.backend import ReplayBackend
-    from tests import chain_fixtures as fx
-    from tests.test_chain import run
-
-    material_id, _, _ = run(ctx, ReplayBackend(responses=fx.replay_responses()))
-    with ctx.db.transaction() as conn:
-        store.validate_material(conn, material_id, acknowledge_injection=True)
-        conn.execute("UPDATE chain_nodes SET name = 'Usine fictive Exemple, Bayport', place = 'Bayport, Texas' "
-                     "WHERE node_key = 'plant_gulf_cracker' AND valid_to IS NULL")
-    lines = check_sources.registry_probe(ctx.settings, texas(
-        {"900001": declaration("USINE FICTIVE EXEMPLE LLC", "BAYPORT PLANT", "AIR SHUTDOWN"),
-         "900002": declaration("ANOTHER OPERATOR LP", "WEST TANK BATTERY", "EMISSIONS EVENT")}))
-    text = "\n".join(lines)
-    assert "1 sites producteurs" in text and "dont 1 aux États-Unis" in text
-    assert "Texas (TCEQ) : 2 entrées lues, 1 nomme(nt) un site" in text and "BAYPORT PLANT" in text
-    assert "WEST TANK BATTERY" not in text and "pas de clé" in text

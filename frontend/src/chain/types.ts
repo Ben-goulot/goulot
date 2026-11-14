@@ -56,6 +56,8 @@ export type ChainNode = {
   status: SiteStatus;
   share_basis: ShareBasis;
   share_year: number | null;
+  // What an official registry knows of this site (Texas regulator): followed by its number, not found, or outside.
+  registry?: { status: "bound" | "none" | "outside"; text: string } | null;
 };
 
 export type SiteStatus = "operating" | "idled" | "closed" | "project" | "unknown";

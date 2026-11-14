@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from goulot.chain import store
-from goulot.collect import hotspots, sitematch, sources
+from goulot.collect import hotspots, sitematch, sources, tceq
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names, title_only, too_old
 from goulot.db.connection import Database
@@ -131,8 +131,10 @@ def _store(conn: sqlite3.Connection, item: Item, hits: list[Rule], now: datetime
 
 
 def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
-              private_queries: list[tuple[str, list[str]]] | None = None
+              private_queries: list[tuple[str, list[str]]] | None = None, db: Database | None = None
               ) -> dict[str, Callable[[httpx2.Client, datetime], list[Item]]]:
+    """`db`: for the sources that keep what they read between cycles (official records); without it they bring
+    nothing."""
     qs = queries(conn) + (private_queries or [])
     # Ma chaîne's queries go to GDELT alone, as before: never pooled with the public ones.
     gdelt_qs = gdelt_queries(conn) + [q for q, _ in private_queries or []]
@@ -153,10 +155,12 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
     places = {row["node_key"]: row["place"] for row in conn.execute(
         "SELECT node_key, place FROM chain_nodes WHERE valid_to IS NULL")}
     tceq_url = str(load_sources().get("tceq_emissions", {}).get("url") or "")
+    material_names = {material_id: names for material_id, names, _ in _public_terms(conn)}
 
-    def tceq(c: httpx2.Client, since: datetime) -> list[Item]:
-        texas = [s for s in watched if s.country_iso2 == "US"]
-        return sources.tceq(c, "tceq_emissions", tceq_url, now, texas) if texas else []
+    def texas(c: httpx2.Client, since: datetime) -> list[Item]:
+        if db is None:
+            return []
+        return tceq.collect(db, c, "tceq_emissions", tceq_url, now, watched, material_names)
 
     def blaulicht(c: httpx2.Client, since: datetime) -> list[Item]:
         return sources.presseportal(c, "presseportal_blaulicht", since, watched,
@@ -187,7 +191,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "copernicus_ems": lambda c, s: sources.copernicus(c, now),
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
         # Official records that name a site of the chains (pilot of 13 November 2026).
-        "tceq_emissions": tceq,
+        "tceq_emissions": texas,
         "presseportal_blaulicht": blaulicht,
         "opendart": dart,
     }
@@ -291,7 +295,7 @@ def run_cycle(db: Database, http: httpx2.Client, secret: SecretGetter, now: date
     with db.transaction() as conn:
         conn.execute("INSERT INTO cycles (id, started_at) VALUES (?, ?)", (cycle_id, iso(now)))
         ensure_rules(conn)
-        fetchers = _fetchers(conn, now, secret, private.queries if private else None)
+        fetchers = _fetchers(conn, now, secret, private.queries if private else None, db)
         rules = active_rules(conn) + (private.rules if private else [])
         country_nodes = {r[0] for r in conn.execute(
             "SELECT node_key FROM chain_nodes WHERE valid_to IS NULL AND node_type = 'country'")}
