@@ -131,6 +131,8 @@ def _registries(request: httpx2.Request) -> httpx2.Response:
     chain, the Texas feed carries one declaration of an oil field, the search finds nothing."""
     if request.url.host == "data.epa.gov":
         return httpx2.Response(200, json=[])
+    if request.url.host == "api.weather.gov":
+        return httpx2.Response(200, json={"type": "FeatureCollection", "features": []})
     if request.url.path.endswith("RSSDataFeed.xml"):
         link = "https://www2.tceq.texas.gov/oce/eer/index.cfm?fuseaction=main.getDetails&amp;target=7001"
         return httpx2.Response(200, text=(
@@ -156,7 +158,7 @@ def http(routes: dict[tuple[str, str], tuple[int, bytes]] | None = None, seen: l
         path = request.url.path
         if request.url.host == "firms.modaps.eosdis.nasa.gov":
             return httpx2.Response(200, content=FIRMS_CSV)
-        if request.url.host in ("www2.tceq.texas.gov", "data.epa.gov") and routes is ROUTES:
+        if request.url.host in ("www2.tceq.texas.gov", "data.epa.gov", "api.weather.gov") and routes is ROUTES:
             return _registries(request)
         status, body = routes.get((request.url.host, path), (404, b"{}"))
         return httpx2.Response(status, content=body)

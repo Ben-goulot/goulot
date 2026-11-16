@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from goulot.chain import store
-from goulot.collect import hotspots, sitematch, sources, tceq
+from goulot.collect import hotspots, sitematch, sources, tceq, weather
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
 from goulot.collect.rules import Rule, active_rules, match, material_names, title_only, too_old
 from goulot.db.connection import Database
@@ -162,6 +162,9 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
             return []
         return tceq.collect(db, c, "tceq_emissions", tceq_url, now, watched, material_names)
 
+    def alerts(c: httpx2.Client, since: datetime) -> list[Item]:
+        return weather.collect(db, c, now, watched) if db is not None else []
+
     def blaulicht(c: httpx2.Client, since: datetime) -> list[Item]:
         return sources.presseportal(c, "presseportal_blaulicht", since, watched,
                                     sources.german_cities(watched, places))
@@ -192,6 +195,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
         # Official records that name a site of the chains (pilot of 13 November 2026).
         "tceq_emissions": texas,
+        "nws_alerts": alerts,
         "presseportal_blaulicht": blaulicht,
         "opendart": dart,
     }

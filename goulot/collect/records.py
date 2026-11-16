@@ -291,8 +291,59 @@ def follow_up(previous: sqlite3.Row, d: Declaration, now: datetime) -> str | Non
     return None
 
 
+# --- what stopped a site before ------------------------------------------------------------------------------------
+# Kinds of weather that stop plants, as their declared causes word them.
+HAZARDS = {
+    "freeze": re.compile(r"\bfreez|winter storm|winter weather|ice storm|arctic|extreme cold|cold weather"),
+    "tropical": re.compile(r"hurricane|tropical storm|tropical depression|storm surge"),
+}
+HAZARD_NAMES = {"freeze": "un épisode de gel", "tropical": "un ouragan ou une tempête tropicale"}
+
+
+def long_undetailed(conn: sqlite3.Connection, source: str, ref: str, now: datetime, before: datetime, limit: int
+                    ) -> list[str]:
+    """The longest past incidents of an installation whose cause was never read (known from a list only): their
+    pages say what stopped the plant. Only those started before `before`: a recent one is read, and judged, by the
+    cycle itself."""
+    rows = [from_row(r) for r in conn.execute(
+        "SELECT * FROM official_records WHERE source = ? AND ref = ? AND detailed = 0 AND started_at IS NOT NULL "
+        "AND started_at < ?", (source, ref, iso(before)))]
+    long_ones = sorted(((d.hours(now) or 0.0, d.ext_id) for d in rows if d.kind in UNPLANNED), reverse=True)
+    return [ext_id for hours, ext_id in long_ones if hours >= LONG_HOURS][:limit]
+
+
+def antecedent(conn: sqlite3.Connection, source: str, refs: list[str], hazard: str, now: datetime
+               ) -> Declaration | None:
+    """The longest incident of a day or more that these installations declared with a cause of that kind."""
+    pattern = HAZARDS[hazard]
+    best: tuple[float, Declaration] | None = None
+    for ref in refs:
+        for r in conn.execute("SELECT * FROM official_records WHERE source = ? AND ref = ? AND detailed = 1 "
+                              "AND started_at IS NOT NULL AND started_at <= ?", (source, ref, iso(now))):
+            d = from_row(r)
+            hours = d.hours(now) or 0.0
+            if (d.kind in UNPLANNED and hours >= LONG_HOURS and pattern.search(fold(d.cause))
+                    and (best is None or hours > best[0])):
+                best = (hours, d)
+    return best[1] if best else None
+
+
+def antecedent_sentence(d: Declaration | None, hazard: str, now: datetime) -> str:
+    if d is None or d.started_at is None:
+        return "aucun arrêt de ce genre déclaré au registre"
+    return (f"arrêté ou perturbé {_h(d.hours(now) or 0.0)} par {HAZARD_NAMES[hazard]} en "
+            f"{d.started_at:%m/%Y} (déclaration au registre)")
+
+
 # --- what the user is shown of each site ---------------------------------------------------------------------------
 REGISTRIES = {"tceq_emissions": "registre du Texas (TCEQ)"}
+
+
+def current_subjects(conn: sqlite3.Connection, material_id: str) -> dict[str, str]:
+    """node_key → name and place of the chain's current nodes, as `Site.subject` writes them."""
+    return {r["node_key"]: f"{r['name']}|{'' if r['place'].strip().lower() == 'unknown' else r['place'].strip()}"
+            for r in conn.execute("SELECT node_key, name, place FROM chain_nodes WHERE material_id = ? "
+                                  "AND valid_to IS NULL", (material_id,))}
 
 
 def site_summaries(conn: sqlite3.Connection, material_id: str, now: datetime,
@@ -302,10 +353,7 @@ def site_summaries(conn: sqlite3.Connection, material_id: str, now: datetime,
     current nodes (read from the chain when not given)."""
     out: dict[str, dict[str, str]] = {}
     # A node renamed or rebuilt since the last cycle: what was worked out for the former site is not shown for it.
-    current = subjects if subjects is not None else {
-        r["node_key"]: f"{r['name']}|{'' if r['place'].strip().lower() == 'unknown' else r['place'].strip()}"
-        for r in conn.execute("SELECT node_key, name, place FROM chain_nodes WHERE material_id = ? "
-                              "AND valid_to IS NULL", (material_id,))}
+    current = subjects if subjects is not None else current_subjects(conn, material_id)
     for row in conn.execute("SELECT * FROM registry_coverage WHERE material_id = ?", (material_id,)):
         subject = current.get(row["node_key"])
         if subject is None or not row["subject"].startswith(subject):

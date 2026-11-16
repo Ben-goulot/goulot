@@ -45,6 +45,7 @@ REREAD_EVERY = timedelta(hours=20)
 REREAD_FOR = timedelta(days=45)
 RECHECK_NONE = timedelta(days=30)
 RETRY_PAUSE = 4.0  # seconds before the one second try of a search
+CAUSES_PER_INSTALLATION = 8
 PACE = 0.0  # seconds after each search; the diagnostic, which asks hundreds at once, sets it
 PAGES_PROOF = 3  # so many pages asked and none read: the page changed, or the site is down
 TYPES = {"EMISSIONS EVENT": "incident avec émissions", "AIR SHUTDOWN": "arrêt programmé d'une unité",
@@ -285,6 +286,12 @@ def catch_up(db: Database, client: httpx2.Client, source: str, sites: list[Site]
             continue
         with db.transaction() as conn:
             for d in rows:
+                records.save(conn, d, now)
+            causes = records.long_undetailed(conn, source, ref, now, now - FEED_WINDOW, CAUSES_PER_INSTALLATION)
+        # What stopped this plant before: the pages of its longest past incidents give their causes.
+        detailed = [d for d in (page(client, source, ext_id) for ext_id in causes) if d is not None]
+        with db.transaction() as conn:
+            for d in detailed:
                 records.save(conn, d, now)
             conn.execute("UPDATE registry_installations SET history_from = ? WHERE source = ? AND ref = ?",
                          (iso(begin), source, ref))

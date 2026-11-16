@@ -11,6 +11,7 @@ import hashlib
 import json
 import time
 from datetime import date, datetime, timedelta
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx2
@@ -27,7 +28,7 @@ LARGE_TARGETS = {"usgs_mcs_2026_csv": 16 * 1024 * 1024}
 USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7?f=__disk__"
 # gfex: disabled since 15 October; sciencebase: USGS MCS; the last three: official records, disabled until checked.
 EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov", "www2.tceq.texas.gov", "www.presseportal.de",
-               "opendart.fss.or.kr", "data.epa.gov")
+               "opendart.fss.or.kr", "data.epa.gov", "api.weather.gov", "mesonet.agron.iastate.edu")
 
 
 def _last_weekday(today: date) -> date:
@@ -186,6 +187,49 @@ def registry_probe(settings: Settings, client: httpx2.Client | None = None, toda
     return lines
 
 
+IEM = "https://mesonet.agron.iastate.edu/json/"
+LEAD_WINDOW = timedelta(days=10)
+
+
+def past_alerts(client: httpx2.Client, lat: float, lon: float, begin: datetime, end: datetime
+                ) -> list[tuple[datetime, str, str, str]]:
+    """Weather alerts of the past at a point, from the archive of Iowa State University (IEM): (hour the alert was
+    published, kind of weather, level A or W, English name), the first of each kind and level. For the replay only:
+    the watch itself reads the live alerts of the weather service."""
+    from goulot.collect import weather
+    from goulot.collect.base import parse_datetime
+
+    def ask(page: str, params: dict[str, str]) -> Any:
+        try:
+            return fetch(client, IEM + page, params=params)
+        except httpx2.HTTPError:  # the archive drops a connection now and then: asked once more
+            time.sleep(2)
+            return fetch(client, IEM + page, params=params)
+
+    listing = ask("vtec_events_bypoint.py", {
+        "lat": f"{lat:.4f}", "lon": f"{lon:.4f}", "sdate": f"{begin:%Y-%m-%d}", "edate": f"{end:%Y-%m-%d}"})
+    if listing.status != 200:
+        raise ValueError(f"HTTP {listing.status}")
+    events = json.loads(listing.content).get("events") or []
+    first: dict[tuple[str, str], tuple[datetime, str, str, str]] = {}
+    for e in events:
+        phenomenon, level = str(e.get("phenomena")), str(e.get("significance"))
+        if phenomenon not in weather.PHENOMENA or level not in weather.LEVELS:
+            continue
+        hazard = weather.PHENOMENA[phenomenon][0]
+        detail = ask("vtec_event.py", {
+            "wfo": "K" + str(e.get("wfo")), "year": str(e.get("issue"))[:4], "phenomena": phenomenon,
+            "significance": level, "etn": str(e.get("eventid"))})
+        if detail.status != 200:
+            continue
+        # « issue » is when the weather starts; what counts here is when the alert could be read.
+        published = [parse_datetime(u.get("utc_product_issue")) for u in json.loads(detail.content).get("ugcs") or []]
+        hours = [p for p in published if p is not None]
+        if hours and ((hazard, level) not in first or min(hours) < first[(hazard, level)][0]):
+            first[(hazard, level)] = (min(hours), hazard, level, str(e.get("name")))
+    return sorted(first.values())
+
+
 def records_history(settings: Settings, months: int = 12, client: httpx2.Client | None = None,
                     begin_day: str | None = None, end_day: str | None = None, today: datetime | None = None
                     ) -> list[str]:
@@ -207,6 +251,7 @@ def records_history(settings: Settings, months: int = 12, client: httpx2.Client 
     now = today or datetime.now(UTC)
     end = now
     begin = end - timedelta(days=30 * months)
+    replay = bool(begin_day and end_day)
     if begin_day and end_day:  # a past crisis replayed: « 2021-02-10 » to « 2021-03-10 »
         begin = datetime.fromisoformat(begin_day).replace(tzinfo=UTC)
         end = datetime.fromisoformat(end_day).replace(tzinfo=UTC) + timedelta(days=1)
@@ -244,6 +289,33 @@ def records_history(settings: Settings, months: int = 12, client: httpx2.Client 
                         records.save(conn, d, now)
                     conn.execute("UPDATE registry_installations SET history_from = ? WHERE source = ? AND ref = ?",
                                  (past_from.isoformat(), source, ref))
+            def weather_lines(ident: identity.Identity | None, refs: list[str],
+                              first_incident: datetime | None) -> None:
+                """Official weather alerts published for the site's place over the period, and how long before its
+                first long incident."""
+                if not replay or ident is None or not ident.state:
+                    return
+                if ident.lat is None or ident.lon is None:
+                    lines.append("      🌦 position inconnue de l'EPA : alertes passées non relues")
+                    return
+                try:
+                    alerts = past_alerts(client, ident.lat, ident.lon, begin - timedelta(days=7), end)
+                except (httpx2.HTTPError, ValueError) as exc:
+                    lines.append(f"      🌦 alertes météo : {type(exc).__name__}, {str(exc)[:80]}")
+                    return
+                for published, hazard, _level, name in alerts:
+                    with db.connect() as conn:
+                        before = records.antecedent(conn, source, refs, hazard, published) if refs else None
+                    past = records.antecedent_sentence(before, hazard, published) if refs else "passé inconnu"
+                    lead = ""
+                    # An incident weeks after the alert has another cause: no lead is claimed for it.
+                    if first_incident is not None and timedelta(0) < first_incident - published <= LEAD_WINDOW:
+                        lead = f" → {(first_incident - published).total_seconds() / 86400:.1f} jours avant " \
+                               "son premier long incident déclaré"
+                    lines.append(f"      🌦 {name} publiée le {published:%d/%m/%Y %H:%M} UTC ({past}){lead}")
+                if not alerts:
+                    lines.append("      🌦 aucune alerte d'ouragan, de tempête ou de gel sur la période")
+
             pages = 0
             for site in sites:
                 key = (site.material_id, site.node_key)
@@ -254,6 +326,7 @@ def records_history(settings: Settings, months: int = 12, client: httpx2.Client 
                 if status == "outside":
                     where = f" ({ident.county}, {ident.state})" if ident and ident.state else ""
                     lines.append(f"  ⚪ {site.name} : hors du Texas{where}, ce registre ne le couvre pas")
+                    weather_lines(ident, [], None)
                     continue
                 if not refs:
                     epa = "" if not identity.askable(site) else (
@@ -262,9 +335,11 @@ def records_history(settings: Settings, months: int = 12, client: httpx2.Client 
                     lines.append(f"  ❓ {site.name}{epa} : " + (
                         "aucune installation trouvée à ce nom au Texas (jamais « calme » : inconnu)"
                         if status == "none" else "recherche pas encore faite ou échouée"))
+                    weather_lines(ident, [], None)
                     continue
                 operator = f" ; exploitant : {', '.join(ident.names[:2])}" if ident and ident.names else ""
                 lines.append(f"  ✅ {site.name} : suivi par {len(refs)} installation(s){operator}")
+                firsts: list[datetime] = []
                 for ref in refs[:6]:
                     with db.connect() as conn:
                         inst = conn.execute("SELECT entity, owner FROM registry_installations WHERE source = ? AND "
@@ -305,6 +380,9 @@ def records_history(settings: Settings, months: int = 12, client: httpx2.Client 
                         lines.append(f"           {prof.sentence()}")
                     lines.append(f"        → {sent} à signaler, {len(window) - sent} de routine "
                                  "(gardées, non envoyées)")
+                    firsts.extend(d.started_at for d in window if d.started_at and (d.hours(now) or 0)
+                                  >= records.LONG_HOURS and d.kind in records.UNPLANNED)
+                weather_lines(ident, refs, min(firsts) if firsts else None)
         finally:
             tceq.PACE = previous
             if own:

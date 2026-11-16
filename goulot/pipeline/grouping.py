@@ -49,7 +49,8 @@ KAUB_CRITICAL_CM = 78  # below, barges are severely limited on the whole Rhine
 SITE_NODE_TYPES = ("mine", "plant", "recycler", "company", "port", "distributor")
 HAZARD_TYPES = {"IND": "industrial_outage", "LS": "natural_disaster", "TS": "natural_disaster",
                 "FL": "natural_disaster", "EQ": "natural_disaster", "VO": "natural_disaster",
-                "DR": "extreme_weather", "TC": "extreme_weather", "WF": "industrial_outage"}
+                "DR": "extreme_weather", "TC": "extreme_weather", "WF": "industrial_outage",
+                "WX": "extreme_weather"}  # WX: official weather alert on a plant's county
 
 
 def _words(text: str) -> set[str]:
@@ -206,6 +207,9 @@ def _measurement_severity(source: str, item: sqlite3.Row, details: dict[str, Any
         return 2 if m is not None and m < 78 else 1
     if source == "nasa_firms":
         return 2 if m and m >= 100 else 1
+    if source == "nws_alerts":  # computed by the reader: level of the alert and past of the plants it covers
+        level = details.get("severity")
+        return max(1, min(level, 3)) if isinstance(level, int) else 1
     return 2
 
 

@@ -325,6 +325,17 @@ sources:
     use: cyclones de l'Atlantique et du Pacifique Est
     notes: vérifié ; flux RSS index-at.xml (Atlantique) et index-ep.xml (Pacifique Est)
 
+  - id: nws_alerts
+    enabled: true
+    family: hazard
+    url: https://api.weather.gov/alerts/active
+    lang: en
+    auth: none
+    frequency: 3h
+    extra_hosts: [data.epa.gov]
+    use: États-Unis, service météorologique national (NWS) ; veilles et avertissements d'ouragan, d'onde de tempête, de tempête tropicale, de tempête hivernale ou de verglas, de blizzard, de gel dur et de froid extrême, sur les comtés où les chaînes types ont une usine ; chaque alerte est rapprochée du passé de ces usines au registre (goulot/collect/weather.py)
+    notes: "interrogé par État (?area=TX), sans clé ; le service demande un en-tête User-Agent qui nomme l'application ; comté de chaque usine donné par l'EPA (data.epa.gov) ; lu depuis le Mac le 16 novembre 2026 (Texas, Louisiane, Ohio : aucune alerte de ces genres ce jour-là) ; alertes passées pour les rejeux : archive de l'université d'Iowa (mesonet.agron.iastate.edu), outil de diagnostic seulement"
+
   # --- Logistique ---
   - id: imf_portwatch_chokepoints
     enabled: true

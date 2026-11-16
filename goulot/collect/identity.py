@@ -40,6 +40,9 @@ class Identity:
     names: tuple[str, ...] = ()  # legal names of the operator at that place
     county: str = ""
     state: str = ""  # two letters; '' when the registry does not know the site
+    fips: str = ""  # five digits, state and county: the area code of official weather alerts
+    lat: float | None = None
+    lon: float | None = None
 
 
 def subject(site: Site) -> str:
@@ -65,8 +68,8 @@ def pick(site: Site, rows: list[dict[str, object]]) -> Identity:
     cities = [c for c in ({w for w in _words(part) if w not in GENERIC and len(w) >= 4}
                           for part in re.split(r"[,(]", site.place, maxsplit=1)[0].split("/")) if c]
     names: dict[str, None] = {}
-    counties: dict[str, int] = {}
-    states: dict[str, int] = {}
+    places: dict[tuple[str, str, str], int] = {}
+    points: dict[tuple[str, str, str], tuple[float, float]] = {}
     for row in rows:
         facility = str(row.get("facility_name") or "")
         parent = f"{row.get('standardized_parent_company') or ''} {row.get('parent_co_name') or ''}"
@@ -86,12 +89,28 @@ def pick(site: Site, rows: list[dict[str, object]]) -> Identity:
             names.setdefault(legal_name(name))
         county = re.sub(r"\s+COUNTY$", "", str(row.get("county_name") or "").strip().upper())
         state = str(row.get("state_abbr") or "").strip().upper()
-        counties[county] = counties.get(county, 0) + 1
-        states[state] = states.get(state, 0) + 1
-    if not states:
+        fips = str(row.get("state_county_fips_code") or "").strip()
+        place = (county, state, fips if re.fullmatch(r"\d{5}", fips) else "")
+        places[place] = places.get(place, 0) + 1
+        lat, lon = _degrees(row.get("fac_latitude")), _degrees(row.get("fac_longitude"))
+        if lat is not None and lon is not None and place not in points:
+            points[place] = (lat, -abs(lon))  # the EPA writes western longitudes without their sign
+    if not places:
         return Identity()
-    return Identity(tuple(n for n in names if n)[:MAX_NAMES], max(counties, key=lambda c: counties[c]),
-                    max(states, key=lambda s: states[s]))
+    county, state, fips = max(places, key=lambda k: places[k])
+    lat, lon = points.get((county, state, fips), (None, None))
+    return Identity(tuple(n for n in names if n)[:MAX_NAMES], county, state, fips, lat, lon)
+
+
+def _degrees(value: object) -> float | None:
+    """« 291521 » (degrees, minutes, seconds) → 29.2558."""
+    try:
+        v = int(str(value))
+    except ValueError:
+        return None
+    if not 0 < v < 1_800_000:
+        return None
+    return round(v // 10000 + (v // 100 % 100) / 60 + (v % 100) / 3600, 4)
 
 
 def _ask(client: httpx2.Client, url: str, word: str) -> list[dict[str, object]]:
@@ -122,7 +141,8 @@ def stored(conn: sqlite3.Connection, now: datetime
     known: dict[tuple[str, str], Identity] = {}
     fresh: set[tuple[str, str, str]] = set()
     for r in conn.execute("SELECT * FROM site_identities WHERE source = ?", (SOURCE,)):
-        known[(r["material_id"], r["node_key"])] = Identity(tuple(json.loads(r["names"])), r["county"], r["state"])
+        known[(r["material_id"], r["node_key"])] = Identity(
+            tuple(json.loads(r["names"])), r["county"], r["state"], r["fips"], r["lat"], r["lon"])
         if now - datetime.fromisoformat(r["fetched_at"]) < REFRESH:
             fresh.add((r["material_id"], r["node_key"], r["subject"]))
     return known, fresh
@@ -148,11 +168,13 @@ def ensure(db: Database, client: httpx2.Client, sites: list[Site], now: datetime
         known[key] = found
         with db.transaction() as conn:
             conn.execute(
-                "INSERT INTO site_identities (material_id, node_key, source, subject, names, county, state, "
-                "fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (material_id, node_key, source) DO UPDATE "
-                "SET subject = excluded.subject, names = excluded.names, county = excluded.county, "
-                "state = excluded.state, fetched_at = excluded.fetched_at",
-                (*key, SOURCE, subject(site), json.dumps(list(found.names)), found.county, found.state, iso(now)))
+                "INSERT INTO site_identities (material_id, node_key, source, subject, names, county, state, fips, "
+                "lat, lon, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (material_id, node_key, "
+                "source) DO UPDATE SET subject = excluded.subject, names = excluded.names, county = excluded.county, "
+                "state = excluded.state, fips = excluded.fips, lat = excluded.lat, lon = excluded.lon, "
+                "fetched_at = excluded.fetched_at",
+                (*key, SOURCE, subject(site), json.dumps(list(found.names)), found.county, found.state, found.fips,
+                 found.lat, found.lon, iso(now)))
     current = {(s.material_id, s.node_key) for s in sites if askable(s)}
     return {k: v for k, v in known.items() if k in current}
 

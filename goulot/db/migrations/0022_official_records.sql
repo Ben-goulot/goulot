@@ -67,6 +67,9 @@ CREATE TABLE site_identities (
     names TEXT NOT NULL DEFAULT '[]',    -- JSON list of legal names
     county TEXT NOT NULL DEFAULT '',
     state TEXT NOT NULL DEFAULT '',
+    fips TEXT NOT NULL DEFAULT '',       -- county code (state + county): how official weather alerts name their area
+    lat REAL,
+    lon REAL,
     fetched_at TEXT NOT NULL,
     PRIMARY KEY (material_id, node_key, source)
 );

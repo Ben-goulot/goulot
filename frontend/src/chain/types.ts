@@ -58,6 +58,7 @@ export type ChainNode = {
   share_year: number | null;
   // What an official registry knows of this site (Texas regulator): followed by its number, not found, or outside.
   registry?: { status: "bound" | "none" | "outside"; text: string } | null;
+  weather?: { covered: boolean; text: string } | null; // official weather alerts are read for this site's county, or not
 };
 
 export type SiteStatus = "operating" | "idled" | "closed" | "project" | "unknown";

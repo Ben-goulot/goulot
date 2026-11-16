@@ -91,12 +91,14 @@ class Filed:
 class Registry:
     """The fictitious Texas registry and the fictitious EPA list of plants."""
 
-    def __init__(self, filed: list[Filed], plants: list[dict[str, str]] | None = None, quiet: bool = False
+    def __init__(self, filed: list[Filed], plants: list[dict[str, Any]] | None = None, quiet: bool = False
                  ) -> None:
         """Unless `quiet`, the feed always carries one declaration of an oil field, as the real one always does."""
         self.filed = {f.ext_id: f for f in filed}
         self.quiet = quiet
-        self.plants = plants or []
+        self.alerts: dict[str, list[dict[str, Any]]] = {}  # state → weather alerts standing there
+        self.archive: list[dict[str, Any]] = []  # past weather alerts, as the university archive lists them
+        self.plants = list(plants or [])  # a copy: a test that adds a plant changes no other test
         self.seen: list[httpx2.Request] = []
         self.now = NOW
 
@@ -109,6 +111,14 @@ class Registry:
             self.filed["8000"] = Filed("8000", "RN199999999", "WEST TANK BATTERY", "ANOTHER OPERATOR LP", "ANDREWS",
                                        "EMISSIONS EVENT", self.now - timedelta(hours=2), self.now - timedelta(hours=1))
         q = request.url.params
+        if request.url.host == "mesonet.agron.iastate.edu":
+            if request.url.path.endswith("vtec_events_bypoint.py"):
+                return httpx2.Response(200, json={"events": self.archive})
+            found = [e for e in self.archive if (e["phenomena"], e["significance"], str(e["eventid"])) == (
+                q["phenomena"], q["significance"], q["etn"])]
+            return httpx2.Response(200, json={"ugcs": [{"utc_product_issue": e["published"]} for e in found]})
+        if request.url.host == "api.weather.gov":
+            return httpx2.Response(200, json={"type": "FeatureCollection", "features": self.alerts.get(q["area"], [])})
         if request.url.host == "data.epa.gov":
             field, word = request.url.path.split("/tri_facility/")[1].split("/CONTAINING/")
             return httpx2.Response(200, json=[p for p in self.plants if word.split("/")[0] in p[field]])
@@ -140,9 +150,13 @@ def db(tmp_path: Path) -> Database:
     return database
 
 
-def plant(facility: str, city: str, county: str, state: str, parent: str) -> dict[str, str]:
+FIPS = {"BRAZORIA": "48039", "CALHOUN": "48057", "CALCASIEU": "22019", "HARRIS": "48201", "NIAGARA": "36063"}
+
+
+def plant(facility: str, city: str, county: str, state: str, parent: str) -> dict[str, Any]:
     return {"facility_name": facility, "city_name": city, "county_name": county, "state_abbr": state,
-            "fac_closed_ind": "0", "parent_co_name": parent, "standardized_parent_company": parent}
+            "fac_closed_ind": "0", "parent_co_name": parent, "standardized_parent_company": parent,
+            "state_county_fips_code": FIPS[county], "fac_latitude": 285700, "fac_longitude": 952100}
 
 
 PLANTS = [
@@ -170,7 +184,7 @@ def test_the_operator_of_a_plant_is_its_subsidiary(db: Database) -> None:
     client = registry.client()
     found = identity.ensure(db, client, [NALK, VERDA, BAYOU, ZED], NOW, limit=9)
     assert found[("m1", "nalk")] == identity.Identity(("FREEPORT_NALK BH", "BLUE HARBOR OPERATIONS LLC"), "BRAZORIA",
-                                                      "TX")
+                                                      "TX", "48039", 28.95, -95.35)
     assert found[("m1", "verda")].county == "CALHOUN" and found[("m1", "verda_la")].state == "LA"
     assert ("m1", "zed") not in found and registry.asked("data.epa.gov") == 3  # a company without a place: not asked
     assert "/CONTAINING/NALK/JSON" in str(registry.seen[0].url)  # one word of a public producer's name, no more
@@ -394,8 +408,16 @@ def test_diagnostics_say_what_the_registry_knows_of_each_site(ctx: Any) -> None:
     text = "\n".join(check_sources.registry_probe(ctx.settings, registry.client(), NOW))
     assert "1 sites producteurs" in text and "dont 1 aux États-Unis" in text
     assert "Texas (TCEQ) : 3 déclarations dans le flux des 7 derniers jours" in text and "pas de clé" in text
+    # The archive of past weather alerts: a watch published three days before the long incident, a fog advisory.
+    registry.archive = [
+        {"phenomena": "HZ", "significance": "A", "eventid": 1, "wfo": "HGX", "issue": "2026-11-11T06:00:00Z",
+         "name": "Hard Freeze Watch", "published": "2026-11-08T18:00:00Z"},
+        {"phenomena": "FG", "significance": "Y", "eventid": 8, "wfo": "HGX", "issue": "2026-11-09T06:00:00Z",
+         "name": "Dense Fog Advisory", "published": "2026-11-09T05:00:00Z"}]
     text = "\n".join(check_sources.records_history(ctx.settings, 12, registry.client(), "2026-11-01", "2026-11-13",
                                                     NOW))
+    assert ("🌦 Hard Freeze Watch publiée le 08/11/2026 18:00 UTC (aucun arrêt de ce genre déclaré au registre) → "
+            "3.0 jours avant son premier long incident déclaré") in text and "Dense Fog" not in text
     assert ("✅ Nalk Freeport : suivi par 1 installation(s) ; exploitant : FREEPORT_NALK BH, BLUE HARBOR OPERATIONS "
             "LLC") in text
     assert "RN100000001 BLUE HARBOR OPERATIONS (BLUE HARBOR OPERATIONS LLC) : 2 déclaration(s)" in text

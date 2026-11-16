@@ -383,6 +383,12 @@ export function ChainView(props: { materialId: string; onBack: () => void }) {
                     <dd className={node.registry.status === "bound" ? undefined : "muted"}>{clip(node.registry.text, 320)}</dd>
                   </>
                 )}
+                {node.weather && (
+                  <>
+                    <dt>Météo</dt>
+                    <dd className={node.weather.covered ? undefined : "muted"}>{clip(node.weather.text, 200)}</dd>
+                  </>
+                )}
                 <dt>Position</dt>
                 <dd className={approximate(node) ? "muted" : undefined}>
                   {COORD_SOURCE[node.coord_source]}
