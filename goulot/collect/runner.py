@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING, Any
 import httpx2
 
 from goulot.chain import store
-from goulot.collect import hotspots, sitematch, sources, tceq, weather
+from goulot.collect import hotspots, mofcom, sitematch, sources, tceq, weather
 from goulot.collect.base import Item, enabled, fold, iso, load_sources
-from goulot.collect.rules import Rule, active_rules, match, material_names, title_only, too_old
+from goulot.collect.rules import Rule, active_rules, foreign_names, match, material_names, title_only, too_old
 from goulot.db.connection import Database
 
 if TYPE_CHECKING:
@@ -111,6 +111,17 @@ def gdelt_queries(conn: sqlite3.Connection) -> list[str]:
     return out
 
 
+def _every_name(conn: sqlite3.Connection) -> list[str]:
+    """Every name of every validated material, other languages and Chinese included: what the announcements of
+    China's Ministry of Commerce are searched for."""
+    names: dict[str, str] = {}
+    for m in store.list_materials(conn):
+        material = store.get_material(conn, m["id"]) if m["status"] == "validated" else None
+        if material:
+            names.update((fold(t), t) for t in [*material_names(material), *foreign_names(material)])
+    return sorted(names.values())
+
+
 def _last_success(conn: sqlite3.Connection, source: str) -> datetime | None:
     row = conn.execute("SELECT MAX(started_at) FROM collect_runs WHERE source = ? AND ok = 1", (source,)).fetchone()
     return datetime.fromisoformat(row[0]) if row and row[0] else None
@@ -143,6 +154,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
     # Names of the materials as the American press writes them: the names in other languages (rules of 29 October
     # 2026) would push them out of the six terms of the query.
     terms = sorted({fold(t): t for _, names, _ in _public_terms(conn) for t in names}.values())
+    every_name = _every_name(conn)
 
     def news_gdelt(c: httpx2.Client, since: datetime) -> list[Item]:
         return sources.gdelt_many(c, gdelt_qs, since, now)
@@ -190,9 +202,11 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
         "noaa_nhc": lambda c, s: sources.nhc(c),
         "imf_portwatch_chokepoints": lambda c, s: sources.portwatch(c, now),
         "pegelonline": lambda c, s: sources.pegel(c),
+        "usgs_water": lambda c, s: sources.mississippi(c),
         "federal_register": lambda c, s: sources.federal_register(c, terms, s) if terms else [],
         "copernicus_ems": lambda c, s: sources.copernicus(c, now),
         "eurlex_oj_l": lambda c, s: sources.eurlex(c, s),
+        "mofcom": lambda c, s: mofcom.announcements(c, every_name, now),
         # Official records that name a site of the chains (pilot of 13 November 2026).
         "tceq_emissions": texas,
         "nws_alerts": alerts,
@@ -264,20 +278,23 @@ def ensure_rules(conn: sqlite3.Connection) -> int:
 
 def ensure_labels(db: Database, http: httpx2.Client) -> int:
     """Catch-up of 29 October 2026: names in German, Spanish and Italian of the validated materials identified
-    before, asked once to Wikidata, then their rules generated again. A material whose question failed is asked
-    again at the next cycle. Returns how many materials got their labels."""
+    before, asked once to Wikidata, then their rules generated again; on 22 November 2026, Chinese too, for the
+    materials that have none yet (an empty « zh » records that Wikidata has no Chinese name, not to ask again). A
+    material whose question failed is asked again at the next cycle. Returns how many materials got their labels."""
     from goulot.chain.identify import wikidata_labels
 
     if not enabled("wikidata"):
         return 0
     with db.connect() as conn:
         todo = [(r["id"], r["cas"]) for r in conn.execute(
-            "SELECT id, cas FROM materials WHERE status = 'validated' AND labels IS NULL")]
+            "SELECT id, cas FROM materials WHERE status = 'validated' AND (labels IS NULL OR labels NOT LIKE "
+            "'%\"zh\"%')")]
     done = 0
     for material_id, cas in todo:
         labels = wikidata_labels(http, cas)
         if labels is None:
             continue
+        labels.setdefault("zh", "")
         with db.transaction() as conn:
             conn.execute("UPDATE materials SET labels = ? WHERE id = ?",
                          (json.dumps(labels, ensure_ascii=False), material_id))

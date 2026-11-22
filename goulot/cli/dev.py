@@ -554,6 +554,9 @@ def cmd_dev(settings: Settings, args: argparse.Namespace) -> None:
         only = getattr(args, "only", None)
         check_sources.run(settings, only=only)
         if only:  # a quick look at a few sources: the other probes are skipped
+            if "piste" in only:
+                for line in check_sources.candidate_probe(settings):
+                    print(line)
             for line in check_sources.registry_probe(settings):
                 print(line)
             print("Terminé. Copiez ce résultat à Claude.")

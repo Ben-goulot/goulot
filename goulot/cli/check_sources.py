@@ -30,10 +30,10 @@ USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7
 EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov", "www2.tceq.texas.gov", "www.presseportal.de",
                "opendart.fss.or.kr", "data.epa.gov", "api.weather.gov", "mesonet.agron.iastate.edu",
                # Candidate sources of 22 November 2026, asked here only until their answers are read.
-               "www.mofcom.gov.cn", "english.mofcom.gov.cn", "aqygzj.mofcom.gov.cn", "nrc.uscg.mil",
-               "efts.sec.gov", "www.sec.gov", "feeds.meteoalarm.org", "waterservices.usgs.gov",
-               "www.federalregister.gov")
-NRC_FILE = "https://nrc.uscg.mil/FOIAFiles/Current.xlsx"
+               "www.mofcom.gov.cn", "nrc.uscg.mil", "waterservices.usgs.gov", "www.federalregister.gov")
+NRC_FILE = "https://nrc.uscg.mil/FOIAFiles/CY26.xlsx"
+# The three test materials, in English and Chinese: the names the probe of the new readers looks for.
+TEST_NAMES = ["acrylonitrile", "gallium", "lithium carbonate", "丙烯腈", "镓", "碳酸锂"]
 
 
 def _last_weekday(today: date) -> date:
@@ -87,36 +87,62 @@ def targets(today: date) -> list[tuple[str, str]]:
 def candidate_targets(today: date) -> list[tuple[str, str]]:
     """Candidate sources of 22 November 2026, to be read before any reader is written. Every address is public and
     asks for test material names only (the three test CAS), never the user's. All named « piste_… »:
-    `goulot dev check-sources --only piste` asks them alone."""
+    `goulot dev check-sources --only piste` asks them alone. SEC EDGAR and Meteoalarm, asked once on 22 November
+    2026, were set aside (see docs/DECISIONS.md)."""
     month_ago = (today - timedelta(days=30)).isoformat()
     federal = ("https://www.federalregister.gov/api/v1/documents.json?per_page=20&order=newest&fields[]=title"
                "&fields[]=publication_date&fields[]=type&conditions[term]=%22acrylonitrile%22%20%7C%20%22gallium%22"
                f"%20%7C%20%22lithium%20carbonate%22&conditions[publication_date][gte]={month_ago}")
-    gauges = "https://waterservices.usgs.gov/nwis/iv/?format=json&parameterCd=00065&period=P7D&sites="
     return [
-        # Federal Register: the same search as the watch, over 30 days (none of its documents were read in 14 days).
+        # Federal Register: the same search as the watch, over 30 days.
         ("piste_federal_register_essai", federal),
-        # China's Ministry of Commerce: policy announcements (export controls on gallium, graphite, lithium
-        # technology) and its export control bureau.
+        # China's Ministry of Commerce: the home page, which lists the latest announcements, and one announcement's
+        # own page (No. 58 of 2026, a suspension of export control measures), to check the reader on it.
         ("piste_mofcom_accueil", "https://www.mofcom.gov.cn/"),
-        ("piste_mofcom_politiques", "https://www.mofcom.gov.cn/zwgk/zcfb/index.html"),
-        ("piste_mofcom_controle_export", "https://aqygzj.mofcom.gov.cn/"),
-        ("piste_mofcom_anglais", "https://english.mofcom.gov.cn/"),
-        # US National Response Center: initial reports of chemical releases, every State (Louisiana included).
-        ("piste_nrc_accueil", "https://nrc.uscg.mil/"),
+        ("piste_mofcom_annonce", "https://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_91466027f465467985942a639a9485f4"
+                                 ".html"),
+        # US National Response Center: the year's file of initial reports (the home page links CY26.xlsx).
         ("piste_nrc_annee", NRC_FILE),
-        # SEC EDGAR: « force majeure » in current reports of listed operators, and the feed of the latest ones.
-        ("piste_sec_recherche", "https://efts.sec.gov/LATEST/search-index?q=%22force%20majeure%22&forms=8-K"
-                          f"&dateRange=custom&startdt={month_ago}&enddt={today.isoformat()}"),
-        ("sec_derniers_8k", "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=40"
-                            "&output=atom"),
-        # Meteoalarm: official weather warnings of European services, by country.
-        ("piste_meteoalarm_allemagne", "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-germany"),
-        ("piste_meteoalarm_france", "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-france"),
-        ("piste_meteoalarm_api_allemagne", "https://feeds.meteoalarm.org/api/v1/warnings/feeds-germany"),
-        # Mississippi gauges (USGS): St. Louis, Memphis and Baton Rouge, the barges of the Gulf Coast chemistry.
-        ("piste_mississippi_niveaux", gauges + "07010000,07032000,07374000"),
+        # Mississippi gauges (USGS): St. Louis and Baton Rouge.
+        ("piste_mississippi_niveaux", "https://waterservices.usgs.gov/nwis/iv/?format=json&parameterCd=00065"
+                                      "&period=P7D&sites=07010000,07374000"),
     ]
+
+
+def candidate_probe(settings: Settings, client: httpx2.Client | None = None, now: datetime | None = None
+                    ) -> list[str]:
+    """What the two new readers (Mississippi, Ministry of Commerce) bring today, through the app's own code, with
+    the names of the three test materials only. Lines to print; nothing is stored."""
+    from datetime import UTC
+
+    from goulot.collect import mofcom, sources
+
+    now = now or datetime.now(UTC)
+    own = client is None
+    client = client or build_client(load_allowlist(settings.config_dir, EXTRA_HOSTS))
+    lines: list[str] = []
+    try:
+        try:
+            levels = sources.mississippi(client)
+            lines.append(f"  ✅ Mississippi : {len(levels)} station(s) hors des seuils (basses eaux ou crue)")
+            lines.extend(f"      · {it.title}" for it in levels)
+        except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
+            lines.append(f"  ❌ Mississippi : {type(exc).__name__}, {str(exc)[:120]}")
+        try:
+            found = mofcom.announcements(client, TEST_NAMES, now)
+            lines.append(f"  ✅ MOFCOM : {len(found)} annonce(s) des 45 derniers jours sur la page d'accueil")
+            for it in found[:10]:
+                day = f"{it.published_at:%d/%m}" if it.published_at else "date ?"
+                extra = [f"{len(it.excerpt)} car. de texte", f"{len(it.details['hs_codes'])} code(s) douanier(s)"]
+                if it.details["names"]:
+                    extra.append("nomme " + ", ".join(it.details["names"]))
+                lines.append(f"      · {day} {it.title[:70]} ({' ; '.join(extra)})")
+        except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
+            lines.append(f"  ❌ MOFCOM : {type(exc).__name__}, {str(exc)[:120]}")
+    finally:
+        if own:
+            client.close()
+    return lines
 
 
 def media_targets() -> list[tuple[str, str]]:

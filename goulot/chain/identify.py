@@ -25,7 +25,9 @@ CAS_RE = re.compile(r"^(\d{2,7})-(\d{2})-(\d)$")
 PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
 WIKIDATA = "https://query.wikidata.org/sparql"
 MAX_SYNONYMS = 12
-LABEL_LANGS = ("de", "es", "it")  # languages of the European media feeds besides French and English
+LABEL_LANGS = ("de", "es", "it", "zh")  # languages of the European media feeds besides French and English; zh:
+# the announcements of China's Ministry of Commerce (22 November 2026)
+ZH_VARIANTS = ("zh-hans", "zh-cn")
 MAX_QUERY = 100
 
 
@@ -114,7 +116,7 @@ def wikidata_labels(client: httpx2.Client, cas: str) -> dict[str, str] | None:
     answer (asked again later). External text: cleaned and bounded, used only as a word to look for."""
     if normalize_cas(cas) != cas:
         return None
-    langs = ", ".join(f'"{lang}"' for lang in LABEL_LANGS)
+    langs = ", ".join(f'"{lang}"' for lang in (*LABEL_LANGS, *ZH_VARIANTS))
     sparql = (
         'SELECT ?label WHERE { ?item wdt:P231 "' + cas + '" ; rdfs:label ?label . '
         "FILTER(LANG(?label) IN (" + langs + ")) }"
@@ -127,6 +129,7 @@ def wikidata_labels(client: httpx2.Client, cas: str) -> dict[str, str] | None:
     for row in ((data or {}).get("results") or {}).get("bindings") or []:
         label = row.get("label") or {}
         lang, value = str(label.get("xml:lang") or ""), " ".join(str(label.get("value") or "").split())
+        lang = "zh" if lang in ZH_VARIANTS else lang  # simplified Chinese when the plain label is missing
         if lang in LABEL_LANGS and lang not in out and 0 < len(value) <= 60 and value.isprintable():
             out[lang] = value
     return out

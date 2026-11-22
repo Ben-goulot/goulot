@@ -5,9 +5,9 @@
   shared company, site or port, or else the same country and similar titles; otherwise they open a new one. The
   purchased material itself is matched by nearly every article, and a country node by every story of that
   country: neither links two articles alone.
-- Hazard and logistics items come from official measurements (GDACS, USGS, NOAA, PortWatch, PEGELONLINE): the
-  code turns them into events without AI. A reading of the same source at the same place within 7 days prolongs the
-  ongoing event instead of opening a new one.
+- Hazard and logistics items come from official measurements (GDACS, USGS, NOAA, PortWatch, PEGELONLINE, the
+  Mississippi gauges): the code turns them into events without AI. A reading of the same source at the same place
+  within 7 days prolongs the ongoing event instead of opening a new one.
 - Decision of 8 November 2026, only what is really linked: a satellite fire detection never opens an event alone
   (crop burning and flares around a site); within 5 km of the site and not a recurring heat source, it joins an
   event the press reports there within 3 days. A GDACS drought opens none (its effects reach a purchase through
@@ -33,6 +33,7 @@ WINDOW = timedelta(days=7)
 TITLE_SIMILARITY = 0.35
 MEASUREMENT_RELIABILITY = {
     "gdacs": 0.9, "usgs_earthquakes": 0.9, "noaa_nhc": 0.9, "imf_portwatch_chokepoints": 0.9, "pegelonline": 0.9,
+    "usgs_water": 0.9,
     "nasa_firms": 0.5,  # a hot spot near a site may be a flare: corroboration by the press is needed
 }
 TYPE_FAMILIES = (
@@ -205,6 +206,8 @@ def _measurement_severity(source: str, item: sqlite3.Row, details: dict[str, Any
         return 3 if m is not None and m < 0.3 else 2
     if source == "pegelonline":
         return 2 if m is not None and m < 78 else 1
+    if source == "usgs_water":
+        return 2 if details.get("state") in ("critical", "flood") else 1
     if source == "nasa_firms":
         return 2 if m and m >= 100 else 1
     if source == "nws_alerts":  # computed by the reader: level of the alert and past of the plants it covers

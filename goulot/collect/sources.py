@@ -38,6 +38,7 @@ NHC = ("https://www.nhc.noaa.gov/index-at.xml", "https://www.nhc.noaa.gov/index-
 PORTWATCH = ("https://services9.arcgis.com/weJ1QsnbMYJlCHdG/ArcGIS/rest/services/Daily_Chokepoints_Data/"
              "FeatureServer/0/query")
 PEGEL = "https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{station}/W/currentmeasurement.json"
+USGS_WATER = "https://waterservices.usgs.gov/nwis/iv/"
 FEDERAL_REGISTER = "https://www.federalregister.gov/api/v1/documents.json"
 COPERNICUS_EMS = "https://mapping.emergency.copernicus.eu/activations/api/activations/"
 COPERNICUS_PAGE = "https://mapping.emergency.copernicus.eu/activations/{code}/"
@@ -63,6 +64,14 @@ GDELT_RETRY_AFTER_DEFAULT_S = 30.0
 GDELT_RETRY_AFTER_MAX_S = 120.0
 _gdelt_last = 0.0
 KAUB_LOW_WATER_CM = 100  # below 1 m at Kaub, Rhine barges load partially (78 cm: critical)
+# Mississippi gauges of the USGS (stage in feet; 22 November 2026): (name, low water, critical low water, flood stage).
+# Flood stages are those of the weather service; the low-water marks are first values, to be checked against the
+# history of the gauges: barge loads are cut at St. Louis around 0 ft, convoys restricted towards -3 ft; at Baton
+# Rouge, the river seldom falls under 4 ft, and under 2 ft the salt water climbs towards the water intakes.
+MISSISSIPPI_GAUGES = {
+    "07010000": ("Saint-Louis", 0.0, -3.0, 30.0),
+    "07374000": ("Bâton-Rouge", 4.0, 2.0, 35.0),
+}
 PORTWATCH_DROP = 0.6  # a day under 60 % of the 30-day mean counts as a disruption signal
 # The PortWatch service shares a quota of 6,000 request units a minute between all its users, PortWatch's own site
 # included: on 6 November 2026 most queries were refused (code 429 in an HTTP 200 body, « retry after 60 sec »).
@@ -404,6 +413,46 @@ def pegel(client: httpx2.Client, station: str = "KAUB", waterway: str = "Rhin (R
         title=f"Basses eaux : {station} à {value:.0f} cm", published_at=when, magnitude=float(value),
         key=f"pegel:{station}:{iso(when)}", details={"waterway": waterway, "station": station, "level_cm": value},
     )]
+
+
+def mississippi(client: httpx2.Client) -> list[Item]:
+    """The last reading of each Mississippi gauge, kept only below its low-water mark or above its flood stage. The
+    waterway's name in the details lets the strait and waterway rules of the chains match it, as for the Rhine."""
+    data = _json(client, USGS_WATER, {"format": "json", "parameterCd": "00065", "period": "P1D",
+                                      "sites": ",".join(MISSISSIPPI_GAUGES)})
+    items = []
+    for series in ((data or {}).get("value") or {}).get("timeSeries") or []:
+        codes = (series.get("sourceInfo") or {}).get("siteCode") or [{}]
+        site = str(codes[0].get("value") or "")
+        if site not in MISSISSIPPI_GAUGES:
+            continue
+        name, low, critical, flood = MISSISSIPPI_GAUGES[site]
+        values = ((series.get("values") or [{}])[0].get("value")) or []
+        readings = [(parse_datetime(v.get("dateTime")), v.get("value")) for v in values if isinstance(v, dict)]
+        valid = [(when, float(value)) for when, value in readings
+                 if when is not None and isinstance(value, str) and _number(value) and -50 < float(value) < 100]
+        if not valid:
+            continue
+        when, level = max(valid, key=lambda r: r[0])
+        if low < level < flood:
+            continue
+        state = "flood" if level >= flood else "critical" if level <= critical else "low"
+        label = {"flood": "Crue", "critical": "Basses eaux critiques", "low": "Basses eaux"}[state]
+        items.append(Item(
+            source="usgs_water", kind="logistics", url=f"https://waterdata.usgs.gov/monitoring-location/{site}/",
+            title=f"{label} : Mississippi à {name}, {level:.1f} pieds", published_at=when, magnitude=level,
+            key=f"usgs_water:{site}:{iso(when)}",
+            details={"waterway": "Mississippi", "station": site, "level_ft": level, "state": state},
+        ))
+    return items
+
+
+def _number(value: str) -> bool:
+    try:
+        float(value)
+    except ValueError:
+        return False
+    return True
 
 
 # --- trade policy -----------------------------------------------------------------------------------------

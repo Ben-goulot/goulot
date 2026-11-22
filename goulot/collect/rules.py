@@ -21,6 +21,7 @@ from goulot.db.connection import utcnow
 
 ZONE_RADIUS_KM = 50.0
 SITE_TYPES = ("mine", "plant", "recycler", "company", "port", "distributor")
+CJK = re.compile(r"[\u3400-\u9fff]")
 MIN_KEYWORD = 4  # shorter names (« BP », « SQM ») match too much; they stay in the chain, not in the filter
 MAX_MATERIAL_NAMES = 4
 MAX_NEWS_AGE = timedelta(days=30)
@@ -40,7 +41,10 @@ class Rule:
 
 
 def _usable(name: str) -> bool:
-    return len(name.strip()) >= MIN_KEYWORD and name.strip().lower() != "unknown"
+    name = name.strip()
+    if CJK.search(name):  # « 镓 » (gallium), « 甲醇 » (methanol): one Chinese character can be a whole name
+        return len(name) >= 1
+    return len(name) >= MIN_KEYWORD and name.lower() != "unknown"
 
 
 def material_names(material: dict[str, Any]) -> list[str]:
@@ -190,6 +194,11 @@ DISRUPTION_STEMS = (
     "sciopero", "esplosion", "chiusura", "alluvione", "inondazion", "sanzion", "divieto di esport", "carenza",
     "scarsita", "guasto", "incidente", "forza maggiore", "blocco", "dazi", "rincar", "impennata", "razionament",
     "attacco", "fallimento", "permess", "indagine",
+    # Chinese, for the announcements of the Ministry of Commerce (22 November 2026): export control, dual-use items,
+    # anti-dumping, countervailing, safeguard, export ban or restriction, export licence, suspension, sanction,
+    # unreliable entity, tariff, control list
+    "出口管制", "两用物项", "反倾销", "反补贴", "保障措施", "禁止出口", "限制出口", "出口许可", "暂停", "制裁",
+    "不可靠实体", "关税", "管控名单",
 )
 DISRUPTION_WORDS = frozenset({"fuga", "alza", "duties", "zoll"})  # whole words only
 _DISRUPTION = re.compile(r"(?<![a-z0-9])(?:" + "|".join(re.escape(s) for s in DISRUPTION_STEMS) + ")")

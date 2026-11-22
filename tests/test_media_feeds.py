@@ -172,10 +172,32 @@ def test_labels_become_filter_rules_not_search_terms(ctx: AppContext) -> None:
         rules = active_rules(conn)
         terms = " ".join(q for q, _ in queries(conn))
         labels = store.get_material(conn, material_id)["labels"]  # type: ignore[index]
-    assert labels == {"de": "Acrylnitril", "es": "acrilonitrilo"}
+    assert labels == {"de": "Acrylnitril", "es": "acrilonitrilo", "zh": ""}  # no Chinese name: not asked again
     assert {"Acrylnitril", "acrilonitrilo"} <= {r.value for r in rules if r.kind == "keyword"}
     assert "Acrylnitril" not in terms  # Google News and GDELT keep the French and English names
     assert match(media("Acrylnitril wird knapp"), rules)
+
+
+def test_a_material_without_its_chinese_name_is_asked_once_more(ctx: AppContext) -> None:
+    """22 November 2026: the Chinese name, for the announcements of the Ministry of Commerce. A material labelled
+    before is asked again once; simplified Chinese stands in for a missing plain label."""
+    chinese = {"results": {"bindings": [*LABELS["results"]["bindings"],
+                                        {"label": {"xml:lang": "zh-hans", "type": "literal", "value": "丙烯腈"}}]}}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=chinese) if request.url.host == "query.wikidata.org" else \
+            httpx2.Response(404, content=b"{}")
+
+    wikidata = build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))
+    material_id = validated_chain(ctx)
+    with ctx.db.transaction() as conn:
+        conn.execute("UPDATE materials SET labels = ? WHERE id = ?", ('{"de": "Acrylnitril"}', material_id))
+    assert ensure_labels(ctx.db, wikidata) == 1
+    assert ensure_labels(ctx.db, wikidata) == 0
+    with ctx.db.connect() as conn:
+        labels = store.get_material(conn, material_id)["labels"]  # type: ignore[index]
+        rules = active_rules(conn)
+    assert labels["zh"] == "丙烯腈" and "丙烯腈" in {r.value for r in rules if r.kind == "keyword"}
 
 
 # --- cycle and hot spots ----------------------------------------------------------------------------------

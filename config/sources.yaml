@@ -355,6 +355,16 @@ sources:
     auth: none
     frequency: daily
     use: niveau du Rhin à Kaub (station KAUB) et autres voies navigables allemandes
+  - id: usgs_water
+    # Ajoutée le 22 novembre 2026, désactivée jusqu'à l'accord de l'utilisateur ; vérifiée depuis le Mac le même
+    # jour (Saint-Louis et Bâton-Rouge répondent ; Memphis, 07032000, ne publie pas de hauteur d'eau).
+    enabled: false
+    family: logistics
+    url: https://waterservices.usgs.gov/nwis/iv/
+    auth: none
+    frequency: daily
+    use: hauteur du Mississippi à Saint-Louis (07010000) et Bâton-Rouge (07374000) ; basses eaux et crues, comme le Rhin
+    notes: seuils de départ dans goulot/collect/sources.py (MISSISSIPPI_GAUGES), à confronter à l'historique des stations
 
   # --- Politique commerciale ---
   - id: federal_register
@@ -380,6 +390,17 @@ sources:
     frequency: daily
     extra_hosts: [sanctionslist.ofac.treas.gov]
     notes: listes SDN servies par le Sanctions List Service (sanctionslist.ofac.treas.gov) ; adresse exacte du fichier à relever en phase 3
+  - id: mofcom
+    # Ajoutée le 22 novembre 2026, désactivée jusqu'à l'accord de l'utilisateur ; page d'accueil vérifiée depuis le
+    # Mac le même jour (la liste « 政策发布 » est construite par un script ; le bureau du contrôle des exportations et
+    # le site anglais refusent la connexion chiffrée).
+    enabled: false
+    family: policy
+    url: https://www.mofcom.gov.cn/
+    auth: none
+    frequency: daily
+    use: annonces officielles du ministère chinois du Commerce (contrôles des exportations, enquêtes antidumping, suspensions), lues en chinois avec leur texte
+    notes: seules les pages d'annonce /zwgk/zcfb/art/ sont lues ; noms des matières (chinois compris) et codes douaniers relevés dans le texte
 
   # --- Registres officiels (pilote du 13 novembre 2026) ---
   # Déclarations aux autorités, communiqués des secours, annonces boursières : la matière première de la presse
