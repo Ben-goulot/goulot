@@ -356,9 +356,9 @@ sources:
     frequency: daily
     use: niveau du Rhin à Kaub (station KAUB) et autres voies navigables allemandes
   - id: usgs_water
-    # Ajoutée le 22 novembre 2026, désactivée jusqu'à l'accord de l'utilisateur ; vérifiée depuis le Mac le même
-    # jour (Saint-Louis et Bâton-Rouge répondent ; Memphis, 07032000, ne publie pas de hauteur d'eau).
-    enabled: false
+    # Ajoutée le 22 novembre 2026 et activée le même jour avec l'accord de l'utilisateur, après essai depuis le Mac
+    # (Saint-Louis et Bâton-Rouge répondent ; Memphis, 07032000, ne publie pas de hauteur d'eau).
+    enabled: true
     family: logistics
     url: https://waterservices.usgs.gov/nwis/iv/
     auth: none
@@ -391,10 +391,10 @@ sources:
     extra_hosts: [sanctionslist.ofac.treas.gov]
     notes: listes SDN servies par le Sanctions List Service (sanctionslist.ofac.treas.gov) ; adresse exacte du fichier à relever en phase 3
   - id: mofcom
-    # Ajoutée le 22 novembre 2026, désactivée jusqu'à l'accord de l'utilisateur ; page d'accueil vérifiée depuis le
-    # Mac le même jour (la liste « 政策发布 » est construite par un script ; le bureau du contrôle des exportations et
-    # le site anglais refusent la connexion chiffrée).
-    enabled: false
+    # Ajoutée le 22 novembre 2026 et activée le même jour avec l'accord de l'utilisateur, après essai depuis le Mac
+    # (7 annonces lues avec leur texte ; la liste « 政策发布 » est construite par un script ; le bureau du contrôle des
+    # exportations et le site anglais refusent la connexion chiffrée).
+    enabled: true
     family: policy
     url: https://www.mofcom.gov.cn/
     auth: none

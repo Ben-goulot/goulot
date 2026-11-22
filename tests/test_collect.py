@@ -120,6 +120,11 @@ ROUTES: dict[tuple[str, str], tuple[int, bytes]] = {
         (200, (Path(__file__).parent / "fixtures" / "sources" / "copernicus_activations.json").read_bytes()),
     ("eur-lex.europa.eu", "/EN/display-feed.rss"):
         (200, (Path(__file__).parent / "fixtures" / "sources" / "eurlex_oj_l.xml").read_bytes()),
+    # A calm day on the Mississippi and at the Ministry of Commerce (sources of 22 November 2026).
+    ("waterservices.usgs.gov", "/nwis/iv/"): (200, json.dumps({"value": {"timeSeries": [
+        {"sourceInfo": {"siteCode": [{"value": "07010000"}]},
+         "values": [{"value": [{"dateTime": "2026-10-17T12:00:00.000-05:00", "value": "12.5"}]}]}]}}).encode()),
+    ("www.mofcom.gov.cn", "/"): (200, "<html><body><a href='/xwfb/x.html' title='新闻'>新闻</a></body></html>".encode()),
     ("www.federalregister.gov", "/api/v1/documents.json"): (200, json.dumps({"results": [
         {"title": "Antidumping duty on acrylonitrile from Korea", "abstract": "HTS 2926.10.00", "type": "Notice",
          "html_url": "https://www.federalregister.gov/d/1", "publication_date": "2026-10-17"}]}).encode()),

@@ -98,9 +98,9 @@ def test_a_chinese_announcement_meets_the_rules() -> None:
     assert _usable("镓") and _usable("甲醇") and not _usable("BP")
 
 
-def test_new_sources_wait_for_the_users_go_ahead() -> None:
+def test_new_sources_switched_on_with_the_users_go_ahead() -> None:
     found = load_sources()
-    assert found["mofcom"]["enabled"] is False and found["usgs_water"]["enabled"] is False
+    assert found["mofcom"]["enabled"] is True and found["usgs_water"]["enabled"] is True
 
 
 def test_check_sources_probe_runs_both_readers(settings: Settings) -> None:
