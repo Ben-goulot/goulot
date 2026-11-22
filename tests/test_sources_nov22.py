@@ -111,3 +111,8 @@ def test_check_sources_probe_runs_both_readers(settings: Settings) -> None:
     text = "\n".join(candidate_probe(settings, client(routes), NOW))
     assert "1 station(s)" in text and "Saint-Louis" in text
     assert "MOFCOM : 2 annonce(s)" in text and "nomme 镓" in text
+
+
+def test_phone_numbers_are_not_customs_codes() -> None:
+    text = "联系电话：86-10-65198919 传真 8610-65198172 税则号列29012990 及 2905.11.00"
+    assert mofcom.customs_codes(text) == ["29012990", "29051100"]

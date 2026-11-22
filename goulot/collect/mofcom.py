@@ -31,8 +31,9 @@ BODY_CHARS = 60_000
 EXCERPT_CHARS = 1_500
 MAX_CODES = 40
 OLDEST = timedelta(days=45)  # an announcement still on the home page after that is no news
-# Customs codes as Chinese texts write them: 8 or 10 digits (8112923010), or « 8112.92 » with its sub-headings.
-CODE = re.compile(r"(?<![\d.])(\d{4}(?:\.\d{2}(?:\.\d{2,4})?|\d{4}(?:\d{2})?))(?![\d.])")
+# Customs codes as Chinese texts write them: 8 or 10 digits (8112923010), or « 8112.92 » with its sub-headings;
+# never next to a hyphen, which is a phone number (86-10-65198919).
+CODE = re.compile(r"(?<![\d.\-])(\d{4}(?:\.\d{2}(?:\.\d{2,4})?|\d{4}(?:\d{2})?))(?![\d.\-])")
 DATE = re.compile(r"(20\d\d)\s*(?:-|年|/|\.)\s*(\d{1,2})\s*(?:-|月|/|\.)\s*(\d{1,2})")
 # Blocks that are not the announcement: the ministry's sidebars, menus and footers.
 NOISE = re.compile(r"<(script|style|aside|nav|header|footer|noscript)\b.*?</\1\s*>", re.S | re.I)
