@@ -24,11 +24,16 @@ from goulot.settings import REPO_ROOT, Settings
 SAMPLES = REPO_ROOT / ".samples"
 MAX_BYTES = 2 * 1024 * 1024
 # The USGS world table is about 3 MB: it gets the same cap as the reader of the cross-check (USGS_MAX_BYTES).
-LARGE_TARGETS = {"usgs_mcs_2026_csv": 16 * 1024 * 1024}
+LARGE_TARGETS = {"usgs_mcs_2026_csv": 16 * 1024 * 1024, "piste_nrc_annee": 16 * 1024 * 1024}
 USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7?f=__disk__"
 # gfex: disabled since 15 October; sciencebase: USGS MCS; the last three: official records, disabled until checked.
 EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov", "www2.tceq.texas.gov", "www.presseportal.de",
-               "opendart.fss.or.kr", "data.epa.gov", "api.weather.gov", "mesonet.agron.iastate.edu")
+               "opendart.fss.or.kr", "data.epa.gov", "api.weather.gov", "mesonet.agron.iastate.edu",
+               # Candidate sources of 22 November 2026, asked here only until their answers are read.
+               "www.mofcom.gov.cn", "english.mofcom.gov.cn", "aqygzj.mofcom.gov.cn", "nrc.uscg.mil",
+               "efts.sec.gov", "www.sec.gov", "feeds.meteoalarm.org", "waterservices.usgs.gov",
+               "www.federalregister.gov")
+NRC_FILE = "https://nrc.uscg.mil/FOIAFiles/Current.xlsx"
 
 
 def _last_weekday(today: date) -> date:
@@ -75,6 +80,42 @@ def targets(today: date) -> list[tuple[str, str]]:
                        "&cust_name=ASCEND&usefullwildcard=yes&event_start_beg_dt=11/01/2025"
                        "&event_start_end_dt=11/14/2026"),
         ("presseportal_leverkusen", "https://www.presseportal.de/rss/polizei/r/Leverkusen.rss2"),
+        *candidate_targets(today),
+    ]
+
+
+def candidate_targets(today: date) -> list[tuple[str, str]]:
+    """Candidate sources of 22 November 2026, to be read before any reader is written. Every address is public and
+    asks for test material names only (the three test CAS), never the user's. All named « piste_… »:
+    `goulot dev check-sources --only piste` asks them alone."""
+    month_ago = (today - timedelta(days=30)).isoformat()
+    federal = ("https://www.federalregister.gov/api/v1/documents.json?per_page=20&order=newest&fields[]=title"
+               "&fields[]=publication_date&fields[]=type&conditions[term]=%22acrylonitrile%22%20%7C%20%22gallium%22"
+               f"%20%7C%20%22lithium%20carbonate%22&conditions[publication_date][gte]={month_ago}")
+    gauges = "https://waterservices.usgs.gov/nwis/iv/?format=json&parameterCd=00065&period=P7D&sites="
+    return [
+        # Federal Register: the same search as the watch, over 30 days (none of its documents were read in 14 days).
+        ("piste_federal_register_essai", federal),
+        # China's Ministry of Commerce: policy announcements (export controls on gallium, graphite, lithium
+        # technology) and its export control bureau.
+        ("piste_mofcom_accueil", "https://www.mofcom.gov.cn/"),
+        ("piste_mofcom_politiques", "https://www.mofcom.gov.cn/zwgk/zcfb/index.html"),
+        ("piste_mofcom_controle_export", "https://aqygzj.mofcom.gov.cn/"),
+        ("piste_mofcom_anglais", "https://english.mofcom.gov.cn/"),
+        # US National Response Center: initial reports of chemical releases, every State (Louisiana included).
+        ("piste_nrc_accueil", "https://nrc.uscg.mil/"),
+        ("piste_nrc_annee", NRC_FILE),
+        # SEC EDGAR: « force majeure » in current reports of listed operators, and the feed of the latest ones.
+        ("piste_sec_recherche", "https://efts.sec.gov/LATEST/search-index?q=%22force%20majeure%22&forms=8-K"
+                          f"&dateRange=custom&startdt={month_ago}&enddt={today.isoformat()}"),
+        ("sec_derniers_8k", "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=40"
+                            "&output=atom"),
+        # Meteoalarm: official weather warnings of European services, by country.
+        ("piste_meteoalarm_allemagne", "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-germany"),
+        ("piste_meteoalarm_france", "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-france"),
+        ("piste_meteoalarm_api_allemagne", "https://feeds.meteoalarm.org/api/v1/warnings/feeds-germany"),
+        # Mississippi gauges (USGS): St. Louis, Memphis and Baton Rouge, the barges of the Gulf Coast chemistry.
+        ("piste_mississippi_niveaux", gauges + "07010000,07032000,07374000"),
     ]
 
 

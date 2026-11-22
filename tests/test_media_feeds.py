@@ -256,3 +256,13 @@ def test_google_news_probe_says_what_an_item_carries_and_where_its_link_leads(se
     assert probe["items"] == 6 and probe["title_only"] == 3  # 3 queries; the Reuters item repeats its title
     assert probe["reliable_items"] == 3 and probe["reliable_publishers"] == ["reuters.com"]
     assert probe["link"] == {"status": 200, "redirect_host": "", "needs_javascript": True}
+
+
+def test_maritime_security_words_make_a_candidate() -> None:
+    """A strait's name with a mine, a seizure or an incident is a candidate (22 November 2026)."""
+    from goulot.collect.base import fold
+    from goulot.collect.rules import disrupted
+
+    assert disrupted(fold("Two Tanker Incidents Reported Near Oman; Vessel Hit Mine East Of Hormuz"))
+    assert disrupted(fold("Iran seizes tanker in the Strait of Hormuz"))
+    assert not disrupted(fold("Lithium mine expansion approved in Western Australia"))

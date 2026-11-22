@@ -167,6 +167,9 @@ DISRUPTION_STEMS = (
     "force majeure", "blockade", "tariff", "anti-dumping", "antidumping", "price hike", "price surge", "soar",
     "rationing", "evacuat", "attack", "earthquake", "storm", "halt", "suspend", "curtail", "production cut",
     "low water", "derail", "collapse", "bankrupt", "insolven",
+    # Maritime security (22 November 2026: « Vessel Hit Mine East Of Hormuz » passed none of the words above)
+    "incident", "hijack", "seiz", "missile", "drone strike", "drone attack", "hit mine", "hits mine", "hit a mine",
+    "struck a mine", "naval mine", "sea mine",
     "permit", "licen", "inspection", "investigat", "probe", "quota", "resubmit", "crackdown", "rectification",
     # French
     "greve", "incendie", "explos", "arret", "fermeture", "inondation", "interdiction d'export", "penurie",
