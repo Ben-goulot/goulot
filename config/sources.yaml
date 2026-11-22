@@ -52,7 +52,9 @@ sources:
 
   # --- Actualités ---
   - id: gdelt_doc
-    enabled: true
+    # Désactivée le 22 novembre 2026 : depuis le Mac, 13 échecs sur 13 en 14 jours (ConnectTimeout, HTTP 429), en
+    # panne depuis le 20 octobre ; même en marche, elle ne donnait que des titres seuls, écartés depuis le 4 novembre.
+    enabled: false
     family: news
     url: https://api.gdeltproject.org/api/v2/doc/doc
     auth: none
@@ -93,7 +95,8 @@ sources:
     use: Le Monde, rubrique Économie
     notes: vérifié depuis le Mac le 29 octobre 2026 (RSS 2.0, 20 articles datés avec résumé)
   - id: media_usinenouvelle
-    enabled: true
+    # Désactivée le 22 novembre 2026 : le site refuse le flux depuis le Mac (HTTP 403, 12 échecs sur 12 en 14 jours).
+    enabled: false
     family: media
     url: https://www.usinenouvelle.com/rss/
     lang: fr

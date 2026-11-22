@@ -79,6 +79,7 @@ def test_timeout_keeps_items_read(slept: list[float]) -> None:
     assert len(caught.value.items) == 2 and str(caught.value) == "ConnectTimeout"
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_partial_gdelt_failure_stores_what_was_read(ctx: AppContext, slept: list[float]) -> None:
     validated_chain(ctx)
     sent = 0
@@ -127,6 +128,7 @@ def test_matched_tells_duplicates_from_rejected(ctx: AppContext) -> None:
     assert second["fetched"] == 0  # a feed is read from the last success on: nothing is offered twice
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_report_history_per_source_and_material(ctx: AppContext) -> None:
     validated_chain(ctx)
     run_cycle(ctx.db, http(), lambda name: None, NOW)
@@ -144,6 +146,7 @@ def test_report_history_per_source_and_material(ctx: AppContext) -> None:
     assert "Par source" in text and "titres seuls" in text and "gdelt_doc" in text and material["name"] in text
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_report_live_writes_nothing_and_cleans_titles(ctx: AppContext) -> None:
     validated_chain(ctx)
     run_cycle(ctx.db, http(), lambda name: None, NOW)

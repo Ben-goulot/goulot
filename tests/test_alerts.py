@@ -79,10 +79,17 @@ def test_health_and_security_alerts(ctx: AppContext) -> None:
     with ctx.db.transaction() as conn:
         old = (NOW - timedelta(hours=30)).isoformat()
         recent = (NOW - timedelta(hours=1)).isoformat()
-        conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok) VALUES ('c', 'gdacs', "
-                     "'hazard', ?, 1)", (old,))
-        conn.execute("INSERT INTO collect_runs (cycle_id, source, family, started_at, ok) VALUES ('c', 'gdacs', "
-                     "'hazard', ?, 0)", (recent,))
+        run = "INSERT INTO collect_runs (cycle_id, source, family, started_at, ok) VALUES ('c', ?, 'hazard', ?, ?)"
+        # gdacs failed every time it was tried for 26 hours: silent.
+        conn.execute(run, ("gdacs", (NOW - timedelta(hours=40)).isoformat(), 1))
+        for hours in (26, 13, 1):
+            conn.execute(run, ("gdacs", (NOW - timedelta(hours=hours)).isoformat(), 0))
+        # The Mac was off for 30 hours and the first attempt on waking failed: not a silent source.
+        conn.execute(run, ("usgs_earthquakes", old, 1))
+        conn.execute(run, ("usgs_earthquakes", recent, 0))
+        # Failing for long, but tried only twice (Mac mostly off): not yet.
+        conn.execute(run, ("noaa_nhc", (NOW - timedelta(hours=50)).isoformat(), 0))
+        conn.execute(run, ("noaa_nhc", recent, 0))
         conn.execute("INSERT INTO cycles (id, started_at, ok) VALUES ('c1', ?, 1)", (old,))
         conn.execute("INSERT INTO cycles (id, started_at, ok) VALUES ('c2', ?, 0)", (recent,))
         alerts = service.health_alerts(conn, NOW)
@@ -90,7 +97,8 @@ def test_health_and_security_alerts(ctx: AppContext) -> None:
         audit(conn, "session_opened")
         security = service.security_alerts(conn, 0)
     assert {a.kind for a in alerts} == {"silent_source", "unverified"}
-    assert any("gdacs" in a.text for a in alerts)
+    silent = [a.text for a in alerts if a.kind == "silent_source"]
+    assert len(silent) == 1 and "gdacs" in silent[0]
     assert len(security) == 1 and security[0].urgent and "bloquée" in security[0].text
 
 

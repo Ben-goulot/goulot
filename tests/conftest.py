@@ -75,6 +75,23 @@ def no_api_pause(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def gdelt_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GDELT is disabled in `config/sources.yaml` since 22 November 2026 (unreachable from the Mac), but its
+    collector stays: the tests that drive it (limits, private queries, partial failures) turn it back on."""
+    from goulot.collect import base
+
+    real = base.load_sources
+
+    def load(path: Path = base.CONFIG_DIR / "sources.yaml") -> dict[str, dict[str, object]]:
+        found = real(path)
+        if "gdelt_doc" in found:
+            found["gdelt_doc"] = {**found["gdelt_doc"], "enabled": True}
+        return found
+
+    monkeypatch.setattr(base, "load_sources", load)
+
+
+@pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(home=tmp_path / "home", log_dir_override=tmp_path / "logs")
 

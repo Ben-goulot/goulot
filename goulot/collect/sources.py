@@ -407,23 +407,38 @@ def pegel(client: httpx2.Client, station: str = "KAUB", waterway: str = "Rhin (R
 
 
 # --- trade policy -----------------------------------------------------------------------------------------
+FEDERAL_REGISTER_TERMS = 6  # names per search: every name is searched, six at a time
+
+
 def federal_register(client: httpx2.Client, terms: list[str], since: datetime) -> list[Item]:
-    params = {
-        "conditions[term]": " | ".join(f'"{t}"' for t in terms[:6]), "per_page": "50", "order": "newest",
-        "conditions[publication_date][gte]": since.strftime("%Y-%m-%d"),
-        "fields[]": "title",
-    }
+    """Every name of every material, in searches of six names; a document found twice is kept once. Until
+    22 November 2026 only the first six names in alphabetical order were searched, so most materials never were."""
     url = FEDERAL_REGISTER + "?fields[]=abstract&fields[]=html_url&fields[]=publication_date&fields[]=type"
-    data = _json(client, url, params)
-    items = []
-    for d in (data or {}).get("results", []) or []:
-        link = str(d.get("html_url") or "")
-        items.append(Item(
-            source="federal_register", kind="policy", url=link, title=clean_text(d.get("title"), 300),
-            published_at=parse_datetime(d.get("publication_date")), excerpt=clean_text(d.get("abstract")),
-            lang="en", domain=domain_of(link), details={"type": str(d.get("type") or "")[:40]},
-        ))
+    items: list[Item] = []
+    seen: set[str] = set()
+    for i in range(0, len(terms), FEDERAL_REGISTER_TERMS):
+        params = {
+            "conditions[term]": " | ".join(f'"{t}"' for t in terms[i:i + FEDERAL_REGISTER_TERMS]),
+            "per_page": "50", "order": "newest",
+            "conditions[publication_date][gte]": since.strftime("%Y-%m-%d"),
+            "fields[]": "title",
+        }
+        data = _json(client, url, params)
+        for d in (data or {}).get("results", []) or []:
+            link = str(d.get("html_url") or "")
+            if link in seen:
+                continue
+            seen.add(link)
+            items.append(_federal_item(d, link))
     return items
+
+
+def _federal_item(d: dict[str, Any], link: str) -> Item:
+    return Item(
+        source="federal_register", kind="policy", url=link, title=clean_text(d.get("title"), 300),
+        published_at=parse_datetime(d.get("publication_date")), excerpt=clean_text(d.get("abstract")),
+        lang="en", domain=domain_of(link), details={"type": str(d.get("type") or "")[:40]},
+    )
 
 
 def _wkt_point(text: str) -> tuple[float, float] | None:

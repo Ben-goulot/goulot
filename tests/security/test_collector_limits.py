@@ -22,6 +22,7 @@ def client(handler: object) -> httpx2.Client:
     return build_client(Allowlist(set()), transport=httpx2.MockTransport(handler))  # type: ignore[arg-type]
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_collector_limits(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> None:
     validated_chain(ctx)
     # Timeouts and sizes of the single outbound client.

@@ -284,6 +284,7 @@ def test_firms_key_never_logged(caplog: pytest.LogCaptureFixture, ctx: AppContex
 
 
 # --- cycles -----------------------------------------------------------------------------------------------
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_cycle_collects_filters_and_records(ctx: AppContext) -> None:
     validated_chain(ctx)
     with ctx.db.connect() as conn:
@@ -319,6 +320,7 @@ def test_cycle_collects_filters_and_records(ctx: AppContext) -> None:
     assert len(urls) == len(set(urls))
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_freshness_and_failed_cycle(ctx: AppContext) -> None:
     validated_chain(ctx)
     assert freshness(ctx.db, NOW) == {"last_ok_cycle": None, "verified": False}
@@ -359,6 +361,7 @@ def test_key_added_later_is_tried_at_the_next_cycle(ctx: AppContext) -> None:
         assert _backoff(conn, "gdacs", NOW)  # a real failure still waits
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_a_family_answered_recently_stays_covered(ctx: AppContext) -> None:
     """GDELT fails, but Google News answered an hour ago and is not due: the news family is covered."""
     from goulot.collect.base import enabled, load_sources
@@ -373,3 +376,14 @@ def test_a_family_answered_recently_stays_covered(ctx: AppContext) -> None:
         lambda _: httpx2.Response(500, content=b"")))
     result = run_cycle(ctx.db, client, lambda _: None, NOW)
     assert result.failed == ["gdelt_doc"] and result.ok
+
+
+def test_federal_register_searches_every_name() -> None:
+    """Every name is searched, six at a time; the same document found by two searches is kept once. Until
+    22 November 2026 only the first six names were searched."""
+    seen: list[httpx2.Request] = []
+    names = [f"name{i:02d}" for i in range(13)]
+    found = sources.federal_register(http(seen=seen), names, NOW - timedelta(days=1))
+    asked = [r.url.params["conditions[term]"] for r in seen]
+    assert len(asked) == 3 and '"name12"' in asked[2] and '"name06"' in asked[1] and '"name06"' not in asked[0]
+    assert len(found) == 1  # the fixture answers the same document to each search

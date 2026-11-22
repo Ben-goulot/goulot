@@ -132,7 +132,9 @@ def test_outbound_allowlist() -> None:
     assert real.hosts >= FIXED_HOSTS
     assert "www.gfex.com.cn" not in real.hosts and "api.reliefweb.int" not in real.hosts
     assert "tiles.openfreemap.org" not in real.hosts
-    assert "api.gdeltproject.org" in real.hosts and "www.ine.cn" in real.hosts
+    assert "www.ine.cn" in real.hosts and "www.gdacs.org" in real.hosts
+    # Disabled on 22 November 2026: the server can no longer reach them at all.
+    assert "api.gdeltproject.org" not in real.hosts and "www.usinenouvelle.com" not in real.hosts
     # The environment's proxy settings are ignored.
     assert build_client(real)._trust_env is False
 

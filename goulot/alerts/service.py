@@ -1,7 +1,7 @@
 """Alerts (docs/SPEC.md, section 9): what triggers them, how they are worded, grouped and sent.
 
 Triggers: a verdict change; a new confirmed event of severity hint ≥ 3; AI spending at 80 % and 100 % of the watch
-cap (with the offer to raise it when a severity-3 event is under way); a source silent for 24 hours; a watch not
+cap (with the offer to raise it when a severity-3 event is under way); a source failing for 24 hours; a watch not
 verified for 12 hours; a security event. At most one alert per material and per hour, except « Anticiper stock ».
 During the break-in, verdict alerts end with « (rodage) ». « Alertes discrètes »: no material name at all.
 Texts are written by the code; titles that come from articles are clipped and neutralized; no link, no private data.
@@ -23,7 +23,8 @@ from goulot.llm.budget import CRISIS, ECONOMY, RULES_ONLY, WatchMode
 log = logging.getLogger("goulot.alerts")
 
 THROTTLE = timedelta(hours=1)
-SILENT_LIMIT = timedelta(hours=24)
+SILENT_LIMIT = timedelta(hours=24)  # of failures in a row, counted from the first one
+SILENT_FAILURES = 3
 UNVERIFIED_LIMIT = timedelta(hours=12)
 TITLE_CHARS = 120
 SECURITY_KINDS = {
@@ -144,12 +145,22 @@ def budget_alerts(conn: sqlite3.Connection, mode: WatchMode, at: datetime, serio
     return out
 
 
+def _silent(conn: sqlite3.Connection, source: str, last_ok: str | None, at: datetime) -> bool:
+    """Silent: the source failed every time it was tried for 24 hours, at least SILENT_FAILURES times. The clock
+    starts at its first failure, not at its last success: a Mac switched off for a day, whose first attempt on
+    waking fails (network not back yet), is not a silent source (22 November 2026)."""
+    first, count = conn.execute(
+        "SELECT MIN(started_at), COUNT(*) FROM collect_runs WHERE source = ? AND ok = 0 AND started_at > ? "
+        "AND error NOT LIKE ?", (source, last_ok or "", "%" + MISSING_KEY)).fetchone()
+    return bool(first) and count >= SILENT_FAILURES and at - datetime.fromisoformat(first) > SILENT_LIMIT
+
+
 def health_alerts(conn: sqlite3.Connection, at: datetime) -> list[Alert]:
     out = []
     day = at.strftime("%Y-%m-%d")
     for r in conn.execute("SELECT source, MAX(CASE WHEN ok = 1 THEN started_at END) AS last_ok, MAX(started_at) "
-                          "AS last_run FROM collect_runs GROUP BY source"):
-        silent = r["last_ok"] is None or at - datetime.fromisoformat(r["last_ok"]) > SILENT_LIMIT
+                          "AS last_run FROM collect_runs GROUP BY source").fetchall():
+        silent = _silent(conn, r["source"], r["last_ok"], at)
         awake = bool(r["last_run"]) and at - datetime.fromisoformat(r["last_run"]) < timedelta(hours=6)
         last = conn.execute("SELECT error FROM collect_runs WHERE source = ? ORDER BY id DESC LIMIT 1",
                             (r["source"],)).fetchone()
@@ -160,7 +171,7 @@ def health_alerts(conn: sqlite3.Connection, at: datetime) -> list[Alert]:
             continue
         if silent and awake:
             out.append(Alert("silent_source", f"silent-{r['source']}-{day}",
-                             f"Goulot : la source {r['source']} ne répond plus depuis plus de 24 heures."))
+                             f"Goulot : la source {r['source']} échoue à chaque essai depuis plus de 24 heures."))
     last_ok = conn.execute("SELECT MAX(started_at) FROM cycles WHERE ok = 1").fetchone()[0]
     last_run = conn.execute("SELECT MAX(started_at) FROM cycles").fetchone()[0]
     if last_run and (last_ok is None or at - datetime.fromisoformat(last_ok) > UNVERIFIED_LIMIT):

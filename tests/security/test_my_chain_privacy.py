@@ -55,6 +55,7 @@ def _private_world(client: TestClient, ctx: AppContext, opened: tuple[str, str])
             "headers": headers}
 
 
+@pytest.mark.usefixtures("gdelt_enabled")
 def test_private_canary_never_leaves(client: TestClient, ctx: AppContext, opened: tuple[str, str],
                                      caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.DEBUG)
