@@ -42,7 +42,7 @@ class Rule:
 
 def _usable(name: str) -> bool:
     name = name.strip()
-    if CJK.search(name):  # « 镓 » (gallium), « 甲醇 » (methanol): one Chinese character can be a whole name
+    if CJK.search(name):  # « 镓 » (gallium), « 锗 » (germanium): one Chinese character can be a whole name
         return len(name) >= 1
     return len(name) >= MIN_KEYWORD and name.lower() != "unknown"
 

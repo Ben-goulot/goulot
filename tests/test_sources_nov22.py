@@ -95,7 +95,7 @@ def test_a_chinese_announcement_meets_the_rules() -> None:
     calm = Item(source="mofcom", kind="policy", url="https://www.mofcom.gov.cn/x", title="关于举办博览会的通知",
                 excerpt="商品编号8112923010", queried=False)
     assert not match(calm, [rule("hs_code", "811292")])  # neither the material's name nor a policy action word
-    assert _usable("镓") and _usable("甲醇") and not _usable("BP")
+    assert _usable("镓") and _usable("碳酸锂") and not _usable("BP")
 
 
 def test_new_sources_switched_on_with_the_users_go_ahead() -> None:
