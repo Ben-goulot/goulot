@@ -9,17 +9,18 @@ from goulot.collect.base import load_sources
 from goulot.net.allowlist import load_allowlist
 from goulot.settings import CONFIG_DIR
 
-NEW = ["media_smm", "media_miningweekly", "media_miningweekly_asia", "media_mining_technology",
-       "media_globalminingreview"]
+ON = ["media_miningweekly", "media_mining_technology"]  # checked from the Mac, switched on with the user's yes
+OFF = ["media_smm", "media_miningweekly_asia", "media_globalminingreview"]  # stale, duplicate, missing
 
 
-def test_china_and_mining_feeds_stay_off_until_checked() -> None:
+def test_mining_feeds_on_and_the_others_left_off() -> None:
     found = load_sources()
-    assert all(found[sid]["enabled"] is False and found[sid]["family"] == "media" for sid in NEW)
+    assert all(found[sid]["enabled"] is True and found[sid]["family"] == "media" for sid in ON)
+    assert all(found[sid]["enabled"] is False for sid in OFF)
     allowed = load_allowlist(CONFIG_DIR)
-    for host in ("rss.metal.com", "news.metal.com", "www.miningweekly.com", "www.mining-technology.com",
-                 "www.globalminingreview.com"):
-        assert not allowed.allows(host)  # nothing reaches them before the check from the Mac
+    assert allowed.allows("www.miningweekly.com") and allowed.allows("www.mining-technology.com")
+    for host in ("rss.metal.com", "news.metal.com", "www.globalminingreview.com"):
+        assert not allowed.allows(host)  # nothing reaches them from the watch
 
 
 def test_the_smm_leads_are_asked_by_the_check() -> None:

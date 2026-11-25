@@ -262,16 +262,16 @@ sources:
     auth: none
     frequency: 3h
     use: SMM (Shanghai Metals Market), actualités en anglais ; métaux et marché chinois (lithium, gallium, usines, arrêts, quotas)
-    notes: "à vérifier : flux trouvé par recherche, contenu et fraîcheur inconnus ; news.metal.com n'affiche pas de flux"
+    notes: "le 25 novembre 2026, depuis le Mac : flux arrêté (derniers articles d'avril 2022, sans résumé ; le flux « insight » s'arrête en juillet 2023) ; la page d'accueil n'annonce aucun flux et ses articles sont construits par un script ; laissé désactivé"
   - id: media_miningweekly
-    enabled: false
+    enabled: true
     family: media
     url: https://www.miningweekly.com/page/latest-news/feed
     lang: en
     auth: none
     frequency: 3h
     use: Mining Weekly ; mines du monde (Afrique, Australie, Amériques, Asie), grèves, permis, accidents
-    notes: "à vérifier : flux « Latest News » annoncé par le site (page rss-feed)"
+    notes: "vérifié le 25 novembre 2026 depuis le Mac : 36 articles datés avec résumé ; activé avec l'accord de l'utilisateur"
   - id: media_miningweekly_asia
     enabled: false
     family: media
@@ -280,16 +280,16 @@ sources:
     auth: none
     frequency: 3h
     use: Mining Weekly, rubrique Asie ; Chine, Indonésie, Australie côté Asie
-    notes: "à vérifier ; inutile si le flux « Latest News » contient déjà ces articles"
+    notes: "le 25 novembre 2026 : mêmes 33 articles que le flux « Latest News » ; laissé désactivé"
   - id: media_mining_technology
-    enabled: false
+    enabled: true
     family: media
     url: https://www.mining-technology.com/feed/
     lang: en
     auth: none
     frequency: 3h
     use: Mining Technology ; projets miniers, production, sécurité des mines
-    notes: "à vérifier : adresse donnée par un annuaire de flux"
+    notes: "vérifié le 25 novembre 2026 depuis le Mac : 10 articles datés avec résumé ; activé avec l'accord de l'utilisateur"
   - id: media_globalminingreview
     enabled: false
     family: media
@@ -298,7 +298,7 @@ sources:
     auth: none
     frequency: 3h
     use: Global Mining Review ; mines et traitement des minerais
-    notes: "à vérifier : flux trouvé par recherche"
+    notes: "le 25 novembre 2026 : HTTP 404 (adresse introuvable) ; laissé désactivé"
   - id: media_cen
     enabled: true
     family: media
