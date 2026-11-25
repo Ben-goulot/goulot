@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -30,7 +30,8 @@ USGS_FILE = "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7
 EXTRA_HOSTS = ("www.gfex.com.cn", "www.sciencebase.gov", "www2.tceq.texas.gov", "www.presseportal.de",
                "opendart.fss.or.kr", "data.epa.gov", "api.weather.gov", "mesonet.agron.iastate.edu",
                # Candidate sources of 22 November 2026, asked here only until their answers are read.
-               "www.mofcom.gov.cn", "nrc.uscg.mil", "waterservices.usgs.gov", "www.federalregister.gov")
+               "www.mofcom.gov.cn", "nrc.uscg.mil", "waterservices.usgs.gov", "www.federalregister.gov",
+               "news.metal.com")  # SMM's home page (25 November 2026), to find the feed it links to
 NRC_FILE = "https://nrc.uscg.mil/FOIAFiles/CY26.xlsx"
 # The three test materials, in English and Chinese: the names the probe of the new readers looks for.
 TEST_NAMES = ["acrylonitrile", "gallium", "lithium carbonate", "丙烯腈", "镓", "碳酸锂"]
@@ -103,6 +104,9 @@ def candidate_targets(today: date) -> list[tuple[str, str]]:
                                  ".html"),
         # US National Response Center: the year's file of initial reports (the home page links CY26.xlsx).
         ("piste_nrc_annee", NRC_FILE),
+        # SMM (news.metal.com): its English home page, to find a feed it links to, and its older insight feed.
+        ("piste_smm_accueil", "https://news.metal.com/"),
+        ("piste_smm_insight", "https://rss.metal.com/news/smm_insight.xml"),
         # Mississippi gauges (USGS): St. Louis and Baton Rouge.
         ("piste_mississippi_niveaux", "https://waterservices.usgs.gov/nwis/iv/?format=json&parameterCd=00065"
                                       "&period=P7D&sites=07010000,07374000"),
@@ -113,7 +117,6 @@ def candidate_probe(settings: Settings, client: httpx2.Client | None = None, now
                     ) -> list[str]:
     """What the two new readers (Mississippi, Ministry of Commerce) bring today, through the app's own code, with
     the names of the three test materials only. Lines to print; nothing is stored."""
-    from datetime import UTC
 
     from goulot.collect import mofcom, sources
 
@@ -145,6 +148,24 @@ def candidate_probe(settings: Settings, client: httpx2.Client | None = None, now
         if own:
             client.close()
     return lines
+
+
+def describe_feed(body: bytes) -> str:
+    """What a media feed carries, as the watch would read it: how many articles, dated, and with a summary of their
+    own (a headline alone is set aside since 4 November 2026). A page that is no feed says so."""
+    from goulot.collect.rules import headline_only
+    from goulot.collect.sources import feed_entries
+
+    try:
+        entries = feed_entries(body, datetime(1970, 1, 1, tzinfo=UTC))
+    except ValueError as exc:
+        return f"pas un flux lisible ({type(exc).__name__})"
+    if not entries:
+        return "flux vide (ou page qui n'est pas un flux)"
+    dated = [e[3] for e in entries if e[3] is not None]
+    summed = sum(1 for title, summary, _, _ in entries if not headline_only(title, summary))
+    newest = f", le plus récent du {max(dated):%d/%m/%Y}" if dated else ""
+    return f"{len(entries)} articles, {len(dated)} datés{newest}, {summed} avec résumé"
 
 
 def media_targets() -> list[tuple[str, str]]:
@@ -183,6 +204,10 @@ def run(settings: Settings, today: date | None = None, only: str | None = None) 
             entry.update(status=result.status, bytes=len(body), file=path.name)
             print(f"  {'✅' if result.status == 200 else '⚠️ '} {name} : HTTP {result.status}, {len(body)} octets "
                   f"({time.monotonic() - started:.0f} s)")
+            if name.startswith("media_") and result.status == 200:
+                described = describe_feed(body)
+                entry["feed"] = described
+                print(f"      {described}")
         except (httpx2.HTTPError, ValueError) as exc:
             entry.update(error=f"{type(exc).__name__}: {str(exc)[:160]}")
             print(f"  ❌ {name} ({urlsplit(url).hostname}) : {type(exc).__name__}, {str(exc)[:100]}")

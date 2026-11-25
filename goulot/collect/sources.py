@@ -593,7 +593,12 @@ def _feed_entries(client: httpx2.Client, url: str, since: datetime, missing_ok: 
         return []
     if result.status != 200:
         raise SourceError(f"HTTP {result.status}")
-    root = parse_xml(result.content, max_bytes=MEDIA_MAX_BYTES)
+    return feed_entries(result.content, since)
+
+
+def feed_entries(content: bytes, since: datetime) -> list[tuple[str, str, str, datetime | None]]:
+    """The entries of a feed already fetched (also read by `goulot dev check-sources`)."""
+    root = parse_xml(content, max_bytes=MEDIA_MAX_BYTES)
     entries = [*root.iter("item"), *root.iter(RSS1 + "item"), *root.iter(ATOM + "entry")]
     out = []
     for e in entries[:MEDIA_MAX_ITEMS]:

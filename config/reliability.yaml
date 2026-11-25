@@ -24,7 +24,8 @@ agency_specialized:
             argusmedia.com, icis.com, spglobal.com, fastmarkets.com, metal.com, mysteel.net, mining.com,
             lloydslist.com, tradewindsnews.com, chemweek.com, cen.acs.org,
             crugroup.com, benchmarkminerals.com, roskill.com,  # analystes matières premières (ajoutés le 19 octobre 2026)
-            usinenouvelle.com, chemanager-online.com]  # presse industrielle et chimie européennes (flux RSS, 29 octobre 2026)
+            usinenouvelle.com, chemanager-online.com,  # presse industrielle et chimie européennes (flux RSS, 29 octobre 2026)
+            miningweekly.com, mining-technology.com, globalminingreview.com]  # presse minière (25 novembre 2026)
 
 general_press:
   domains: [lemonde.fr, lesechos.fr, lefigaro.fr, nytimes.com, theguardian.com, bbc.com, bbc.co.uk, cnbc.com,

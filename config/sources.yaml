@@ -252,6 +252,53 @@ sources:
     frequency: 3h
     use: MINING.COM ; mines et métaux (lithium, gallium, terres rares), permis, grèves, contrôles à l'export
     notes: "le 12 novembre 2026 : HTTP 403 (accès refusé) depuis le Mac ; laissé désactivé"
+  # Chine et mines (25 novembre 2026, à la demande de l'utilisateur) : à vérifier depuis le Mac
+  # (« goulot dev check-sources --only media_ »), activées seulement si le flux donne des articles datés avec résumé.
+  - id: media_smm
+    enabled: false
+    family: media
+    url: https://rss.metal.com/news/translation.xml
+    lang: en
+    auth: none
+    frequency: 3h
+    use: SMM (Shanghai Metals Market), actualités en anglais ; métaux et marché chinois (lithium, gallium, usines, arrêts, quotas)
+    notes: "à vérifier : flux trouvé par recherche, contenu et fraîcheur inconnus ; news.metal.com n'affiche pas de flux"
+  - id: media_miningweekly
+    enabled: false
+    family: media
+    url: https://www.miningweekly.com/page/latest-news/feed
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Mining Weekly ; mines du monde (Afrique, Australie, Amériques, Asie), grèves, permis, accidents
+    notes: "à vérifier : flux « Latest News » annoncé par le site (page rss-feed)"
+  - id: media_miningweekly_asia
+    enabled: false
+    family: media
+    url: https://www.miningweekly.com/page/asia/feed
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Mining Weekly, rubrique Asie ; Chine, Indonésie, Australie côté Asie
+    notes: "à vérifier ; inutile si le flux « Latest News » contient déjà ces articles"
+  - id: media_mining_technology
+    enabled: false
+    family: media
+    url: https://www.mining-technology.com/feed/
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Mining Technology ; projets miniers, production, sécurité des mines
+    notes: "à vérifier : adresse donnée par un annuaire de flux"
+  - id: media_globalminingreview
+    enabled: false
+    family: media
+    url: https://www.globalminingreview.com/rss/mining.xml
+    lang: en
+    auth: none
+    frequency: 3h
+    use: Global Mining Review ; mines et traitement des minerais
+    notes: "à vérifier : flux trouvé par recherche"
   - id: media_cen
     enabled: true
     family: media
