@@ -136,6 +136,8 @@ def candidate_probe(settings: Settings, client: httpx2.Client | None = None, now
                 extra = [f"{len(it.excerpt)} car. de texte", f"{len(it.details['hs_codes'])} code(s) douanier(s)"]
                 if it.details["names"]:
                     extra.append("nomme " + ", ".join(it.details["names"]))
+                if it.details.get("cites"):
+                    extra.append("cite " + ", ".join(it.details["cites"]))
                 lines.append(f"      · {day} {it.title[:70]} ({' ; '.join(extra)})")
         except (httpx2.HTTPError, ValueError, sources.SourceError) as exc:
             lines.append(f"  ❌ MOFCOM : {type(exc).__name__}, {str(exc)[:120]}")

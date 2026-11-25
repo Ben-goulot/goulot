@@ -116,3 +116,44 @@ def test_check_sources_probe_runs_both_readers(settings: Settings) -> None:
 def test_phone_numbers_are_not_customs_codes() -> None:
     text = "联系电话：86-10-65198919 传真 8610-65198172 税则号列29012990 及 2905.11.00"
     assert mofcom.customs_codes(text) == ["29012990", "29051100"]
+
+
+# 25 November 2026: an announcement that cites an earlier control by its number only.
+D = "e" * 32
+PAGE_EXTENSION = ("<html><body><div>2026-11-24 10:00</div><div>商务部公告2026年第59号 关于继续调整实施商务部公告2024年第46号"
+                  "的公告 经批准，自2026年11月28日起至2027年1月27日，商务部公告2024年第46号第二款继续暂停实施。"
+                  "商务部 2026年11月23日</div></body></html>")
+
+
+def extension_routes() -> dict[str, tuple[int, bytes]]:
+    home = f'<a href="/zwgk/zcfb/art/2026/art_{D}.html" title="商务部公告2026年第59号">x</a>'.encode()
+    return {"www.mofcom.gov.cn/": (200, home),
+            f"www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_{D}.html": (200, PAGE_EXTENSION.encode())}
+
+
+def test_cited_numbers_read_lists_and_joint_announcements() -> None:
+    title = ("商务部、海关总署公告2026年第58号 公布继续暂停实施商务部、海关总署公告2025年第55号、56号、57号、58号"
+             "及商务部公告2025年第61号、62号的决定")
+    assert mofcom.cited_numbers(title) == ["2026-58", "2025-55", "2025-56", "2025-57", "2025-58", "2025-61", "2025-62"]
+    assert mofcom.cited_numbers("联系电话 2026年11月9日 第3页") == []
+
+
+def test_the_controls_table_is_well_formed() -> None:
+    controls = mofcom.load_controls()
+    assert {"2023-23", "2024-46", "2025-58"} <= set(controls)
+    assert all(c.products and c.scope and c.title.startswith("商务部") for c in controls.values())
+    assert "镓" in controls["2024-46"].products and "gallium" in controls["2023-23"].products
+
+
+def test_an_extension_that_names_no_product_concerns_the_cited_one() -> None:
+    names = ["gallium", "镓", "碳酸锂", "lithium carbonate"]
+    (item,) = mofcom.announcements(client(extension_routes()), names, NOW)
+    assert item.details["names"] == ["gallium", "镓"]  # through 2024 No. 46, not lithium carbonate
+    assert item.details["cites"] == ["2024-46"]
+    assert item.excerpt.startswith("[Repère Goulot, textes cités] 公告2024年第46号, exportations vers les États-Unis")
+    assert "继续暂停实施" in item.excerpt  # the ministry's own text follows
+    assert match(item, [rule("keyword", "gallium")])
+    assert not match(item, [rule("keyword", "lithium carbonate", "m-li")])
+    # Without the table, the same announcement names nothing.
+    (bare,) = mofcom.announcements(client(extension_routes()), names, NOW, controls={})
+    assert bare.details["names"] == [] and "cites" not in bare.details and not bare.excerpt.startswith("[")

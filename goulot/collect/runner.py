@@ -146,8 +146,9 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
               ) -> dict[str, Callable[[httpx2.Client, datetime], list[Item]]]:
     """`db`: for the sources that keep what they read between cycles (official records); without it they bring
     nothing."""
-    qs = queries(conn) + (private_queries or [])
-    # Ma chaîne's queries go to GDELT alone, as before: never pooled with the public ones.
+    # Ma chaîne's queries go to GDELT alone, as before: never pooled with the public ones. Google News is no longer
+    # asked per material (25 November 2026): it gives headlines only, set aside since 4 November, and answered 429 or
+    # nothing; its two strait queries for the map stay (hotspots.refresh).
     gdelt_qs = gdelt_queries(conn) + [q for q, _ in private_queries or []]
     boxes = [(r["node_key"], r["lat"], r["lon"]) for r in conn.execute(
         "SELECT DISTINCT node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone'")]
@@ -158,10 +159,6 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
 
     def news_gdelt(c: httpx2.Client, since: datetime) -> list[Item]:
         return sources.gdelt_many(c, gdelt_qs, since, now)
-
-    def news_google(c: httpx2.Client, since: datetime) -> list[Item]:
-        return [it for q, _ in qs for lang, cc in (("en", "US"), ("fr", "FR"))
-                for it in sources.google_news(c, f"{q} when:7d", lang, cc)]
 
     watched = sitematch.watch_sites(conn)
     places = {row["node_key"]: row["place"] for row in conn.execute(
@@ -195,7 +192,6 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
 
     fetchers: dict[str, Callable[[httpx2.Client, datetime], list[Item]]] = {
         "gdelt_doc": news_gdelt,
-        "google_news_rss": news_google,
         "gdacs": lambda c, s: sources.gdacs(c),
         "usgs_earthquakes": lambda c, s: sources.usgs_quakes(c),
         "nasa_firms": fires,
@@ -216,7 +212,7 @@ def _fetchers(conn: sqlite3.Connection, now: datetime, secret: SecretGetter,
     # The media feeds right after the other news sources, before measurements and policy acts.
     media = {sid: _media(sid, str(src["url"]), str(src.get("lang") or ""))
              for sid, src in load_sources().items() if src.get("family") == MEDIA}
-    news = [k for k in fetchers if k in ("gdelt_doc", "google_news_rss")]
+    news = [k for k in fetchers if k == "gdelt_doc"]
     return {**{k: fetchers[k] for k in news}, **media, **{k: v for k, v in fetchers.items() if k not in news}}
 
 

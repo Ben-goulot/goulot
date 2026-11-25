@@ -1,0 +1,56 @@
+# Chinese export-control announcements (MOFCOM, often jointly with Customs) and the products they cover.
+# Later announcements often cite these by number only (« 公告2024年第46号 ») without naming the product:
+# the MOFCOM reader (goulot/collect/mofcom.py) uses this table to know which materials such a citation concerns.
+# Public facts, no user data. Sources: MOFCOM texts as reported by law firms and the press (Pillsbury, CIRS,
+# ChemRadar, CASRAI); 2025 No. 55 to 62 checked on 25 November 2026. Add an entry when MOFCOM publishes a new control.
+# Fields: number (year-number), title (Chinese), products (Chinese, English, French names, as matched against the
+# names of the watched materials), scope (French, shown with the announcement).
+controls:
+  - number: 2023-23
+    title: 商务部 海关总署公告2023年第23号 关于对镓、锗相关物项实施出口管制的公告
+    products: [镓, 锗, gallium, germanium]
+    scope: contrôle des exportations de gallium et de germanium (licence obligatoire depuis le 1er août 2023)
+  - number: 2023-39
+    title: 商务部 海关总署公告2023年第39号 关于优化调整石墨物项临时出口管制措施的公告
+    products: [石墨, graphite]
+    scope: contrôle des exportations de graphite (depuis le 1er décembre 2023)
+  - number: 2024-33
+    title: 商务部 海关总署公告2024年第33号 关于对锑等物项实施出口管制的公告
+    products: [锑, 超硬材料, antimony, antimoine, superhard materials, matériaux superdurs]
+    scope: contrôle des exportations d'antimoine et de matériaux superdurs (depuis le 15 septembre 2024)
+  - number: 2024-46
+    title: 商务部公告2024年第46号 关于加强相关两用物项对美国出口管制的公告
+    products: [镓, 锗, 锑, 超硬材料, gallium, germanium, antimony, antimoine, superhard materials, matériaux superdurs]
+    scope: exportations vers les États-Unis ; le 2e paragraphe refuse en principe les licences pour le gallium, le germanium, l'antimoine et les matériaux superdurs
+  - number: 2025-10
+    title: 商务部 海关总署公告2025年第10号 关于对钨、碲、铋、钼、铟相关物项实施出口管制的决定
+    products: [钨, 碲, 铋, 钼, 铟, tungsten, tungstène, tellurium, tellure, bismuth, molybdenum, molybdène, indium]
+    scope: contrôle des exportations de tungstène, tellure, bismuth, molybdène et indium (depuis le 4 février 2025)
+  - number: 2025-18
+    title: 商务部 海关总署公告2025年第18号 关于对部分中重稀土相关物项实施出口管制的决定
+    products: [钐, 钆, 铽, 镝, 镥, 钪, 钇, samarium, gadolinium, terbium, dysprosium, lutetium, lutécium, scandium, yttrium]
+    scope: contrôle des exportations de sept terres rares moyennes et lourdes (depuis le 4 avril 2025)
+  - number: 2025-55
+    title: 商务部 海关总署公告2025年第55号 关于对超硬材料相关物项实施出口管制的决定
+    products: [超硬材料, superhard materials, matériaux superdurs]
+    scope: contrôle des exportations de matériaux superdurs (annonce du 9 octobre 2025)
+  - number: 2025-56
+    title: 商务部 海关总署公告2025年第56号 关于对部分稀土设备和原辅料相关物项实施出口管制的决定
+    products: [稀土设备, rare earth equipment, équipements de terres rares]
+    scope: contrôle des exportations d'équipements et de matières pour les terres rares (annonce du 9 octobre 2025)
+  - number: 2025-57
+    title: 商务部 海关总署公告2025年第57号 关于对部分中重稀土相关物项实施出口管制的决定
+    products: [钬, 铒, 铥, 铕, 镱, holmium, erbium, thulium, europium, ytterbium]
+    scope: contrôle des exportations de cinq terres rares moyennes et lourdes (annonce du 9 octobre 2025)
+  - number: 2025-58
+    title: 商务部 海关总署公告2025年第58号 关于对锂电池和人造石墨负极材料相关物项实施出口管制的决定
+    products: [锂电池, 人造石墨负极材料, lithium-ion batteries, batteries lithium-ion, artificial graphite anode, anode en graphite artificiel]
+    scope: contrôle des exportations de batteries lithium-ion, de matériaux de cathode et d'anode en graphite artificiel (annonce du 9 octobre 2025)
+  - number: 2025-61
+    title: 商务部公告2025年第61号 关于对境外相关稀土物项实施出口管制的决定
+    products: [稀土, rare earths, terres rares]
+    scope: contrôle des produits à base de terres rares chinoises fabriqués hors de Chine (annonce du 9 octobre 2025)
+  - number: 2025-62
+    title: 商务部公告2025年第62号 关于对稀土相关技术实施出口管制的决定
+    products: [稀土技术, rare earth technologies, technologies des terres rares]
+    scope: contrôle des exportations de technologies des terres rares (annonce du 9 octobre 2025)

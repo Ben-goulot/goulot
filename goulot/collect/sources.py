@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import httpx2
 
@@ -457,25 +457,28 @@ def _number(value: str) -> bool:
 
 # --- trade policy -----------------------------------------------------------------------------------------
 FEDERAL_REGISTER_TERMS = 6  # names per search: every name is searched, six at a time
+FEDERAL_REGISTER_FIELDS = ("title", "abstract", "html_url", "publication_date", "type")
 
 
 def federal_register(client: httpx2.Client, terms: list[str], since: datetime) -> list[Item]:
     """Every name of every material, in searches of six names; a document found twice is kept once. Until
-    22 November 2026 only the first six names in alphabetical order were searched, so most materials never were."""
-    url = FEDERAL_REGISTER + "?fields[]=abstract&fields[]=html_url&fields[]=publication_date&fields[]=type"
+    22 November 2026 only the first six names in alphabetical order were searched, so most materials never were.
+
+    The query is written whole into the address: given as parameters, it replaced the address's own, and until
+    25 November 2026 only the title was asked, every document came without its link and none was kept."""
+    fields = [("fields[]", f) for f in FEDERAL_REGISTER_FIELDS]
     items: list[Item] = []
     seen: set[str] = set()
     for i in range(0, len(terms), FEDERAL_REGISTER_TERMS):
-        params = {
-            "conditions[term]": " | ".join(f'"{t}"' for t in terms[i:i + FEDERAL_REGISTER_TERMS]),
-            "per_page": "50", "order": "newest",
-            "conditions[publication_date][gte]": since.strftime("%Y-%m-%d"),
-            "fields[]": "title",
-        }
-        data = _json(client, url, params)
+        query = urlencode([
+            ("conditions[term]", " | ".join(f'"{t}"' for t in terms[i:i + FEDERAL_REGISTER_TERMS])),
+            ("per_page", "50"), ("order", "newest"),
+            ("conditions[publication_date][gte]", since.strftime("%Y-%m-%d")), *fields,
+        ])
+        data = _json(client, f"{FEDERAL_REGISTER}?{query}")
         for d in (data or {}).get("results", []) or []:
             link = str(d.get("html_url") or "")
-            if link in seen:
+            if not link.startswith("https://") or link in seen:
                 continue
             seen.add(link)
             items.append(_federal_item(d, link))

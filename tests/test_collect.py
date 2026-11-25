@@ -309,7 +309,10 @@ def test_cycle_collects_filters_and_records(ctx: AppContext) -> None:
     with ctx.db.connect() as conn:
         headlines = dict(conn.execute("SELECT source, title_only FROM collect_runs WHERE source IN "
                                       "('gdelt_doc', 'google_news_rss')").fetchall())
-    assert headlines["gdelt_doc"] > 0 and headlines["google_news_rss"] > 0  # counted in the diagnostic
+    assert headlines["gdelt_doc"] > 0  # counted in the diagnostic
+    # Google News is no longer asked per material (25 November 2026): no request carries a material's name to it.
+    assert "google_news_rss" not in headlines
+    assert not any(r.url.host == "news.google.com" and "acrylonitrile" in str(r.url).lower() for r in seen)
     assert all(ok for _, ok in runs)
     assert all(r.url.scheme == "https" for r in seen)
     # The trapped article is stored as plain text only.
@@ -392,3 +395,6 @@ def test_federal_register_searches_every_name() -> None:
     asked = [r.url.params["conditions[term]"] for r in seen]
     assert len(asked) == 3 and '"name12"' in asked[2] and '"name06"' in asked[1] and '"name06"' not in asked[0]
     assert len(found) == 1  # the fixture answers the same document to each search
+    # Every field is asked, the link first of all: until 25 November 2026 the title alone was (no link, nothing kept).
+    assert all(sorted(r.url.params.get_list("fields[]")) == sorted(sources.FEDERAL_REGISTER_FIELDS) for r in seen)
+    assert found[0].url == "https://www.federalregister.gov/d/1" and found[0].published_at is not None
