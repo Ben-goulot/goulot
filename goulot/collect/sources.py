@@ -55,6 +55,10 @@ GDACS_AREA_MIN_COUNTRIES = 3
 GDELT_MAX_WINDOW = timedelta(days=90)
 # VIIRS on NOAA-21 and NOAA-20: Suomi NPP observations end on 2 November 2026 (FIRMS notice of October 2026).
 FIRMS_PRODUCTS = ("VIIRS_NOAA21_NRT", "VIIRS_NOAA20_NRT")
+FIRMS_MARGIN = 0.1  # degrees around each site (about 11 km)
+FIRMS_SPAN = 2.0  # widest side of one request's area, in degrees: the sites of one industrial region share it
+FIRMS_ATTEMPTS = 2
+FIRMS_RETRY_PAUSE = 5.0  # seconds
 # GDELT answers HTTP 429 to more than one request every 5 seconds: its queries are spaced out (a cycle runs in the
 # background, a minute or two more costs nothing). After a 429, the query is retried once after Retry-After, and the
 # following ones wait longer; a second refusal or a timeout ends GDELT for this cycle, keeping what was read.
@@ -306,28 +310,73 @@ def usgs_quakes(client: httpx2.Client, min_magnitude: float = 5.0) -> list[Item]
     return items
 
 
+def firms_areas(boxes: Iterable[tuple[str, float, float]]) -> list[tuple[str, list[tuple[str, float, float]]]]:
+    """Neighbouring sites share one request (28 November 2026): until then each site was asked alone, twice (one
+    request per satellite), about 126 requests a cycle, and one slow answer lost them all. A site at the same
+    position as another (the same plant in two chains) is asked once. Returns (area of the request, its sites)."""
+    unique: dict[tuple[float, float], tuple[str, float, float]] = {}
+    for k, lat, lon in boxes:
+        unique.setdefault((round(lat, 3), round(lon, 3)), (k, lat, lon))
+    sites = sorted(unique.values(), key=lambda b: (b[1], b[2]))
+    clusters: list[list[tuple[str, float, float]]] = []
+    widest = FIRMS_SPAN - 2 * FIRMS_MARGIN
+    for site in sites:
+        for cluster in clusters:
+            lats, lons = [s[1] for s in (*cluster, site)], [s[2] for s in (*cluster, site)]
+            if max(lats) - min(lats) <= widest and max(lons) - min(lons) <= widest:
+                cluster.append(site)
+                break
+        else:
+            clusters.append([site])
+    out = []
+    for cluster in clusters:
+        lats, lons = [s[1] for s in cluster], [s[2] for s in cluster]
+        area = (f"{min(lons) - FIRMS_MARGIN:.3f},{min(lats) - FIRMS_MARGIN:.3f},"
+                f"{max(lons) + FIRMS_MARGIN:.3f},{max(lats) + FIRMS_MARGIN:.3f}")
+        out.append((area, cluster))
+    return out
+
+
+def _firms_get(client: httpx2.Client, url: str) -> bytes:
+    """One request, asked once more after a pause when the answer is slow, cut or a server error: FIRMS often is."""
+    for attempt in range(FIRMS_ATTEMPTS):
+        last = attempt == FIRMS_ATTEMPTS - 1
+        try:
+            result = fetch(client, url)
+        except httpx2.TransportError:
+            if last:
+                raise
+            time.sleep(FIRMS_RETRY_PAUSE)
+            continue
+        if result.status == 200:
+            return result.content
+        if result.status < 500 or last:
+            raise SourceError(f"HTTP {result.status}")
+        time.sleep(FIRMS_RETRY_PAUSE)
+    raise SourceError("no answer")  # not reached: the last attempt returns or raises
+
+
 def firms(client: httpx2.Client, key: str, boxes: Iterable[tuple[str, float, float]], days: int = 1,
           min_frp: float = 10.0) -> list[Item]:
-    """Active fires near located sites. `boxes`: (node_key, lat, lon); one request per box of ±0.1° (about 11 km)
-    and per satellite: only the site's surroundings, the grouping keeps what lies within 5 km. A fire seen by both
-    satellites the same day, within about 1 km, is kept once."""
+    """Active fires near located sites. `boxes`: (node_key, lat, lon); a fire is kept within ±0.1° (about 11 km)
+    of a site, the grouping keeps what lies within 5 km. Neighbouring sites share a request (`firms_areas`), one
+    per satellite. A fire seen by both satellites the same day, within about 1 km, is kept once."""
     items = []
     seen: set[str] = set()
-    for node_key, lat, lon in boxes:
-        area = f"{lon - 0.1:.3f},{lat - 0.1:.3f},{lon + 0.1:.3f},{lat + 0.1:.3f}"
+    for area, sites in firms_areas(boxes):
         rows: list[dict[str, str]] = []
         for product in FIRMS_PRODUCTS:
-            result = fetch(client, f"{FIRMS}/{quote(key, safe='')}/{product}/{area}/{days}")
-            if result.status != 200:
-                raise SourceError(f"HTTP {result.status}")
-            rows += list(csv.DictReader(io.StringIO(result.content.decode("utf-8", "replace"))))
+            content = _firms_get(client, f"{FIRMS}/{quote(key, safe='')}/{product}/{area}/{days}")
+            rows += list(csv.DictReader(io.StringIO(content.decode("utf-8", "replace"))))
         for row in rows:
             try:
                 flat, flon, frp = float(row["latitude"]), float(row["longitude"]), float(row.get("frp") or 0)
             except (KeyError, ValueError):
                 continue
+            near = [(abs(flat - lat) + abs(flon - lon), k) for k, lat, lon in sites
+                    if abs(flat - lat) <= FIRMS_MARGIN and abs(flon - lon) <= FIRMS_MARGIN]
             spot = f"firms:{flat:.2f}:{flon:.2f}:{row.get('acq_date')}"
-            if frp < min_frp or spot in seen:
+            if not near or frp < min_frp or spot in seen:
                 continue
             seen.add(spot)
             when = parse_datetime(f"{row.get('acq_date', '')}T{row.get('acq_time', '0000').zfill(4)[:2]}:"
@@ -336,7 +385,8 @@ def firms(client: httpx2.Client, key: str, boxes: Iterable[tuple[str, float, flo
                 source="nasa_firms", kind="hazard", url="https://firms.modaps.eosdis.nasa.gov/map/",
                 title=f"Incendie détecté par satellite (puissance {frp:.0f} MW)", published_at=when,
                 lat=flat, lon=flon, magnitude=frp, key=spot,
-                details={"event_type": "WF", "near_node": node_key, "confidence": str(row.get("confidence", ""))[:10]},
+                details={"event_type": "WF", "near_node": min(near)[1],
+                         "confidence": str(row.get("confidence", ""))[:10]},
             ))
     return items
 

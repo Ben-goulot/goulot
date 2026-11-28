@@ -270,7 +270,9 @@ def test_hazard_and_logistics_parsers() -> None:
     assert fr[0].kind == "policy" and "2926.10" in fr[0].excerpt
 
 
-def test_firms_key_never_logged(caplog: pytest.LogCaptureFixture, ctx: AppContext) -> None:
+def test_firms_key_never_logged(caplog: pytest.LogCaptureFixture, ctx: AppContext,
+                                monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sources, "FIRMS_RETRY_PAUSE", 0.0)
     validated_chain(ctx)
     key = "FIRMSKEY" + "7" * 24
     failing = {k: v for k, v in ROUTES.items()}
