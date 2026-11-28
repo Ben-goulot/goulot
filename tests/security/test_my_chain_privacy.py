@@ -18,10 +18,11 @@ from fastapi.testclient import TestClient
 
 from goulot.api.context import AppContext
 from goulot.collect.runner import run_cycle
+from goulot.collect.sources import firms_areas as firms_areas_of
 from goulot.db.backup import backup
 from goulot.llm.batch import ReplayBatchBackend
 from goulot.llm.budget import watch_mode
-from goulot.net.allowlist import Allowlist
+from goulot.net.allowlist import Allowlist, load_allowlist
 from goulot.net.client import build_client
 from goulot.pipeline import cycle
 from goulot.private.mychain import CSV_TEMPLATE
@@ -64,17 +65,31 @@ def test_private_canary_never_leaves(client: TestClient, ctx: AppContext, opened
     # Outgoing requests of a collection cycle, with the in-memory rules of Ma chaîne.
     sent: list[str] = []
 
+    firms_areas: list[str] = []
+
     def handler(request: httpx2.Request) -> httpx2.Response:
         sent.append(f"{request.method} {request.url} {request.content.decode('utf-8', 'replace')}")
         if request.url.host == "api.gdeltproject.org":
             return httpx2.Response(200, json={"articles": []})
+        if request.url.host == "firms.modaps.eosdis.nasa.gov":
+            firms_areas.append(request.url.path.split("/")[6])
+            return httpx2.Response(200, content=b"latitude,longitude,acq_date,acq_time,frp\n")
         return httpx2.Response(404, content=b"{}")
 
+    # Every source the cycle may ask (28 November 2026: NASA FIRMS with a key, the Ministry of Commerce, the media
+    # feeds, the registries), not only the search sources.
     hosts = {"api.gdeltproject.org", "news.google.com", "www.gdacs.org", "earthquake.usgs.gov",
-             "www.nhc.noaa.gov", "services9.arcgis.com", "www.pegelonline.wsv.de", "www.federalregister.gov"}
+             "www.nhc.noaa.gov", "services9.arcgis.com", "www.pegelonline.wsv.de", "www.federalregister.gov",
+             *load_allowlist(ctx.settings.config_dir).hosts}
     http = build_client(Allowlist(hosts), transport=httpx2.MockTransport(handler))
-    run_cycle(ctx.db, http, lambda _: None, NOW, private=cycle.private_watch(ctx))
+    run_cycle(ctx.db, http, lambda name: "k" * 32 if name == "nasa_firms" else None, NOW,
+              private=cycle.private_watch(ctx))
     assert any("Anvers" in s for s in sent)  # the private rules did run, at the « ville et matière » level
+    # NASA FIRMS asks the areas of the typical chain's sites, exactly: never one drawn from Ma chaîne's sites.
+    with ctx.db.connect() as conn:
+        public = [(r[0], r[1], r[2]) for r in conn.execute(
+            "SELECT DISTINCT node_key, lat, lon FROM watch_rules WHERE active = 1 AND kind = 'zone'")]
+    assert firms_areas and sorted(firms_areas) == sorted(a for a, _ in firms_areas_of(public) for _ in range(2))
     # The rest of the cycle: matching, analysis of the event that weighs, verdicts, outcomes, alerts.
     replay = ReplayBatchBackend()
     ctx.llm_batch = lambda: replay
